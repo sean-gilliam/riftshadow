@@ -243,13 +243,21 @@ int remove();
 #define NOTE_UNSTARTED				0
 #define NOTE_IN_PROGRESS			1
 
-struct buf_type
+// A crash-proof, growable scratch string. Owns its storage: the destructor
+// releases it, so a stack `BUFFER` needs no manual free (formerly new_buf/free_buf).
+class buf_type
 {
-	BUFFER *next;
-	bool valid;
-	short state;	// error state of the buffer
-	short size;		// size in k
-	char *string;	// buffer's string
+public:
+	~buf_type();
+
+	bool add(const char *text);		// append text; was add_buf
+	void clear();					// reset to empty; was clear_buf
+	const char *str() const;		// current contents; was buf_string
+
+private:
+	short state = 0;				// BUFFER_SAFE; error state of the buffer
+	short size = 0;					// size in k
+	char *string = nullptr;			// buffer's string
 };
 
 

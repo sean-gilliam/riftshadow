@@ -435,7 +435,7 @@ void do_offer(CHAR_DATA *ch, char *argument)
 
 void do_sitetrack(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char buf[MSL], arg1[MSL], arg2[MSL], query[MSL];
 	int results = 0;
 
@@ -447,27 +447,25 @@ void do_sitetrack(CHAR_DATA *ch, char *argument)
 	if (!strcmp(argument, ""))
 	{
 		auto comments = SiteCommentRepository(RS.DbRift);
-		buffer = new_buf();
 
-		add_buf(buffer, "ID #     Site                       Denials    Comments\n\r");
+		buffer.add("ID #     Site                       Denials    Comments\n\r");
 
 		for (const auto &site : sites.FindAll())
 		{
 			sprintf(buf, "%4d     %-26s %-10d %d\n\r",
 				site.site_id, site.site_name.c_str(), site.denials,
 				comments.CountBySite(site.site_id));
-			add_buf(buffer, buf);
+			buffer.add(buf);
 		}
 
-		add_buf(buffer, "Use sitetrack <id> to view more details.\n\r");
-		add_buf(buffer, "Use sitetrack comment <id> to enter a comment on the given site.\n\r");
-		add_buf(buffer, "Use sitetrack add <site IP, i.e. aol.com>.  Use numeric IP ONLY if it's unresolvable.\n\r");
+		buffer.add("Use sitetrack <id> to view more details.\n\r");
+		buffer.add("Use sitetrack comment <id> to enter a comment on the given site.\n\r");
+		buffer.add("Use sitetrack add <site IP, i.e. aol.com>.  Use numeric IP ONLY if it's unresolvable.\n\r");
 
 		if (get_trust(ch) >= 58)
-			add_buf(buffer, "Use sitetrack delcomment <comment id> to delete a comment, and sitetrack delsite <site id> to delete a site.\n\r");
+			buffer.add("Use sitetrack delcomment <comment id> to delete a comment, and sitetrack delsite <site id> to delete a site.\n\r");
 
-		page_to_char(buf_string(buffer), ch);
-		free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 		return;
 	}
 
@@ -534,7 +532,6 @@ void do_sitetrack(CHAR_DATA *ch, char *argument)
 		}
 
 		const auto &site = found.front();
-		buffer = new_buf();
 
 		sprintf(buf, "Viewing %s (id %d).\n\r", site.site_name.c_str(), site.site_id);
 		send_to_char(buf, ch);
@@ -553,15 +550,15 @@ void do_sitetrack(CHAR_DATA *ch, char *argument)
 			sprintf(buf, "Added by %s on %s (CID #%d):\n\r%s",
 				comment.comment_name.c_str(), comment.comment_date.c_str(),
 				comment.comment_id, comment.comment.c_str());
-			add_buf(buffer, buf);
+			buffer.add(buf);
 		}
 
 		if (buf[0] == '\r')
-			add_buf(buffer, "(No comments)\n\r");
+			buffer.add("(No comments)\n\r");
 
 		if (get_trust(ch) >= 56)
 		{
-			add_buf(buffer, "Players from site:\n\r");
+			buffer.add("Players from site:\n\r");
 
 			auto logins = LoginRepository(RS.DbRift);
 			auto siteNames = logins.FindDistinctNamesBySite(site.site_name);
@@ -583,11 +580,10 @@ void do_sitetrack(CHAR_DATA *ch, char *argument)
 			if (!results)
 				sprintf(buf, "(No players)\n\r");
 
-			add_buf(buffer, buf);
+			buffer.add(buf);
 		}
 
-		page_to_char(buf_string(buffer), ch);
-		free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 	}
 }
 
@@ -990,7 +986,7 @@ void do_pktrack(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	BUFFER *buffer = new_buf();
+	BUFFER buffer;
 	for (auto &pklog : results)
 	{
 		sprintf(buf, "%3d) %s(%s) killed %s(%s) at %s on %s\n\r",
@@ -1002,11 +998,10 @@ void do_pktrack(CHAR_DATA *ch, char *argument)
 			pklog.room.c_str(),
 			pklog.date.c_str());
 
-		add_buf(buffer, buf);
+		buffer.add(buf);
 	}
 
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	page_to_char(buffer.str(), ch);
 }
 
 bool trusts(CHAR_DATA *ch, CHAR_DATA *victim)
@@ -1608,10 +1603,8 @@ void do_rchanges(CHAR_DATA *ch, char *argument)
 	char writestring[MAX_STRING_LENGTH];
 	FILE *fpChar;
 	long size = 0;
-	BUFFER *output;
+	BUFFER output;
 	int numMatches=0, numEntries = 25;
-
-	output = new_buf();
 
 	one_argument(argument,arg1);
 	if(is_number(arg1))
@@ -1667,11 +1660,10 @@ void do_rchanges(CHAR_DATA *ch, char *argument)
 		if(size>=MAX_BUF || (numMatches-loop)==numEntries)
 				break;
 
-		add_buf(output,nlist);
+		output.add(nlist);
 	}
 
-	page_to_char(buf_string(output),ch);
-	free_buf(output);
+	page_to_char(output.str(),ch);
 	fclose(fpChar);
 */
 }
@@ -1804,7 +1796,7 @@ char *flags_to_string(CHAR_DATA *ch, const struct flag_type *showflags, int flag
 
 void do_ltrack(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char arg1[MSL], arg2[MSL], buf[MSL];
 	int type = -1, show = -1, i = 0;
 
@@ -1847,8 +1839,6 @@ void do_ltrack(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	buffer = new_buf();
-
 	for (const auto &login : results)
 	{
 		i++;
@@ -1867,11 +1857,10 @@ void do_ltrack(CHAR_DATA *ch, char *argument)
 			rowType == 2 ? " played, " : "",
 			login.obj,
 			login.lobj);
-		add_buf(buffer, buf);
+		buffer.add(buf);
 	}
 
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	page_to_char(buffer.str(), ch);
 	return;
 }
 
@@ -1981,7 +1970,7 @@ void do_assess_old(CHAR_DATA *ch, char *argument)
 
 void do_supps(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char arg[MAX_INPUT_LENGTH];
 	char spell_list[LEVEL_HERO + 1][MAX_STRING_LENGTH];
 	char spell_columns[LEVEL_HERO + 1];
@@ -2105,17 +2094,14 @@ void do_supps(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	buffer = new_buf();
-
 	for (level = 0; level < LEVEL_HERO + 1; level++)
 	{
 		if (spell_list[level][0] != '\0')
-			add_buf(buffer, spell_list[level]);
+			buffer.add(spell_list[level]);
 	}
 
-	add_buf(buffer, "\n\r");
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	buffer.add("\n\r");
+	page_to_char(buffer.str(), ch);
 }
 
 void do_commune(CHAR_DATA *ch, char *argument)

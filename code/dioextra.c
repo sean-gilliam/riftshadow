@@ -554,7 +554,7 @@ void do_ccb(CHAR_DATA *ch, char *argument)
 
 void do_powers(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char arg[MAX_INPUT_LENGTH];
 	char skill_list[LEVEL_HERO + 1][MAX_STRING_LENGTH];
 	char skill_columns[LEVEL_HERO + 1];
@@ -671,19 +671,16 @@ void do_powers(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	buffer = new_buf();
-
 	for (level = 0; level < LEVEL_HERO + 1; level++)
 	{
 		if (skill_list[level][0] != '\0')
 		{
-			add_buf(buffer, skill_list[level]);
+			buffer.add(skill_list[level]);
 		}
 	}
 
-	add_buf(buffer, "\n\r");
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	buffer.add("\n\r");
+	page_to_char(buffer.str(), ch);
 }
 
 bool check_shroud_of_light(CHAR_DATA *ch, CHAR_DATA *victim)
@@ -1019,7 +1016,7 @@ void do_finger(CHAR_DATA *ch, char *argument)
 	long sect_time[SECT_MAX];
 	short quests[MAX_QUESTS];
 	char questtext[MSL];
-	BUFFER *output;
+	BUFFER output;
 	long act[MAX_BITVECTOR];
 	long sectval[SECT_MAX], comm = 0;
 	float perc[SECT_MAX];
@@ -1244,7 +1241,6 @@ void do_finger(CHAR_DATA *ch, char *argument)
 
 	if (arg2[0] != '\0' && !str_prefix(arg2, "history"))
 	{
-		output = new_buf();
 		if (level >= ch->level)
 		{
 			send_to_char("Player is too high to access their history.\n\r", ch);
@@ -1260,9 +1256,8 @@ void do_finger(CHAR_DATA *ch, char *argument)
 		}
 		else
 		{
-			add_buf(output, history);
-			page_to_char(buf_string(output), ch);
-			free_buf(output);
+			output.add(history);
+			page_to_char(output.str(), ch);
 		}
 	}
 	else if (arg2[0] != '\0' && !str_prefix(arg2, "equipment"))
@@ -1323,10 +1318,8 @@ void do_finger(CHAR_DATA *ch, char *argument)
 		}
 		else
 		{
-			output = new_buf();
-			add_buf(output, tbuf);
-			page_to_char(buf_string(output), ch);
-			free_buf(output);
+			output.add(tbuf);
+			page_to_char(output.str(), ch);
 			return;
 		}
 	}
@@ -1437,7 +1430,7 @@ void do_ctrack(CHAR_DATA *ch, char *argument)
 {
 	char arg[MAX_STRING_LENGTH];
 	int numMatches = 0;
-	BUFFER *output;
+	BUFFER output;
 
 	one_argument(argument, arg);
 
@@ -1454,8 +1447,6 @@ void do_ctrack(CHAR_DATA *ch, char *argument)
 		send_to_char("No such cabal exists.\n\r", ch);
 		return;
 	}
-
-	output = new_buf();
 
 	std::string buffer;
 	auto dir = CDirectory(RIFT_PLAYER_DIR);
@@ -1480,7 +1471,7 @@ void do_ctrack(CHAR_DATA *ch, char *argument)
 
 		numMatches++;
 		buffer = fmt::sprintf("%3d) %s: %s\n\r", numMatches, name.c_str(), login ? login : "(none)");
-		add_buf(output, buffer.data());
+		output.add(buffer.data());
 	}
 
 	if (!numMatches)
@@ -1492,10 +1483,9 @@ void do_ctrack(CHAR_DATA *ch, char *argument)
 	{
 		buffer = fmt::format("{} players found in {}:\n\r", numMatches, arg);
 		send_to_char(buffer.c_str(), ch);
-		page_to_char(buf_string(output), ch);
+		page_to_char(output.str(), ch);
 	}
 
-	free_buf(output);
 }
 
 // Scans a player file returning its LogonTime string (or nullptr

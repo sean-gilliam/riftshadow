@@ -84,7 +84,7 @@ void do_ban(CHAR_DATA *ch, char *argument)
 
 	char buf[MSL];
 	char arg1[MSL], arg2[MSL], arg3[MSL], arg4[MSL], date[MSL];
-	BUFFER *buffer;
+	BUFFER buffer;
 	int ban_type = 0, host_type = 0, duration = 0;
 
 	argument = one_argument(argument, arg1);
@@ -99,10 +99,9 @@ void do_ban(CHAR_DATA *ch, char *argument)
 
 		if (!banList.empty())
 		{
-			buffer = new_buf();
 
 			sprintf(buf, "%-25s\t%-10s\t%-10s\t%-10s\t%-10s\t%-10s\n\r", "Site", "By", "Type", "Date", "Duration", "Reason");
-			add_buf(buffer, buf);
+			buffer.add(buf);
 
 			for (const auto &ban : banList)
 			{
@@ -114,11 +113,10 @@ void do_ban(CHAR_DATA *ch, char *argument)
 					ban.duration,
 					ban.reason.c_str());
 
-				add_buf(buffer, buf);
+				buffer.add(buf);
 			}
 
-			page_to_char(buf_string(buffer), ch);
-			free_buf(buffer);
+			page_to_char(buffer.str(), ch);
 		}
 		else
 		{

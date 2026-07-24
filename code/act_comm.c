@@ -229,14 +229,16 @@ void do_replay(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!ch->pcdata->buffer->string || ch->pcdata->buffer->string[0] == '\0')
+	const char *replay = ch->pcdata->buffer->str();
+
+	if (!replay || replay[0] == '\0')
 	{
 		send_to_char("You have no tells to replay.\n\r", ch);
 		return;
 	}
 
-	page_to_char(buf_string(ch->pcdata->buffer), ch);
-	clear_buf(ch->pcdata->buffer);
+	page_to_char(ch->pcdata->buffer->str(), ch);
+	ch->pcdata->buffer->clear();
 }
 
 void do_cb(CHAR_DATA *ch, char *argument)
@@ -1223,7 +1225,7 @@ void do_tell(CHAR_DATA *ch, char *argument)
 		act("$N seems to have lost consciousness...try again later.", ch, nullptr, victim, TO_CHAR);
 		sprintf(buf, "%s tells you '%s'\n\r", pers(ch, victim), argument);
 		buf[0] = UPPER(buf[0]);
-		add_buf(victim->pcdata->buffer, buf);
+		victim->pcdata->buffer->add(buf);
 		return;
 	}
 
@@ -1309,7 +1311,7 @@ void do_reply(CHAR_DATA *ch, char *argument)
 		act("$N seems to have lost consciousness...try again later.", ch, nullptr, victim, TO_CHAR);
 		sprintf(buf, "%s tells you '%s'\n\r", pers(ch, victim), argument);
 		buf[0] = UPPER(buf[0]);
-		add_buf(victim->pcdata->buffer, buf);
+		victim->pcdata->buffer->add(buf);
 		return;
 	}
 

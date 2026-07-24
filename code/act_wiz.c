@@ -3225,7 +3225,7 @@ void do_ofind(CHAR_DATA *ch, char *argument)
 void do_owhere(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_INPUT_LENGTH];
-	BUFFER *buffer;
+	BUFFER buffer;
 	OBJ_DATA *obj;
 	OBJ_DATA *in_obj;
 	bool found;
@@ -3234,8 +3234,6 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 	found = false;
 	number = 0;
 	max_found = 200;
-
-	buffer = new_buf();
 
 	if (argument[0] == '\0')
 	{
@@ -3277,7 +3275,7 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 		found = true;
 
 		buf[0] = UPPER(buf[0]);
-		add_buf(buffer, buf);
+		buffer.add(buf);
 
 		if (number >= max_found)
 			break;
@@ -3286,15 +3284,13 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 	if (!found)
 		send_to_char("Nothing like that in heaven or earth.\n\r", ch);
 	else
-		page_to_char(buf_string(buffer), ch);
-
-	free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 }
 
 void do_mwhere(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_STRING_LENGTH];
-	BUFFER *buffer;
+	BUFFER buffer;
 	CHAR_DATA *victim;
 	bool found;
 	int count = 0;
@@ -3305,7 +3301,6 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 
 		/* show characters logged */
 
-		buffer = new_buf();
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
 			if (d->character != nullptr
@@ -3335,17 +3330,15 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 						victim->in_room->vnum);
 				}
 
-				add_buf(buffer, buf);
+				buffer.add(buf);
 			}
 		}
 
-		page_to_char(buf_string(buffer), ch);
-		free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 		return;
 	}
 
 	found = false;
-	buffer = new_buf();
 
 	for (victim = char_list; victim != nullptr; victim = victim->next)
 	{
@@ -3360,16 +3353,14 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 				is_npc(victim) ? victim->short_descr : victim->name,
 				victim->in_room->vnum,
 				get_room_name(victim->in_room));
-			add_buf(buffer, buf);
+			buffer.add(buf);
 		}
 	}
 
 	if (!found)
 		act("You didn't find any $T.", ch, nullptr, argument, TO_CHAR);
 	else
-		page_to_char(buf_string(buffer), ch);
-
-	free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 }
 
 void do_reboo(CHAR_DATA *ch, char *argument)
@@ -7018,9 +7009,8 @@ void add_history(CHAR_DATA *ch, CHAR_DATA *victim, char *string)
 
 void show_temp_history(CHAR_DATA *ch, CHAR_DATA *victim)
 {
-	BUFFER *output;
+	BUFFER output;
 
-	output = new_buf();
 	send_to_char(victim->name, ch);
 	send_to_char("'s temporary history buffer:\n\r", ch);
 
@@ -7030,17 +7020,14 @@ void show_temp_history(CHAR_DATA *ch, CHAR_DATA *victim)
 	}
 	else
 	{
-		add_buf(output, victim->pcdata->temp_history_buffer);
-		page_to_char(buf_string(output), ch);
-		free_buf(output);
+		output.add(victim->pcdata->temp_history_buffer);
+		page_to_char(output.str(), ch);
 	}
 }
 
 void show_history(CHAR_DATA *ch, CHAR_DATA *victim)
 {
-	BUFFER *output;
-
-	output = new_buf();
+	BUFFER output;
 
 	send_to_char(victim->name, ch);
 	send_to_char("'s player history:\n\r", ch);
@@ -7051,9 +7038,8 @@ void show_history(CHAR_DATA *ch, CHAR_DATA *victim)
 	}
 	else
 	{
-		add_buf(output, victim->pcdata->history_buffer);
-		page_to_char(buf_string(output), ch);
-		free_buf(output);
+		output.add(victim->pcdata->history_buffer);
+		page_to_char(output.str(), ch);
 	}
 }
 
@@ -7455,9 +7441,7 @@ void do_gsnlist(CHAR_DATA *ch, char *argument)
 {
 	int sn, col = 0;
 	char buf[MSL];
-	BUFFER *output;
-
-	output = new_buf();
+	BUFFER output;
 
 	for (sn = 0; sn < MAX_SKILL; sn++)
 	{
@@ -7465,14 +7449,13 @@ void do_gsnlist(CHAR_DATA *ch, char *argument)
 			continue;
 
 		sprintf(buf, "%-18s %3d  ", skill_table[sn].name, sn);
-		add_buf(output, buf);
+		output.add(buf);
 
 		if (++col % 3 == 0)
-			add_buf(output, "\n\r");
+			output.add("\n\r");
 	}
 
-	page_to_char(buf_string(output), ch);
-	free_buf(output);
+	page_to_char(output.str(), ch);
 }
 
 void do_ccl(CHAR_DATA *ch, char *argument)

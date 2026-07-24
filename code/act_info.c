@@ -239,7 +239,7 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 
 	ch->lines = 0;
 
-	auto output = new_buf();
+	BUFFER output;
 	auto prgpstrShow = (char **)talloc_struct((count * sizeof(char *)));
 	auto prgnShow = (int *)talloc_struct((count * sizeof(int)));
 	auto nShow = 0;
@@ -300,15 +300,15 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 			{
 				char buf[MAX_STRING_LENGTH];
 				sprintf(buf, "(%2d) ", prgnShow[iShow]);
-				add_buf(output, buf);
+				output.add(buf);
 			}
 			else
 			{
-				add_buf(output, "     ");
+				output.add("     ");
 			}
 		}
-		add_buf(output, prgpstrShow[iShow]);
-		add_buf(output, "\n\r");
+		output.add(prgpstrShow[iShow]);
+		output.add("\n\r");
 	}
 
 	if (fShowNothing && nShow == 0)
@@ -319,12 +319,11 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 		send_to_char("Nothing.\n\r", ch);
 	}
 
-	page_to_char(buf_string(output), ch);
+	page_to_char(output.str(), ch);
 
 	/*
 	 * Clean up.
 	 */
-	free_buf(output);
 	ch->lines = line;
 }
 
@@ -2894,7 +2893,7 @@ void do_oldhelp(CHAR_DATA *ch, char *argument)
 		strcat(argall, argone);
 	}
 
-	auto output = new_buf();
+	BUFFER output;
 	for (auto pHelp = help_first; pHelp != nullptr; pHelp = pHelp->next)
 	{
 		auto level = (pHelp->level < 0) ? -1 * pHelp->level - 1 : pHelp->level;
@@ -2909,21 +2908,21 @@ void do_oldhelp(CHAR_DATA *ch, char *argument)
 		{
 			/* add separator if found */
 			if (found)
-				add_buf(output, "\n\r============================================================\n\r\n\r");
+				output.add("\n\r============================================================\n\r\n\r");
 
 			if (pHelp->level >= 0 && str_cmp(argall, "imotd"))
 			{
-				add_buf(output, pHelp->keyword);
-				add_buf(output, "\n\r");
+				output.add(pHelp->keyword);
+				output.add("\n\r");
 			}
 
 			/*
 			 * Strip leading '.' to allow initial blanks.
 			 */
 			if (pHelp->text[0] == '.')
-				add_buf(output, pHelp->text + 1);
+				output.add(pHelp->text + 1);
 			else
-				add_buf(output, pHelp->text);
+				output.add(pHelp->text);
 
 			found = true;
 
@@ -2936,9 +2935,8 @@ void do_oldhelp(CHAR_DATA *ch, char *argument)
 	if (!found)
 		send_to_char("No help on that word.\n\r", ch);
 	else
-		page_to_char(buf_string(output), ch);
+		page_to_char(output.str(), ch);
 
-	free_buf(output);
 }
 
 /* whois command */
@@ -2955,7 +2953,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 
 	std::string buffer;
 
-	auto output = new_buf();
+	BUFFER output;
 	auto found = false;
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
@@ -3052,7 +3050,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 					wch->true_name,
 					is_npc(wch) ? "" : wch->pcdata->title,
 					is_npc(wch) ? "" : wch->pcdata->extitle ? wch->pcdata->extitle : "");
-				add_buf(output, buffer.data());
+				output.add(buffer.data());
 			}
 			else if (get_trust(wch) >= 52 && !is_immortal(ch))
 			{
@@ -3074,7 +3072,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 					is_npc(wch) ? "" : wch->pcdata->title,
 					is_npc(wch) ? "" : (wch->pcdata->extitle) ? wch->pcdata->extitle : ""); //TODO: change the rest of the sprintf calls to format
 
-				add_buf(output, buffer.data());
+				output.add(buffer.data());
 			}
 			else
 			{
@@ -3103,7 +3101,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 					wch->name,
 					is_npc(wch) ? "" : wch->pcdata->title,
 					is_npc(wch) ? "" : (wch->pcdata->extitle) ? wch->pcdata->extitle : "");
-				add_buf(output, buffer.data());
+				output.add(buffer.data());
 			}
 		}
 	}
@@ -3114,8 +3112,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	page_to_char(buf_string(output), ch);
-	free_buf(output);
+	page_to_char(output.str(), ch);
 }
 
 /*
@@ -3304,7 +3301,7 @@ void do_who(CHAR_DATA *ch, char *argument)
 	buf[0] = '\0';
 
 	auto nMatch = 0;
-	auto output = new_buf();
+	BUFFER output;
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
 		/*
@@ -3438,7 +3435,7 @@ void do_who(CHAR_DATA *ch, char *argument)
 				wch->true_name,
 				is_npc(wch) ? "" : wch->pcdata->title,
 				is_npc(wch) ? "" : wch->pcdata->extitle ? wch->pcdata->extitle : "");
-			add_buf(output, buffer.data());
+			output.add(buffer.data());
 		}
 		else if (get_trust(wch) >= 52 && !is_immortal(ch))
 		{
@@ -3463,7 +3460,7 @@ void do_who(CHAR_DATA *ch, char *argument)
 				wch->true_name,
 				is_npc(wch) ? "" : wch->pcdata->title,
 				is_npc(wch) ? "" : (wch->pcdata->extitle) ? wch->pcdata->extitle : ""); //TODO: change the rest of the sprintf calls to format
-			add_buf(output, buffer.data());
+			output.add(buffer.data());
 		}
 		else
 		{
@@ -3495,14 +3492,13 @@ void do_who(CHAR_DATA *ch, char *argument)
 				wch->true_name,
 				is_npc(wch) ? "" : wch->pcdata->title,
 				is_npc(wch) ? "" : wch->pcdata->extitle ? wch->pcdata->extitle : "");
-			add_buf(output, buffer.data());
+			output.add(buffer.data());
 		}
 	}
 
 	sprintf(buf2, "\n\rPlayers found: %d\n\r", nMatch);
-	add_buf(output, buf2);
-	page_to_char(buf_string(output), ch);
-	free_buf(output);
+	output.add(buf2);
+	page_to_char(output.str(), ch);
 }
 
 void do_count(CHAR_DATA *ch, char *argument)
@@ -4104,19 +4100,18 @@ void do_description(CHAR_DATA *ch, char *argument)
 	else if (!str_cmp(arg1, "+"))
 	{
 		smash_tilde(argument);
-		auto buffer = new_buf();
+		BUFFER buffer;
 
 		if (ch->description)
-			add_buf(buffer, ch->description);
+			buffer.add(ch->description);
 
-		add_buf(buffer, argument);
-		add_buf(buffer, "\n\r");
+		buffer.add(argument);
+		buffer.add("\n\r");
 
 		if (ch->description)
 			free_pstring(ch->description);
 
-		ch->description = palloc_string(buf_string(buffer));
-		free_buf(buffer);
+		ch->description = palloc_string(buffer.str());
 
 		send_to_char("Line added.\n\r", ch);
 		return;
@@ -5375,10 +5370,9 @@ void do_role(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			auto output = new_buf();
-			add_buf(output, victim->pcdata->role);
-			page_to_char(buf_string(output), ch);
-			free_buf(output);
+			BUFFER output;
+			output.add(victim->pcdata->role);
+			page_to_char(output.str(), ch);
 			return;
 		}
 
@@ -5521,10 +5515,9 @@ void show_temp_role(CHAR_DATA *ch)
 	}
 	else
 	{
-		auto output = new_buf();
-		add_buf(output, ch->pcdata->temp_role);
-		page_to_char(buf_string(output), ch);
-		free_buf(output);
+		BUFFER output;
+		output.add(ch->pcdata->temp_role);
+		page_to_char(output.str(), ch);
 	}
 }
 
@@ -5538,9 +5531,8 @@ void show_role(CHAR_DATA *ch)
 	}
 	else
 	{
-		auto output = new_buf();
-		add_buf(output, ch->pcdata->role);
-		page_to_char(buf_string(output), ch);
-		free_buf(output);
+		BUFFER output;
+		output.add(ch->pcdata->role);
+		page_to_char(output.str(), ch);
 	}
 }

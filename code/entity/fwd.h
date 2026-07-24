@@ -15,7 +15,7 @@
 
 struct	affect_data;		typedef struct	affect_data			AFFECT_DATA;
 struct	area_data;			typedef struct	area_data			AREA_DATA;
-struct	buf_type;			typedef struct	buf_type			BUFFER;
+class	buf_type;			typedef class	buf_type			BUFFER;
 class	char_data;			typedef class	char_data			CHAR_DATA;
 struct	descriptor_data;	typedef struct	descriptor_data		DESCRIPTOR_DATA;
 struct	exit_data;			typedef struct	exit_data			EXIT_DATA;

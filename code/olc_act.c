@@ -304,7 +304,7 @@ bool redit_rlist(CHAR_DATA *ch, char *argument)
 	ROOM_INDEX_DATA *pRoomIndex;
 	AREA_DATA *pArea;
 	char buf[MAX_STRING_LENGTH];
-	BUFFER *buf1;
+	BUFFER buf1;
 	char arg[MAX_INPUT_LENGTH];
 	bool found;
 	int vnum;
@@ -313,7 +313,6 @@ bool redit_rlist(CHAR_DATA *ch, char *argument)
 	one_argument(argument, arg);
 
 	pArea = ch->in_room->area;
-	buf1 = new_buf();
 	/*    buf1[0] = '\0'; */
 	found = false;
 
@@ -325,10 +324,10 @@ bool redit_rlist(CHAR_DATA *ch, char *argument)
 			found = true;
 
 			sprintf(buf, "[%5d] %-17.16s", vnum, capitalize(pRoomIndex->name));
-			add_buf(buf1, buf);
+			buf1.add(buf);
 
 			if (++col % 3 == 0)
-				add_buf(buf1, "\n\r");
+				buf1.add("\n\r");
 		}
 	}
 
@@ -339,10 +338,9 @@ bool redit_rlist(CHAR_DATA *ch, char *argument)
 	}
 
 	if (col % 3 != 0)
-		add_buf(buf1, "\n\r");
+		buf1.add("\n\r");
 
-	page_to_char(buf_string(buf1), ch);
-	free_buf(buf1);
+	page_to_char(buf1.str(), ch);
 	return false;
 }
 
@@ -400,7 +398,7 @@ bool redit_mlist(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMobIndex;
 	AREA_DATA *pArea;
 	char buf[MAX_STRING_LENGTH];
-	BUFFER *buf1;
+	BUFFER buf1;
 	char arg[MAX_INPUT_LENGTH];
 	bool fAll, found;
 	int vnum;
@@ -414,7 +412,6 @@ bool redit_mlist(CHAR_DATA *ch, char *argument)
 		return false;
 	}
 
-	buf1 = new_buf();
 	pArea = ch->in_room->area;
 	/*    buf1[0] = '\0'; */
 	fAll = !str_cmp(arg, "all");
@@ -431,10 +428,10 @@ bool redit_mlist(CHAR_DATA *ch, char *argument)
 				found = true;
 
 				sprintf(buf, "[%5d] %-17.16s", pMobIndex->vnum, capitalize(pMobIndex->short_descr));
-				add_buf(buf1, buf);
+				buf1.add(buf);
 
 				if (++col % 3 == 0)
-					add_buf(buf1, "\n\r");
+					buf1.add("\n\r");
 			}
 		}
 	}
@@ -446,10 +443,9 @@ bool redit_mlist(CHAR_DATA *ch, char *argument)
 	}
 
 	if (col % 3 != 0)
-		add_buf(buf1, "\n\r");
+		buf1.add("\n\r");
 
-	page_to_char(buf_string(buf1), ch);
-	free_buf(buf1);
+	page_to_char(buf1.str(), ch);
 	return false;
 }
 
@@ -458,7 +454,7 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 	OBJ_INDEX_DATA *pObjIndex;
 	AREA_DATA *pArea;
 	char buf[MAX_STRING_LENGTH];
-	BUFFER *buf1;
+	BUFFER buf1;
 	char arg[MAX_INPUT_LENGTH];
 	bool fAll, found;
 	int vnum;
@@ -473,7 +469,6 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 	}
 
 	pArea = ch->in_room->area;
-	buf1 = new_buf();
 	/*    buf1[0] = '\0'; */
 	fAll = !str_cmp(arg, "all");
 	found = false;
@@ -489,10 +484,10 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 				found = true;
 
 				sprintf(buf, "[%5d] %-17.16s", pObjIndex->vnum, capitalize(pObjIndex->short_descr));
-				add_buf(buf1, buf);
+				buf1.add(buf);
 
 				if (++col % 3 == 0)
-					add_buf(buf1, "\n\r");
+					buf1.add("\n\r");
 			}
 		}
 	}
@@ -504,10 +499,9 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 	}
 
 	if (col % 3 != 0)
-		add_buf(buf1, "\n\r");
+		buf1.add("\n\r");
 
-	page_to_char(buf_string(buf1), ch);
-	free_buf(buf1);
+	page_to_char(buf1.str(), ch);
 	return false;
 }
 
@@ -6939,15 +6933,13 @@ bool medit_hitroll(CHAR_DATA *ch, char *argument)
 
 bool oedit_liqlist(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char buf[MAX_STRING_LENGTH];
-
-	buffer = new_buf();
 
 	for (int liq = 0; liq_table[liq].liq_name != nullptr; liq++)
 	{
 		if (liq % 21 == 0)
-			add_buf(buffer, "Name                 Color          Proof Full Thirst Food Ssize\n\r");
+			buffer.add("Name                 Color          Proof Full Thirst Food Ssize\n\r");
 
 		sprintf(buf, "%-20s %-14s %5d %4d %6d %4d %5d\n\r",
 			liq_table[liq].liq_name,
@@ -6957,11 +6949,10 @@ bool oedit_liqlist(CHAR_DATA *ch, char *argument)
 			liq_table[liq].liq_affect[2],
 			liq_table[liq].liq_affect[3],
 			liq_table[liq].liq_affect[4]);
-		add_buf(buffer, buf);
+		buffer.add(buf);
 	}
 
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	page_to_char(buffer.str(), ch);
 
 	return true;
 }

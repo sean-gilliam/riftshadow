@@ -3495,7 +3495,7 @@ void spell_lightning_bolt(int sn, int level, CHAR_DATA *ch, void *vo, int target
 void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	char buf[MAX_INPUT_LENGTH];
-	BUFFER *buffer;
+	BUFFER buffer;
 	OBJ_DATA *obj;
 	OBJ_DATA *in_obj;
 	bool found;
@@ -3504,8 +3504,6 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	found = false;
 	number = 0;
 	max_found = is_immortal(ch) ? 200 : 2 * level;
-
-	buffer = new_buf();
 
 	for (obj = object_list; obj != nullptr; obj = obj->next)
 	{
@@ -3554,7 +3552,7 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 		buf[0] = UPPER(buf[0]);
 
-		add_buf(buffer, buf);
+		buffer.add(buf);
 
 		if (number >= max_found)
 			break;
@@ -3563,9 +3561,8 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	if (!found)
 		send_to_char("Nothing like that in heaven or earth.\n\r", ch);
 	else
-		page_to_char(buf_string(buffer), ch);
+		page_to_char(buffer.str(), ch);
 
-	free_buf(buffer);
 }
 
 void spell_magic_missile(int sn, int level, CHAR_DATA *ch, void *vo, int target)

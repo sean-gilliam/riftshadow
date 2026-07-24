@@ -71,7 +71,6 @@ CHAR_DATA *char_free;
 PC_DATA *pcdata_free;
 OLD_CHAR *oldtype_free;
 MEM_DATA *mem_data_free;
-BUFFER *buf_free;
 
 long last_pc_id;
 long last_mob_id;
@@ -826,7 +825,7 @@ PC_DATA *new_pcdata(void)
 		pcdata->alias_sub[alias] = nullptr;
 	}
 
-	pcdata->buffer = new_buf();
+	pcdata->buffer = new BUFFER;
 
 	pcdata->valid = true;
 
@@ -874,7 +873,7 @@ void free_pcdata(PC_DATA *pcdata)
 	free_pstring(pcdata->bamfin);
 	free_pstring(pcdata->bamfout);
 	free_pstring(pcdata->title);
-	free_buf(pcdata->buffer);
+	delete pcdata->buffer;
 
 	for (int i = 0; i < 100; i++)
 	{
@@ -964,97 +963,55 @@ int get_size(int val)
 	return -1;
 }
 
-BUFFER *new_buf()
+buf_type::~buf_type()
 {
-	BUFFER *buffer;
-
-	if (buf_free == nullptr)
-	{
-		buffer = new BUFFER;
-	}
-	else
-	{
-		buffer = buf_free;
-		buf_free = buf_free->next;
-	}
-
-	buffer->next = nullptr;
-	buffer->state = BUFFER_SAFE;
-
-	/*
-	buffer->size = get_size(BASE_BUF);
-
-	buffer->string = palloc_struct(buffer->size);
-	buffer->string[0] = '\0';						//JUST SAY NO TO DIKU.  --D
-	*/
-
-	buffer->size = 0;
-	buffer->string = nullptr;
-
-	buffer->valid = true;
-	return buffer;
+	if (string)
+		free_pstring(string);
 }
 
-void free_buf(BUFFER *buffer)
-{
-	if (!(buffer != nullptr && buffer->valid))
-		return;
-
-	if (buffer->string)
-		free_pstring(buffer->string);
-
-	buffer->string = nullptr;
-	buffer->size = 0;
-	buffer->state = BUFFER_FREED;
-
-	buffer->valid = false;
-	buffer->next = buf_free;
-	buf_free = buffer;
-}
-
-bool add_buf(BUFFER *buffer, char *string)
+bool buf_type::add(const char *text)
 {
 	int len;
 	char *tptr;
 
-	if (string[0] == '\0' || string == nullptr)
+	if (text[0] == '\0' || text == nullptr)
 		return false;
 
-	if (!buffer->string || !strlen(buffer->string)) // like a virgin.. touched for the very first tiiiiime
+	if (!string || !strlen(string)) // like a virgin.. touched for the very first tiiiiime
 	{
-		buffer->string = palloc_string(string);
-		buffer->size = strlen(string) + 1;
+		string = palloc_string(text);
+		size = strlen(text) + 1;
 		return true;
 	}
 
-	len = strlen(buffer->string) + strlen(string) + 1;
+	len = strlen(string) + strlen(text) + 1;
 
 	if (len > 32766)
 		return true;
 
-	tptr = buffer->string;
-	buffer->string = new char[len];
+	tptr = string;
+	string = new char[len];
 
-	if (!buffer->string)
+	if (!string)
 		return false;
 
-	buffer->size = len;
+	size = len;
 
-	strcpy(buffer->string, tptr);
-	strcat(buffer->string, string);
+	strcpy(string, tptr);
+	strcat(string, text);
 
 	delete[] tptr;
 	return true;
 }
 
-void clear_buf(BUFFER *buffer)
+void buf_type::clear()
 {
-	free_pstring(buffer->string);
-	buffer->string = nullptr;
-	buffer->state = BUFFER_SAFE;
+	free_pstring(string);
+	string = nullptr;
+	state = BUFFER_SAFE;
 }
 
-char *buf_string(BUFFER *buffer)
+const char *buf_type::str() const
 {
-	return buffer->string;
+	return string;
 }

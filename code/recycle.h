@@ -123,11 +123,6 @@ void free_pstruct_data(MEM_DATA *memory);
 /* local procedure for finding the next acceptable size */
 /* -1 indicates out-of-boundary error */
 int get_size(int val);
-/* buffer procedures */
-BUFFER *new_buf(void);
-void free_buf(BUFFER *buffer);
-bool add_buf(BUFFER *buffer, char *string);
-void clear_buf(BUFFER *buffer);
-char *buf_string(BUFFER *buffer);
+/* buffer procedures — see buf_type in merc.h (add/clear/str are members now) */
 
 #endif /* RECYCLE_H */
