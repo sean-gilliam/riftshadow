@@ -7,6 +7,7 @@
 #include "limits.h"
 #include "spec_func.h"
 #include "extra_descr.h"
+#include "affect_data.h"		// OBJ_APPLY_DATA held by value
 
 //
 // Prototype for an object.
@@ -18,7 +19,7 @@ struct obj_index_data
 	std::list<EXTRA_DESCR_DATA> extra_descr;
 	AFFECT_DATA *affected;
 	AFFECT_DATA *charaffs;
-	OBJ_APPLY_DATA *apply;
+	std::list<OBJ_APPLY_DATA> apply;
 	AREA_DATA *area;
 	bool new_format;
 	char *name;

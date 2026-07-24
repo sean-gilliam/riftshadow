@@ -2216,7 +2216,7 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 
 	copy_vector(obj->extra_flags, pObjIndex->extra_flags);
 
-	obj->apply = pObjIndex->apply;
+	obj->apply = pObjIndex->apply;		// deep-copies the prototype's applies (was a shared pointer)
 	obj->charaffs = pObjIndex->charaffs;
 
 	copy_vector(obj->wear_flags, pObjIndex->wear_flags);
@@ -2379,7 +2379,7 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 
 	copy_vector(clone->extra_flags, parent->extra_flags);
 
-	clone->apply = parent->apply;
+	clone->apply = parent->apply;		// deep-copies the applies (was a shared pointer)
 
 	copy_vector(clone->wear_flags, parent->wear_flags);
 	copy_vector(clone->imm_flags, parent->imm_flags);

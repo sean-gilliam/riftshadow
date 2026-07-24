@@ -739,7 +739,6 @@ void reset_char(CHAR_DATA *ch)
 	int loc, stat;
 	OBJ_DATA *obj;
 	AFFECT_DATA *af;
-	OBJ_APPLY_DATA *app;
 	int i;
 
 	if (is_npc(ch))
@@ -763,9 +762,9 @@ void reset_char(CHAR_DATA *ch)
 				affect_strip(ch, af->type);
 			}
 
-			for (app = obj->apply; app != nullptr; app = app->next)
+			for (const auto &app : obj->apply)
 			{
-				modify_location(ch, app->location, app->modifier, false);
+				modify_location(ch, app.location, app.modifier, false);
 			}
 		}
 
@@ -825,9 +824,9 @@ void reset_char(CHAR_DATA *ch)
 			affect_modify(ch, af, true);
 		}
 
-		for (app = obj->apply; app != nullptr; app = app->next)
+		for (const auto &app : obj->apply)
 		{
-			modify_location(ch, app->location, app->modifier, true);
+			modify_location(ch, app.location, app.modifier, true);
 		}
 	}
 
@@ -1886,7 +1885,6 @@ bool is_worn(OBJ_DATA *obj)
 void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
 {
 	AFFECT_DATA *paf, *fmaf;
-	OBJ_APPLY_DATA *app;
 	int i;
 	bool status;
 
@@ -1954,9 +1952,9 @@ void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
 		ch->armor[i] += apply_ac(obj, iWear, i);
 	}
 
-	for (app = obj->apply; app; app = app->next)
+	for (const auto &app : obj->apply)
 	{
-		modify_location(ch, app->location, app->modifier, true);
+		modify_location(ch, app.location, app.modifier, true);
 	}
 
 	for (paf = obj->charaffs; paf != nullptr; paf = paf->next)
@@ -1980,7 +1978,6 @@ void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
 void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 {
 	AFFECT_DATA *paf = nullptr;
-	OBJ_APPLY_DATA *app;
 	int i, wearloc = obj->wear_loc;
 
 	if (obj->wear_loc == WEAR_NONE)
@@ -2014,9 +2011,9 @@ void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 	BITWISE_XOR(ch->res_flags, obj->res_flags);
 	BITWISE_XOR(ch->vuln_flags, obj->vuln_flags);
 
-	for (app = obj->apply; app; app = app->next)
+	for (const auto &app : obj->apply)
 	{
-		modify_location(ch, app->location, app->modifier, false);
+		modify_location(ch, app.location, app.modifier, false);
 	}
 
 	for (paf = obj->charaffs; paf != nullptr; paf = paf->next)
@@ -4340,8 +4337,6 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 {
 	CHAR_DATA *ch;
 	int mod, wear;
-	OBJ_APPLY_DATA *app, *p_app;
-
 	mod = paf->modifier;
 
 	if (fAdd)
@@ -4358,12 +4353,11 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 				if (ch && (wear != WEAR_NONE))
 					unequip_char(ch, obj, false);
 
-				app = new_apply_data();
-				app->location = paf->location;
-				app->modifier = paf->modifier;
-				app->type = paf->type;
-				app->next = obj->apply;
-				obj->apply = app;
+				OBJ_APPLY_DATA app;
+				app.location = paf->location;
+				app.modifier = paf->modifier;
+				app.type = paf->type;
+				obj->apply.push_front(app);
 
 				if (ch && (wear != WEAR_NONE))
 					equip_char(ch, obj, wear, false);
@@ -4385,34 +4379,23 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 			if (ch && (wear != WEAR_NONE))
 				unequip_char(ch, obj, false);
 
-			for (app = obj->apply; app; app = app->next)
 			{
-				if (app->type == paf->type && app->location == paf->location)
-					break;
-			}
-
-			if (!app)
-			{
-				if (ch && (wear != WEAR_NONE))
-					equip_char(ch, obj, wear, false);
-
-				break;
-			}
-			if (obj->apply != app)
-			{
-				for (p_app = obj->apply; p_app; p_app = p_app->next)
+				auto it = obj->apply.begin();
+				for (; it != obj->apply.end(); ++it)
 				{
-					if (p_app->next == app)
+					if (it->type == paf->type && it->location == paf->location)
 						break;
 				}
 
-				p_app->next = app->next;
-				free_apply(app);
-			}
-			else
-			{
-				obj->apply = app->next;
-				free_apply(app);
+				if (it == obj->apply.end())
+				{
+					if (ch && (wear != WEAR_NONE))
+						equip_char(ch, obj, wear, false);
+
+					break;
+				}
+
+				obj->apply.erase(it);
 			}
 
 			if (ch && (wear != WEAR_NONE))

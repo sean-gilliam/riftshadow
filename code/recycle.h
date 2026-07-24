@@ -84,9 +84,7 @@ void free_track(TRACK_DATA *tracks);
 PATHFIND_DATA *new_path_data(void);
 void free_path(PATHFIND_DATA *path);
 /* extra descr — value type owned by parents in std::list; see entity/extra_descr.h */
-/* apply recycling */
-OBJ_APPLY_DATA *new_apply_data(void);
-void free_apply(OBJ_APPLY_DATA *apply);
+/* apply — value type owned by parents in std::list; see entity/affect_data.h */
 /* stuff for recycling affects */
 AFFECT_DATA *new_affect(void);
 TRAP_DATA *new_trap(void);

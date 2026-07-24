@@ -3379,9 +3379,9 @@ void spell_identify(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 			break;
 	}
 
-	for (app = obj->apply; app; app = app->next)
+	for (const auto &app : obj->apply)
 	{
-		sprintf(buf, "Affects %s by %d.\n\r", affect_loc_name(app->location), app->modifier);
+		sprintf(buf, "Affects %s by %d.\n\r", affect_loc_name(app.location), app.modifier);
 		send_to_char(buf, ch);
 	}
 }

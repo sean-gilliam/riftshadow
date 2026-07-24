@@ -5116,9 +5116,9 @@ void do_lore(CHAR_DATA *ch, char *argument) /* Lore by Detlef */
 				break;
 		}
 
-		for (auto app = obj->apply; app; app = app->next)
+		for (const auto &app : obj->apply)
 		{
-			sprintf(buf, "It affects your %s by %d.\n\r", affect_loc_name(app->location), app->modifier);
+			sprintf(buf, "It affects your %s by %d.\n\r", affect_loc_name(app.location), app.modifier);
 			send_to_char(buf, ch);
 		}
 

@@ -6161,47 +6161,49 @@ void spell_fortify_weapon(int sn, int level, CHAR_DATA *ch, void *vo, int target
 
 	if (hitbonus)
 	{
-		for (hitapp = weapon->apply; hitapp; hitapp = hitapp->next)
+		for (auto &a : weapon->apply)
 		{
-			if (hitapp->location == APPLY_HITROLL && hitapp->type == sn)
+			if (a.location == APPLY_HITROLL && a.type == sn)
 			{
 				hitfound = true;
-				oldhit = hitapp->modifier;
+				oldhit = a.modifier;
+				hitapp = &a;
 				break;
 			}
 		}
 
 		if (!hitfound)
 		{
-			hitapp = new_apply_data();
+			// std::list keeps this element pointer valid across the dambonus
+			// prepend below, where hitapp->modifier is still dereferenced.
+			weapon->apply.push_front(OBJ_APPLY_DATA{});
+			hitapp = &weapon->apply.front();
 			hitapp->type = sn;
 			hitapp->location = APPLY_HITROLL;
 			hitapp->modifier = 0;
-			hitapp->next = weapon->apply;
-			weapon->apply = hitapp;
 		}
 	}
 
 	if (dambonus)
 	{
-		for (damapp = weapon->apply; damapp; damapp = damapp->next)
+		for (auto &a : weapon->apply)
 		{
-			if (damapp->location == APPLY_DAMROLL && damapp->type == sn)
+			if (a.location == APPLY_DAMROLL && a.type == sn)
 			{
 				damfound = true;
-				olddam = damapp->modifier;
+				olddam = a.modifier;
+				damapp = &a;
 				break;
 			}
 		}
 
 		if (!damfound)
 		{
-			damapp = new_apply_data();
+			weapon->apply.push_front(OBJ_APPLY_DATA{});
+			damapp = &weapon->apply.front();
 			damapp->type = sn;
 			damapp->location = APPLY_DAMROLL;
 			damapp->modifier = 0;
-			damapp->next = weapon->apply;
-			weapon->apply = damapp;
 		}
 	}
 

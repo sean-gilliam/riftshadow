@@ -92,13 +92,14 @@ struct obj_affect_data
 	OAFF_FUN *end_fun;
 };
 
+// A stat apply on an object. Plain value type; parents own these by value in a
+// std::list<OBJ_APPLY_DATA> (list, not vector: spell_enchant_weapon holds element
+// pointers across a second prepend, so nodes must not move).
 struct obj_apply_data
 {
-	bool valid;
-	short location;
-	short modifier;
-	short type;						// For gsns, if relevant.
-	OBJ_APPLY_DATA *next;
+	short location = 0;
+	short modifier = 0;
+	short type = 0;						// For gsns, if relevant.
 };
 
 #endif /* ENTITY_AFFECT_DATA_H */

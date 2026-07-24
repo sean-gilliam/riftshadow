@@ -1073,7 +1073,7 @@ void load_objs(FILE *fp)
 		pObjIndex->start_timer = -1;
 		pObjIndex->notes = nullptr;
 		pObjIndex->charaffs = nullptr;
-		pObjIndex->apply = nullptr;
+		pObjIndex->apply.clear();
 		pObjIndex->wear_echo[0] = nullptr;
 		pObjIndex->remove_echo[0] = nullptr;
 		pObjIndex->wear_echo[1] = nullptr;
@@ -1180,18 +1180,16 @@ void load_objs(FILE *fp)
 
 			if (letter == 'A')
 			{
-				OBJ_APPLY_DATA *apply;
+				OBJ_APPLY_DATA apply;
 				// read in PPLY and discard it
 				discard = fread_word(fp);
-				apply = new_apply_data();
-				apply->location = display_lookup(fread_word(fp), apply_locations);
+				apply.location = display_lookup(fread_word(fp), apply_locations);
 
-				if (apply->location == -1)
+				if (apply.location == -1)
 					bugout("Invalid affect apply location.");
 
-				apply->modifier = fread_number(fp);
-				apply->next = pObjIndex->apply;
-				pObjIndex->apply = apply;
+				apply.modifier = fread_number(fp);
+				pObjIndex->apply.insert(pObjIndex->apply.begin(), apply);
 			}
 			else if (letter == 'C') /* Cabal */
 			{

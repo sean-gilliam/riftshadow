@@ -4201,7 +4201,8 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	for (cnt = 0, paf = pObj->apply; paf; paf = paf->next)
+	cnt = 0;
+	for (const auto &paf : pObj->apply)
 	{
 		if (cnt == 0)
 		{
@@ -4209,7 +4210,7 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 			send_to_char("------ -------- -------\n\r", ch);
 		}
 
-		sprintf(buf, "[%4d] %-8d %s\n\r", cnt, paf->modifier, flag_string_old(apply_flags, paf->location));
+		sprintf(buf, "[%4d] %-8d %s\n\r", cnt, paf.modifier, flag_string_old(apply_flags, paf.location));
 		send_to_char(buf, ch);
 		cnt++;
 	}
@@ -4226,7 +4227,6 @@ bool oedit_addapply(CHAR_DATA *ch, char *argument)
 {
 	int value;
 	OBJ_INDEX_DATA *pObj;
-	OBJ_APPLY_DATA *pAf;
 	char loc[MAX_STRING_LENGTH];
 	char mod[MAX_STRING_LENGTH];
 
@@ -4249,11 +4249,10 @@ bool oedit_addapply(CHAR_DATA *ch, char *argument)
 		return false;
 	}
 
-	pAf = new_apply_data();
-	pAf->location = value;
-	pAf->modifier = atoi(mod);
-	pAf->next = pObj->apply;
-	pObj->apply = pAf;
+	OBJ_APPLY_DATA pAf;
+	pAf.location = value;
+	pAf.modifier = atoi(mod);
+	pObj->apply.push_front(pAf);
 
 	send_to_char("Affect added.\n\r", ch);
 	return true;
@@ -4312,11 +4311,8 @@ bool oedit_addaffect(CHAR_DATA *ch, char *argument)
 bool oedit_delapply(CHAR_DATA *ch, char *argument)
 {
 	OBJ_INDEX_DATA *pObj;
-	OBJ_APPLY_DATA *pAf;
-	OBJ_APPLY_DATA *pAf_next;
 	char apply[MAX_STRING_LENGTH];
 	int value;
-	int cnt = 0;
 
 	EDIT_OBJ(ch, pObj);
 
@@ -4336,36 +4332,23 @@ bool oedit_delapply(CHAR_DATA *ch, char *argument)
 		return false;
 	}
 
-	if (!(pAf = pObj->apply))
+	if (pObj->apply.empty())
 	{
 		send_to_char("OEdit:  Non-existant apply.\n\r", ch);
 		return false;
 	}
 
-	if (value == 0) /* First case: Remove first affect */
-	{
-		pAf = pObj->apply;
-		pObj->apply = pAf->next;
-		free_apply(pAf);
-	}
-	else /* Affect to remove is not the first */
-	{
-		while ((pAf_next = pAf->next) && (++cnt < value))
-		{
-			pAf = pAf_next;
-		}
+	auto it = pObj->apply.begin();
+	for (int cnt = 0; cnt < value && it != pObj->apply.end(); ++cnt)
+		++it;
 
-		if (pAf_next) /* See if it's the next affect */
-		{
-			pAf->next = pAf_next->next;
-			free_apply(pAf_next);
-		}
-		else /* Doesn't exist */
-		{
-			send_to_char("No such affect.\n\r", ch);
-			return false;
-		}
+	if (it == pObj->apply.end()) /* Doesn't exist */
+	{
+		send_to_char("No such affect.\n\r", ch);
+		return false;
 	}
+
+	pObj->apply.erase(it);
 
 	send_to_char("Affect removed.\n\r", ch);
 	return true;

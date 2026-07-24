@@ -1830,7 +1830,6 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_STRING_LENGTH], arg[MAX_INPUT_LENGTH], buf2[MSL];
 	OBJ_AFFECT_DATA *paf;
-	OBJ_APPLY_DATA *app;
 	AFFECT_DATA *paf2;
 	OBJ_DATA *obj;
 
@@ -2258,9 +2257,9 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 		send_to_char(buf, ch);
 	}
 
-	for (app = obj->apply; app; app = app->next)
+	for (const auto &app : obj->apply)
 	{
-		sprintf(buf, "Modifies %s by %d.\n\r", affect_loc_name(app->location), app->modifier);
+		sprintf(buf, "Modifies %s by %d.\n\r", affect_loc_name(app.location), app.modifier);
 		send_to_char(buf, ch);
 	}
 
@@ -6529,7 +6528,6 @@ void do_addapply(CHAR_DATA *ch, char *argument)
 {
 	OBJ_DATA *obj;
 	AFFECT_DATA *paf, *paf_next, af;
-	OBJ_APPLY_DATA *app, *app_next;
 	char arg1[MAX_INPUT_LENGTH];
 	char arg2[MAX_INPUT_LENGTH];
 	char arg3[MAX_INPUT_LENGTH];
@@ -6571,12 +6569,7 @@ void do_addapply(CHAR_DATA *ch, char *argument)
 
 		obj->charaffs = nullptr;
 
-		for (app = obj->apply; app; app = app_next)
-		{
-			app_next = app->next;
-		}
-
-		obj->apply = nullptr;
+		obj->apply.clear();
 
 		act("All affects removed from $p.", ch, obj, 0, TO_CHAR);
 		return;
@@ -6619,22 +6612,18 @@ void do_addapply(CHAR_DATA *ch, char *argument)
 
 	if (location != APPLY_SPELL_AFFECT)
 	{
-		app = new_apply_data();
-		app->location = location;
-
-		if (is_number(arg3))
-		{
-			modifier = atoi(arg3);
-		}
-		else
+		if (!is_number(arg3))
 		{
 			send_to_char("Applies require a numerical value.\n\r", ch);
 			return;
 		}
 
-		app->modifier = modifier;
-		app->next = obj->apply;
-		obj->apply = app;
+		modifier = atoi(arg3);
+
+		OBJ_APPLY_DATA app;
+		app.location = location;
+		app.modifier = modifier;
+		obj->apply.push_front(app);
 	}
 	else
 	{

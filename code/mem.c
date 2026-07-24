@@ -208,8 +208,9 @@ ROOM_INDEX_DATA *new_room_index(void)
 
 	if (!room_index_free)
 	{
-		pRoom = new ROOM_INDEX_DATA;
-		CLEAR_MEM(pRoom, sizeof(ROOM_INDEX_DATA))
+		// value-init zeroes the scalar members AND constructs the std::list member;
+		// CLEAR_MEM (byte-zero) would corrupt the list's internal state.
+		pRoom = new ROOM_INDEX_DATA();
 		top_room++;
 	}
 	else
@@ -328,9 +329,9 @@ OBJ_INDEX_DATA *new_obj_index(void)
 
 	if (!obj_index_free)
 	{
-		pObj = new OBJ_INDEX_DATA;
-
-		CLEAR_MEM(pObj, sizeof(OBJ_INDEX_DATA))
+		// value-init zeroes the scalar members AND constructs the std::list members;
+		// CLEAR_MEM (byte-zero) would corrupt the lists' internal state.
+		pObj = new OBJ_INDEX_DATA();
 
 		top_obj_index++;
 	}
@@ -374,7 +375,7 @@ OBJ_INDEX_DATA *new_obj_index(void)
 	pObj->wear_loc_name = nullptr;
 	pObj->charaffs = nullptr;
 	pObj->extra_descr.clear();
-	pObj->apply = nullptr;
+	pObj->apply.clear();
 
 	for (value = 0; value < 5; value++) /* 5 - ROM */
 	{

@@ -6,6 +6,7 @@
 #include "fwd.h"
 #include "limits.h"
 #include "extra_descr.h"
+#include "affect_data.h"		// OBJ_APPLY_DATA held by value
 
 //
 // One object.
@@ -20,7 +21,7 @@ struct obj_data
 	OBJ_DATA *on;
 	CHAR_DATA *carried_by;
 	std::list<EXTRA_DESCR_DATA> extra_descr;
-	OBJ_APPLY_DATA *apply;
+	std::list<OBJ_APPLY_DATA> apply;
 	OBJ_AFFECT_DATA *affected;
 	AFFECT_DATA *charaffs;
 	OBJ_INDEX_DATA *pIndexData;

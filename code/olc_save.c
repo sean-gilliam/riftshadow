@@ -480,11 +480,11 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 			fprintf(fp, "ITEM %s\n", (upstring(flag_name_lookup(i, extra_flags))));
 	}
 
-	for (app = pObjIndex->apply; app; app = app->next)
+	for (const auto &app : pObjIndex->apply)
 	{
 		fprintf(fp, "APPLY %s %d\n",
-			upstring(display_name_lookup(app->location, apply_locations)),
-			app->modifier);
+			upstring(display_name_lookup(app.location, apply_locations)),
+			app.modifier);
 	}
 
 	fprintf(fp, "LIMIT %d\n", pObjIndex->limtotal);

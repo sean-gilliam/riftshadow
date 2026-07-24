@@ -758,7 +758,6 @@ void fwrite_pet(CHAR_DATA *pet, FILE *fp)
 void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 {
 	OBJ_AFFECT_DATA *paf;
-	OBJ_APPLY_DATA *oad;
 
 	/*
 	 * Slick recursion to write lists backwards,
@@ -879,18 +878,25 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 			paf->owner ? paf->owner->name : "none");
 	}
 
-	OBJ_APPLY_DATA *ioad;
-
-	for (oad = obj->apply; oad; oad = oad->next)
+	// Save only applies the object has beyond its prototype. The list was a
+	// shared pointer before, so identity told them apart; now obj->apply holds
+	// copies, so we compare by value (index applies have type 0; enchant applies
+	// carry a gsn type, so a private apply never collides with an inherited one).
+	for (const auto &oad : obj->apply)
 	{
-		for (ioad = obj->pIndexData->apply; ioad; ioad = ioad->next)
+		bool inherited = false;
+
+		for (const auto &ioad : obj->pIndexData->apply)
 		{
-			if (ioad == oad)
+			if (ioad.location == oad.location && ioad.modifier == oad.modifier && ioad.type == oad.type)
+			{
+				inherited = true;
 				break;
+			}
 		}
 
-		if (!ioad)
-			fprintf(fp, "AddApp %d %d %d\n", oad->location, oad->modifier, oad->type);
+		if (!inherited)
+			fprintf(fp, "AddApp %d %d %d\n", oad.location, oad.modifier, oad.type);
 	}
 
 	if (!obj->extra_descr.empty())
@@ -2152,12 +2158,11 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 
 				if (!str_cmp(word, "AddApp"))
 				{
-					OBJ_APPLY_DATA *oad = new_apply_data();
-					oad->location = fread_number(fp);
-					oad->modifier = fread_number(fp);
-					oad->type = fread_number(fp);
-					oad->next = obj->apply;
-					obj->apply = oad;
+					OBJ_APPLY_DATA oad;
+					oad.location = fread_number(fp);
+					oad.modifier = fread_number(fp);
+					oad.type = fread_number(fp);
+					obj->apply.push_front(oad);
 					fMatch = true;
 					break;
 				}

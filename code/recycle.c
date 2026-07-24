@@ -58,7 +58,6 @@ const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192
 
 DESCRIPTOR_DATA *descriptor_free;
 GEN_DATA *gen_data_free;
-OBJ_APPLY_DATA *apply_free;
 AFFECT_DATA *affect_free;
 ROOM_AFFECT_DATA *raffect_free;
 OBJ_AFFECT_DATA *oaffect_free;
@@ -424,38 +423,6 @@ extra_descr_data &extra_descr_data::operator=(extra_descr_data &&other) noexcept
 	return *this;
 }
 
-OBJ_APPLY_DATA *new_apply_data(void)
-{
-	static OBJ_APPLY_DATA app_zero;
-	OBJ_APPLY_DATA *app;
-
-	if (apply_free == nullptr)
-	{
-		app = new OBJ_APPLY_DATA;
-	}
-	else
-	{
-		app = apply_free;
-		apply_free = apply_free->next;
-	}
-
-	*app = app_zero;
-	app->type = 0;
-
-	app->valid = true;
-	return app;
-}
-
-void free_apply(OBJ_APPLY_DATA *app)
-{
-	if (!(app != nullptr && app->valid))
-		return;
-
-	app->valid = false;
-	app->next = apply_free;
-	apply_free = app;
-}
-
 /* stuff for recycling affects */
 
 AFFECT_DATA *new_affect(void)
@@ -688,6 +655,7 @@ void free_obj(OBJ_DATA *obj)
 	obj->affected = nullptr;
 
 	obj->extra_descr.clear();
+	obj->apply.clear();		// obj owns its apply copy now (was shared with the index)
 
 	free_pstring(obj->name);
 	free_pstring(obj->description);
