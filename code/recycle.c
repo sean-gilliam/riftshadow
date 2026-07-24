@@ -68,7 +68,6 @@ OBJ_DATA *obj_free;
 CHAR_DATA *char_free;
 PC_DATA *pcdata_free;
 OLD_CHAR *oldtype_free;
-MEM_DATA *mem_data_free;
 
 long last_pc_id;
 long last_mob_id;
@@ -762,6 +761,8 @@ void free_char(CHAR_DATA *ch)
 		affect_remove(ch, paf);
 	}
 
+	ch->memory.clear();
+
 	free_pstring(ch->name);
 	free_pstring(ch->short_descr);
 	free_pstring(ch->long_descr);
@@ -892,39 +893,6 @@ long get_mob_id(void)
 {
 	last_mob_id++;
 	return last_mob_id;
-}
-
-/* procedures and constants needed for buffering */
-
-MEM_DATA *new_mem_data(void)
-{
-	MEM_DATA *memory;
-
-	if (mem_data_free == nullptr)
-		memory = new MEM_DATA;
-	else
-	{
-		memory = mem_data_free;
-		mem_data_free = mem_data_free->next;
-	}
-
-	memory->next = nullptr;
-	memory->id = 0;
-	memory->reaction = 0;
-	memory->when = 0;
-	memory->valid = true;
-
-	return memory;
-}
-
-void free_pstruct_data(MEM_DATA *memory)
-{
-	if (!(memory != nullptr && memory->valid))
-		return;
-
-	memory->next = mem_data_free;
-	mem_data_free = memory;
-	memory->valid = false;
 }
 
 /* local procedure for finding the next acceptable size */

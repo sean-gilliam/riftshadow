@@ -1180,19 +1180,6 @@ struct line_data
 #define ANSI_BLINK					"\x01B[5m"
 #define ANSI_REVERSE				"\x01B[7m"
 
-//
-// memory for mobs
-//
-
-struct mem_data
-{
-	MEM_DATA *next;
-	bool valid;
-	int id; 
-	int reaction;
-	time_t when;
-};
-
 
 struct mprog_data
 {

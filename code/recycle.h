@@ -110,11 +110,9 @@ PC_DATA *new_pcdata(void);
 OLD_CHAR *new_oldchar(void);
 void free_oldchar(OLD_CHAR *old);
 void free_pcdata(PC_DATA *pcdata);
-/* mob id and memory procedures */
+/* mob id procedures */
 long get_pc_id(void);
 long get_mob_id(void);
-MEM_DATA *new_mem_data(void);
-void free_pstruct_data(MEM_DATA *memory);
 /* local procedure for finding the next acceptable size */
 /* -1 indicates out-of-boundary error */
 int get_size(int val);
