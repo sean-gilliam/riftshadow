@@ -308,24 +308,6 @@ void free_race_data(RACE_DATA *race_specs)
 	}
 }
 
-/* Stuff for recycling track data */
-
-TRACK_DATA *new_track_data(void)
-{
-	TRACK_DATA *tracks = new TRACK_DATA;
-
-	tracks->prey = nullptr;
-	tracks->time = time_info;
-	tracks->direction = -1;
-
-	return tracks;
-}
-
-void free_track(TRACK_DATA *tracks)
-{
-	delete tracks;
-}
-
 PATHFIND_DATA *new_path_data(void)
 {
 	PATHFIND_DATA *path = new PATHFIND_DATA;

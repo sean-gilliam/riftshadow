@@ -6,6 +6,7 @@
 #include "fwd.h"
 #include "limits.h"
 #include "extra_descr.h"
+#include "track_data.h"
 
 //
 // Room type.
@@ -21,7 +22,7 @@ struct room_index_data
 	std::list<EXTRA_DESCR_DATA> extra_descr;
 	AREA_DATA *area;
 	EXIT_DATA *exit[6];
-	TRACK_DATA *tracks[20];
+	TRACK_DATA tracks[20];
 	PATHFIND_DATA *path;				// For smart tracking
 	char *name;
 	char *alt_name;

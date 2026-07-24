@@ -204,7 +204,7 @@ void free_extra_descr(EXTRA_DESCR_DATA *pExtra)
 ROOM_INDEX_DATA *new_room_index(void)
 {
 	ROOM_INDEX_DATA *pRoom;
-	int door, i;
+	int door;
 
 	if (!room_index_free)
 	{
@@ -233,11 +233,6 @@ ROOM_INDEX_DATA *new_room_index(void)
 	for (door = 0; door < MAX_DIR; door++)
 	{
 		pRoom->exit[door] = nullptr;
-	}
-
-	for (i = 0; i < MAX_TRACKS; i++)
-	{
-		pRoom->tracks[i] = new_track_data();
 	}
 
 	pRoom->path = nullptr;

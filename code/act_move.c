@@ -1103,33 +1103,25 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	if (IS_SET(ch->progtypes, MPROG_ENTRY))
 		ch->pIndexData->mprogs->entry_prog(ch);
 
-	if (!is_npc(ch) && to_room->tracks[0] != nullptr)
+	if (!is_npc(ch))
 	{
 		auto i = 0;
 		for (; i < MAX_TRACKS; i++)
 		{
-			if (to_room->tracks[i]->prey == ch)
+			if (to_room->tracks[i].prey == ch)
 				break;
 		}
 
 		if (i == MAX_TRACKS)
 			i--;
 
-		if (to_room->tracks[i]->prey == ch)
+		if (to_room->tracks[i].prey == ch)
 		{
 			for (; i < MAX_TRACKS - 1; i++)
-			{
-				to_room->tracks[i]->prey = to_room->tracks[i + 1]->prey;
-				to_room->tracks[i]->time = to_room->tracks[i + 1]->time;
-				to_room->tracks[i]->direction = to_room->tracks[i + 1]->direction;
-				to_room->tracks[i]->flying = to_room->tracks[i + 1]->flying;
-				to_room->tracks[i]->sneaking = to_room->tracks[i + 1]->sneaking;
-				to_room->tracks[i]->bleeding = to_room->tracks[i + 1]->bleeding;
-				to_room->tracks[i]->legs = to_room->tracks[i + 1]->legs;
-			}
+				to_room->tracks[i] = to_room->tracks[i + 1];
 
-			to_room->tracks[MAX_TRACKS - 1]->prey = nullptr;
-			to_room->tracks[MAX_TRACKS - 1]->direction = -1;
+			to_room->tracks[MAX_TRACKS - 1].prey = nullptr;
+			to_room->tracks[MAX_TRACKS - 1].direction = -1;
 		}
 	}
 
@@ -3769,7 +3761,7 @@ void track_char(CHAR_DATA *ch, CHAR_DATA *mob)
 	auto found = false;
 	for (; i < MAX_TRACKS; i++)
 	{
-		if (mob->in_room->tracks[i] && mob->in_room->tracks[i]->prey == ch)
+		if (mob->in_room->tracks[i].prey == ch)
 		{
 			found = true;
 			break;
@@ -3779,10 +3771,10 @@ void track_char(CHAR_DATA *ch, CHAR_DATA *mob)
 	if (!found)
 		return;
 
-	if (mob->in_room->tracks[i]->prey != ch)
+	if (mob->in_room->tracks[i].prey != ch)
 		return;
 
-	auto track_dir = mob->in_room->tracks[i]->direction;
+	auto track_dir = mob->in_room->tracks[i].direction;
 
 	if (is_affected_by(mob, AFF_CHARM))
 		return;
@@ -4513,41 +4505,30 @@ void add_tracks(ROOM_INDEX_DATA *room, CHAR_DATA *ch, int direction)
 	if (is_ground(room) && is_affected(ch, gsn_pass_without_trace))
 		return;
 
-	if (room->tracks[0] == nullptr)
-		return;
-
-	if (room->tracks[0]->prey != nullptr)
+	if (room->tracks[0].prey != nullptr)
 	{
 		for (auto i = MAX_TRACKS - 1; i > 0; i--)
-		{
-			room->tracks[i]->prey = room->tracks[i - 1]->prey;
-			room->tracks[i]->time = room->tracks[i - 1]->time;
-			room->tracks[i]->direction = room->tracks[i - 1]->direction;
-			room->tracks[i]->flying = room->tracks[i - 1]->flying;
-			room->tracks[i]->sneaking = room->tracks[i - 1]->sneaking;
-			room->tracks[i]->bleeding = room->tracks[i - 1]->bleeding;
-			room->tracks[i]->legs = room->tracks[i - 1]->legs;
-		}
+			room->tracks[i] = room->tracks[i - 1];
 	}
 
-	room->tracks[0]->prey = ch;
-	room->tracks[0]->time = time_info;
-	room->tracks[0]->direction = direction;
-	room->tracks[0]->flying = is_affected_by(ch, AFF_FLYING);
-	room->tracks[0]->sneaking = is_affected_by(ch, AFF_SNEAK);
-	room->tracks[0]->bleeding = is_affected(ch, gsn_bleeding);
-	room->tracks[0]->legs = ch->legs;
+	room->tracks[0].prey = ch;
+	room->tracks[0].time = time_info;
+	room->tracks[0].direction = direction;
+	room->tracks[0].flying = is_affected_by(ch, AFF_FLYING);
+	room->tracks[0].sneaking = is_affected_by(ch, AFF_SNEAK);
+	room->tracks[0].bleeding = is_affected(ch, gsn_bleeding);
+	room->tracks[0].legs = ch->legs;
 }
 
 void clear_tracks(ROOM_INDEX_DATA *room)
 {
 	for (auto i = 0; i < MAX_TRACKS - 1; i++)
 	{
-		room->tracks[i]->prey = nullptr;
-		room->tracks[i]->direction = -1;
-		room->tracks[i]->flying= false;
-		room->tracks[i]->sneaking= false;
-		room->tracks[i]->bleeding= false;
-		room->tracks[i]->legs = -1;
+		room->tracks[i].prey = nullptr;
+		room->tracks[i].direction = -1;
+		room->tracks[i].flying= false;
+		room->tracks[i].sneaking= false;
+		room->tracks[i].bleeding= false;
+		room->tracks[i].legs = -1;
 	}
 }

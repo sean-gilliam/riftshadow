@@ -1894,13 +1894,10 @@ void do_look(CHAR_DATA *ch, char *argument)
 
 			for (i = 0; i < MAX_TRACKS; i++)
 			{
-				if (!ch->in_room->tracks[i])
-					break;
-
-				if (ch->in_room->tracks[i]->prey != af->owner)
+				if (ch->in_room->tracks[i].prey != af->owner)
 					continue;
 
-				direction = (char *)flag_name_lookup(ch->in_room->tracks[i]->direction, direction_table);
+				direction = (char *)flag_name_lookup(ch->in_room->tracks[i].direction, direction_table);
 
 				sprintf(buf, "%sThrough the veil of your rage, you sense %s's tracks leading %s.%s\n\r",
 					get_char_color(ch, "lightred"),
@@ -1916,22 +1913,19 @@ void do_look(CHAR_DATA *ch, char *argument)
 		{
 			for (i = 0; i <= 2; i++)
 			{
-				if (!ch->in_room->tracks[i])
+				if (!ch->in_room->tracks[i].prey)
 					continue;
 
-				if (!ch->in_room->tracks[i]->prey)
+				if (ch->in_room->tracks[i].flying)
 					continue;
 
-				if (ch->in_room->tracks[i]->flying)
-					continue;
-
-				direction = flag_name_lookup(ch->in_room->tracks[i]->direction, direction_table);
+				direction = flag_name_lookup(ch->in_room->tracks[i].direction, direction_table);
 
 				sprintf(buf, "%sYou see %s footprints leading %s through the snow.%s\n\r",
 					get_char_color(ch, "white"),
-					(ch->in_room->tracks[i]->prey->race == 4)
+					(ch->in_room->tracks[i].prey->race == 4)
 						? "elven"
-						: pc_race_table[ch->in_room->tracks[i]->prey->race].race_time,
+						: pc_race_table[ch->in_room->tracks[i].prey->race].race_time,
 					direction,
 					END_COLOR(ch));
 					

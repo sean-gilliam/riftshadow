@@ -266,15 +266,7 @@ private:
 #define RS_EPOCH					972370801
 
 
-struct time_info_data
-{
-	bool half;
-	int hour;
-	int day;
-	int month;
-	int season;
-	int year;
-};
+#include "entity/time_info_data.h"
 
 
 //
@@ -1314,6 +1306,8 @@ struct gen_data
 #include "entity/area_data.h"
 
 
+#include "entity/track_data.h"
+
 #include "entity/room_index_data.h"
 
 struct trap_data
@@ -1339,21 +1333,6 @@ struct trophy_data
 {
 	char *victname;
 	TROPHY_DATA *next;
-};
-
-//
-// Data stored in rooms to facilitate PC and mob tracking
-//
-
-struct track_data
-{
-	CHAR_DATA *prey;					// Who passed through.
-	TIME_INFO_DATA time;				// When they passed through.
-	short direction;					// Which way they went.
-	bool flying;						// Are they?
-	bool sneaking;						// Are they?
-	int legs;							// How many?
-	bool bleeding;						// Are they?
 };
 
 struct pathfind_data

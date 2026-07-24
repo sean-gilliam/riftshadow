@@ -1798,22 +1798,22 @@ void do_rstat(CHAR_DATA *ch, char *argument)
 	send_to_char("Characters who have passed through:\n\r", ch);
 	for (i = 0; i < MAX_TRACKS; i++)
 	{
-		if (location->tracks[i] && location->tracks[i]->prey)
+		if (location->tracks[i].prey)
 		{
-			time = (time_info.hour >= location->tracks[i]->time.hour)
-					   ? (time_info.hour - location->tracks[i]->time.hour)
-					   : (24 + time_info.hour - location->tracks[i]->time.hour) +
-								 (time_info.day >= location->tracks[i]->time.day)
-							 ? 24 * (time_info.day - location->tracks[i]->time.day)
-							 : 24 * (30 + time_info.day - location->tracks[i]->time.day) +
-									   (time_info.month >= location->tracks[i]->time.month)
-								   ? 24 * 30 * (time_info.month - location->tracks[i]->time.month)
-								   : 24 * 30 * (12 + time_info.month - location->tracks[i]->time.month) +
-										 24 * 30 * 12 * (time_info.year - location->tracks[i]->time.year);
+			time = (time_info.hour >= location->tracks[i].time.hour)
+					   ? (time_info.hour - location->tracks[i].time.hour)
+					   : (24 + time_info.hour - location->tracks[i].time.hour) +
+								 (time_info.day >= location->tracks[i].time.day)
+							 ? 24 * (time_info.day - location->tracks[i].time.day)
+							 : 24 * (30 + time_info.day - location->tracks[i].time.day) +
+									   (time_info.month >= location->tracks[i].time.month)
+								   ? 24 * 30 * (time_info.month - location->tracks[i].time.month)
+								   : 24 * 30 * (12 + time_info.month - location->tracks[i].time.month) +
+										 24 * 30 * 12 * (time_info.year - location->tracks[i].time.year);
 
-			direction = flag_name_lookup(location->tracks[i]->direction, direction_table);
+			direction = flag_name_lookup(location->tracks[i].direction, direction_table);
 
-			sprintf(buf, "%s exited to the %s %d hours ago.\n\r", location->tracks[i]->prey->name, direction, time);
+			sprintf(buf, "%s exited to the %s %d hours ago.\n\r", location->tracks[i].prey->name, direction, time);
 			send_to_char(buf, ch);
 
 			counter++;

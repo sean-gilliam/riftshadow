@@ -3971,7 +3971,6 @@ void load_rooms(FILE *fp)
 {
 	ROOM_INDEX_DATA *pRoomIndex;
 	char error_v[MAX_STRING_LENGTH];
-	int i;
 
 	if (area_last == nullptr)
 		bugout("Load_resets: no #AREA seen yet.");
@@ -4021,11 +4020,6 @@ void load_rooms(FILE *fp)
 		pRoomIndex->trap = nullptr;
 		pRoomIndex->affected = nullptr;
 		zero_vector(pRoomIndex->room_flags);
-
-		for (i = 0; i < MAX_TRACKS; i++)
-		{
-			pRoomIndex->tracks[i] = new_track_data();
-		}
 
 		pRoomIndex->area = area_last;
 		pRoomIndex->vnum = vnum;

@@ -77,9 +77,6 @@ IPROG_DATA *new_iprog(void);
 /* race_data recycling (never gonna happen!) */
 RACE_DATA *new_race_data(void);
 void free_race_data(RACE_DATA *race_specs);
-/* tracks recycling */
-TRACK_DATA *new_track_data(void);
-void free_track(TRACK_DATA *tracks);
 /* pathfind recycling */
 PATHFIND_DATA *new_path_data(void);
 void free_path(PATHFIND_DATA *path);
