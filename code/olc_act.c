@@ -2371,12 +2371,12 @@ bool redit_show(CHAR_DATA *ch, char *argument)
 		strcat(buf1, "none]\n\r");
 	}
 
-	if (pRoom->extra_descr)
+	if (!pRoom->extra_descr.empty())
 	{
-		for (EXTRA_DESCR_DATA *ed = pRoom->extra_descr; ed; ed = ed->next)
+		for (const auto &ed : pRoom->extra_descr)
 		{
 			strcat(buf1, "Extra Desc Keyword: ");
-			strcat(buf1, ed->keyword);
+			strcat(buf1, ed.keyword);
 			strcat(buf1, "\n\r");
 		}
 	}
@@ -2814,7 +2814,6 @@ bool redit_down(CHAR_DATA *ch, char *argument)
 bool redit_ed(CHAR_DATA *ch, char *argument)
 {
 	ROOM_INDEX_DATA *pRoom;
-	EXTRA_DESCR_DATA *ed;
 	char command[MAX_INPUT_LENGTH];
 
 	EDIT_ROOM(ch, pRoom);
@@ -2838,13 +2837,12 @@ bool redit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		ed = new_extra_descr();
-		ed->keyword = palloc_string(argument);
-		ed->description = palloc_string("");
-		ed->next = pRoom->extra_descr;
-		pRoom->extra_descr = ed;
+		EXTRA_DESCR_DATA ed;
+		ed.keyword = palloc_string(argument);
+		ed.description = palloc_string("");
+		pRoom->extra_descr.push_front(std::move(ed));
 
-		string_append(ch, &ed->description);
+		string_append(ch, &pRoom->extra_descr.front().description);
 
 		return true;
 	}
@@ -2857,10 +2855,14 @@ bool redit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		for (ed = pRoom->extra_descr; ed; ed = ed->next)
+		EXTRA_DESCR_DATA *ed = nullptr;
+		for (auto &e : pRoom->extra_descr)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, e.keyword))
+			{
+				ed = &e;
 				break;
+			}
 		}
 
 		if (!ed)
@@ -2876,34 +2878,26 @@ bool redit_ed(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(command, "delete"))
 	{
-		EXTRA_DESCR_DATA *ped = nullptr;
-
 		if (argument[0] == '\0')
 		{
 			send_to_char("Syntax:  ed delete [keyword]\n\r", ch);
 			return false;
 		}
 
-		for (ed = pRoom->extra_descr; ed; ed = ed->next)
+		auto it = pRoom->extra_descr.begin();
+		for (; it != pRoom->extra_descr.end(); ++it)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, it->keyword))
 				break;
-
-			ped = ed;
 		}
 
-		if (!ed)
+		if (it == pRoom->extra_descr.end())
 		{
 			send_to_char("REdit:  Extra description keyword not found.\n\r", ch);
 			return false;
 		}
 
-		if (!ped)
-			pRoom->extra_descr = ed->next;
-		else
-			ped->next = ed->next;
-
-		free_extra_descr(ed);
+		pRoom->extra_descr.erase(it);		// element dtor frees the strings
 
 		send_to_char("Extra description deleted.\n\r", ch);
 		return true;
@@ -2917,10 +2911,14 @@ bool redit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		for (ed = pRoom->extra_descr; ed; ed = ed->next)
+		EXTRA_DESCR_DATA *ed = nullptr;
+		for (auto &e : pRoom->extra_descr)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, e.keyword))
+			{
+				ed = &e;
 				break;
+			}
 		}
 
 		if (!ed)
@@ -4193,12 +4191,12 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	if (pObj->extra_descr)
+	if (!pObj->extra_descr.empty())
 	{
-		for (EXTRA_DESCR_DATA *ed = pObj->extra_descr; ed; ed = ed->next)
+		for (const auto &ed : pObj->extra_descr)
 		{
 			send_to_char("Extra Desc Keyword: ", ch);
-			send_to_char(ed->keyword, ch);
+			send_to_char(ed.keyword, ch);
 			send_to_char("\n\r", ch);
 		}
 	}
@@ -4945,7 +4943,6 @@ bool oedit_create(CHAR_DATA *ch, char *argument)
 bool oedit_ed(CHAR_DATA *ch, char *argument)
 {
 	OBJ_INDEX_DATA *pObj;
-	EXTRA_DESCR_DATA *ed;
 	char command[MAX_INPUT_LENGTH];
 
 	EDIT_OBJ(ch, pObj);
@@ -4969,12 +4966,11 @@ bool oedit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		ed = new_extra_descr();
-		ed->keyword = palloc_string(argument);
-		ed->next = pObj->extra_descr;
-		pObj->extra_descr = ed;
+		EXTRA_DESCR_DATA ed;
+		ed.keyword = palloc_string(argument);
+		pObj->extra_descr.push_front(std::move(ed));
 
-		string_append(ch, &ed->description);
+		string_append(ch, &pObj->extra_descr.front().description);
 
 		return true;
 	}
@@ -4987,10 +4983,14 @@ bool oedit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		for (ed = pObj->extra_descr; ed; ed = ed->next)
+		EXTRA_DESCR_DATA *ed = nullptr;
+		for (auto &e : pObj->extra_descr)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, e.keyword))
+			{
+				ed = &e;
 				break;
+			}
 		}
 
 		if (!ed)
@@ -5006,33 +5006,26 @@ bool oedit_ed(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(command, "delete"))
 	{
-		EXTRA_DESCR_DATA *ped = nullptr;
-
 		if (argument[0] == '\0')
 		{
 			send_to_char("Syntax:  ed delete [keyword]\n\r", ch);
 			return false;
 		}
 
-		for (ed = pObj->extra_descr; ed; ed = ed->next)
+		auto it = pObj->extra_descr.begin();
+		for (; it != pObj->extra_descr.end(); ++it)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, it->keyword))
 				break;
-			ped = ed;
 		}
 
-		if (!ed)
+		if (it == pObj->extra_descr.end())
 		{
 			send_to_char("OEdit:  Extra description keyword not found.\n\r", ch);
 			return false;
 		}
 
-		if (!ped)
-			pObj->extra_descr = ed->next;
-		else
-			ped->next = ed->next;
-
-		free_extra_descr(ed);
+		pObj->extra_descr.erase(it);		// element dtor frees the strings
 
 		send_to_char("Extra description deleted.\n\r", ch);
 		return true;
@@ -5040,19 +5033,20 @@ bool oedit_ed(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(command, "format"))
 	{
-		EXTRA_DESCR_DATA *ped = nullptr;
-
 		if (argument[0] == '\0')
 		{
 			send_to_char("Syntax:  ed format [keyword]\n\r", ch);
 			return false;
 		}
 
-		for (ed = pObj->extra_descr; ed; ed = ed->next)
+		EXTRA_DESCR_DATA *ed = nullptr;
+		for (auto &e : pObj->extra_descr)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, e.keyword))
+			{
+				ed = &e;
 				break;
-			ped = ed;
+			}
 		}
 
 		if (!ed)

@@ -35,10 +35,13 @@
 #define DB_H
 
 #include <cstddef>
+#include <list>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>		// srandom
 #include <unistd.h>		// getpid -- replaces the OLD_RAND hand declarations
+
+#include "entity/extra_descr.h"		// get_extra_descr takes a std::list<EXTRA_DESCR_DATA>&
 
 #include "entity/fwd.h"
 #include "entity/limits.h"
@@ -677,7 +680,7 @@ void clone_mobile (CHAR_DATA *parent, CHAR_DATA *clone);
 OBJ_DATA *create_object (OBJ_INDEX_DATA *pObjIndex, int level);
 void clone_object (OBJ_DATA *parent, OBJ_DATA *clone);
 void clear_char(CHAR_DATA *ch);
-char *get_extra_descr (const char *name, EXTRA_DESCR_DATA *ed);
+char *get_extra_descr (const char *name, const std::list<EXTRA_DESCR_DATA> &eds);
 MOB_INDEX_DATA *get_mob_index (int vnum);
 OBJ_INDEX_DATA *get_obj_index(int vnum);
 ROOM_INDEX_DATA *get_room_index (int vnum);

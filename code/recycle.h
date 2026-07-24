@@ -38,7 +38,6 @@
 
 /* externals for counting purposes */
 extern DESCRIPTOR_DATA *descriptor_free;
-extern EXTRA_DESCR_DATA	*extra_descr_free;
 extern AFFECT_DATA *affect_free;
 extern OBJ_DATA *obj_free;
 extern CHAR_DATA *char_free;
@@ -84,9 +83,7 @@ void free_track(TRACK_DATA *tracks);
 /* pathfind recycling */
 PATHFIND_DATA *new_path_data(void);
 void free_path(PATHFIND_DATA *path);
-/* extra descr recycling */
-EXTRA_DESCR_DATA *new_extra_descr(void);
-void free_extra_descr(EXTRA_DESCR_DATA *ed);
+/* extra descr — value type owned by parents in std::list; see entity/extra_descr.h */
 /* apply recycling */
 OBJ_APPLY_DATA *new_apply_data(void);
 void free_apply(OBJ_APPLY_DATA *apply);

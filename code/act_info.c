@@ -785,7 +785,9 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 		auto placeholder = victim->pcdata->trophy;
 
 		act("\n\r$p catches your eye, meriting closer examination.", ch, belt, 0, TO_CHAR);
-		send_to_char(belt->extra_descr->description, ch);
+
+		if (!belt->extra_descr.empty())
+			send_to_char(belt->extra_descr.front().description, ch);
 		send_to_char("\n\rAttached to the belt are:\n\r", ch);
 
 		for (auto i = 0; i < MAX_STRING_LENGTH; i++)

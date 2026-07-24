@@ -1052,7 +1052,7 @@ void load_objs(FILE *fp)
 		newobjs++;
 		pObjIndex->limcount = 0;
 		pObjIndex->limtotal = 0;
-		pObjIndex->extra_descr = nullptr;
+		pObjIndex->extra_descr.clear();
 
 		pObjIndex->name = fread_string(fp);
 		pObjIndex->short_descr = fread_string(fp);
@@ -1277,13 +1277,11 @@ void load_objs(FILE *fp)
 
 			else if (letter == 'E')
 			{
-				EXTRA_DESCR_DATA *ed;
+				EXTRA_DESCR_DATA ed;
 
-				ed = new_extra_descr();
-				ed->keyword = fread_string(fp);
-				ed->description = fread_string(fp);
-				ed->next = pObjIndex->extra_descr;
-				pObjIndex->extra_descr = ed;
+				ed.keyword = fread_string(fp);
+				ed.description = fread_string(fp);
+				pObjIndex->extra_descr.insert(pObjIndex->extra_descr.begin(), std::move(ed));
 				top_ed++;
 			}
 			else if (letter == 'I')

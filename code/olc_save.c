@@ -376,7 +376,6 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 	long dummy[MAX_BITVECTOR];
 	OBJ_APPLY_DATA *app;
 	AFFECT_DATA *paf;
-	EXTRA_DESCR_DATA *ed;
 
 	zero_vector(dummy);
 
@@ -537,10 +536,8 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 	if (pObjIndex->notes)
 		fprintf(fp, "NOTES %s~\n", pObjIndex->notes);
 
-	for (ed = pObjIndex->extra_descr; ed; ed = ed->next)
-	{
-		fprintf(fp, "E %s~\n%s~\n", ed->keyword, munch(ed->description));
-	}
+	for (const auto &ed : pObjIndex->extra_descr)
+		fprintf(fp, "E %s~\n%s~\n", ed.keyword, munch(ed.description));
 
 	fprintf(fp, "\n");
 }
@@ -563,7 +560,6 @@ void save_objects(FILE *fp, AREA_DATA *pArea)
 void save_rooms(FILE *fp, AREA_DATA *pArea)
 {
 	ROOM_INDEX_DATA *pRoom;
-	EXTRA_DESCR_DATA *ed;
 	EXIT_DATA *pexit;
 	char buf1[MSL], buf2[MSL];
 	long i;
@@ -630,10 +626,8 @@ void save_rooms(FILE *fp, AREA_DATA *pArea)
 					pRoom->alt_description);
 			}
 
-			for (ed = pRoom->extra_descr; ed; ed = ed->next)
-			{
-				fprintf(fp, "E %s~\n%s~\n", ed->keyword, munch(ed->description));
-			}
+			for (const auto &ed : pRoom->extra_descr)
+				fprintf(fp, "E %s~\n%s~\n", ed.keyword, munch(ed.description));
 
 			if (pRoom->cabal)
 				fprintf(fp, "CABAL %s\n", cabal_table[pRoom->cabal].name);

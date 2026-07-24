@@ -1,8 +1,11 @@
 #ifndef ENTITY_ROOM_INDEX_DATA_H
 #define ENTITY_ROOM_INDEX_DATA_H
 
+#include <list>
+
 #include "fwd.h"
 #include "limits.h"
+#include "extra_descr.h"
 
 //
 // Room type.
@@ -15,7 +18,7 @@ struct room_index_data
 	ROOM_INDEX_DATA *aff_next;
 	CHAR_DATA *people;
 	OBJ_DATA *contents;
-	EXTRA_DESCR_DATA *extra_descr;
+	std::list<EXTRA_DESCR_DATA> extra_descr;
 	AREA_DATA *area;
 	EXIT_DATA *exit[6];
 	TRACK_DATA *tracks[20];

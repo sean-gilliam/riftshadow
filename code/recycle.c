@@ -58,7 +58,6 @@ const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192
 
 DESCRIPTOR_DATA *descriptor_free;
 GEN_DATA *gen_data_free;
-EXTRA_DESCR_DATA *extra_descr_free;
 OBJ_APPLY_DATA *apply_free;
 AFFECT_DATA *affect_free;
 ROOM_AFFECT_DATA *raffect_free;
@@ -372,38 +371,57 @@ void free_path(PATHFIND_DATA *path)
 
 /* stuff for recycling extended descs -- UGLY */
 
-EXTRA_DESCR_DATA *new_extra_descr(void)
+extra_descr_data::~extra_descr_data()
 {
-	EXTRA_DESCR_DATA *ed;
-
-	if (extra_descr_free == nullptr)
-	{
-		ed = new EXTRA_DESCR_DATA;
-	}
-	else
-	{
-		ed = extra_descr_free;
-		extra_descr_free = extra_descr_free->next;
-	}
-
-	ed->keyword = &str_empty[0];
-	ed->description = &str_empty[0];
-
-	ed->valid = true;
-	return ed;
+	free_pstring(keyword);
+	free_pstring(description);
 }
 
-void free_extra_descr(EXTRA_DESCR_DATA *ed)
+extra_descr_data::extra_descr_data(const extra_descr_data &other)
+	: keyword(other.keyword ? palloc_string(other.keyword) : nullptr)
+	, description(other.description ? palloc_string(other.description) : nullptr)
 {
-	if (!(ed != nullptr && ed->valid))
-		return;
+}
 
-	free_pstring(ed->keyword);
-	free_pstring(ed->description);
+extra_descr_data &extra_descr_data::operator=(const extra_descr_data &other)
+{
+	if (this != &other)
+	{
+		char *new_keyword = other.keyword ? palloc_string(other.keyword) : nullptr;
+		char *new_description = other.description ? palloc_string(other.description) : nullptr;
 
-	ed->valid = false;
-	ed->next = extra_descr_free;
-	extra_descr_free = ed;
+		free_pstring(keyword);
+		free_pstring(description);
+
+		keyword = new_keyword;
+		description = new_description;
+	}
+
+	return *this;
+}
+
+extra_descr_data::extra_descr_data(extra_descr_data &&other) noexcept
+	: keyword(other.keyword)
+	, description(other.description)
+{
+	other.keyword = nullptr;
+	other.description = nullptr;
+}
+
+extra_descr_data &extra_descr_data::operator=(extra_descr_data &&other) noexcept
+{
+	if (this != &other)
+	{
+		free_pstring(keyword);
+		free_pstring(description);
+
+		keyword = other.keyword;
+		description = other.description;
+		other.keyword = nullptr;
+		other.description = nullptr;
+	}
+
+	return *this;
 }
 
 OBJ_APPLY_DATA *new_apply_data(void)
@@ -657,7 +675,6 @@ OBJ_DATA *new_obj(void)
 void free_obj(OBJ_DATA *obj)
 {
 	OBJ_AFFECT_DATA *paf, *paf_next;
-	EXTRA_DESCR_DATA *ed, *ed_next;
 
 	if (!(obj != nullptr && obj->valid))
 		return;
@@ -670,13 +687,7 @@ void free_obj(OBJ_DATA *obj)
 
 	obj->affected = nullptr;
 
-	for (ed = obj->extra_descr; ed != nullptr; ed = ed_next)
-	{
-		ed_next = ed->next;
-		free_extra_descr(ed);
-	}
-
-	obj->extra_descr = nullptr;
+	obj->extra_descr.clear();
 
 	free_pstring(obj->name);
 	free_pstring(obj->description);

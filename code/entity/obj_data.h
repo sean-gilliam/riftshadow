@@ -1,8 +1,11 @@
 #ifndef ENTITY_OBJ_DATA_H
 #define ENTITY_OBJ_DATA_H
 
+#include <list>
+
 #include "fwd.h"
 #include "limits.h"
+#include "extra_descr.h"
 
 //
 // One object.
@@ -16,7 +19,7 @@ struct obj_data
 	OBJ_DATA *in_obj;
 	OBJ_DATA *on;
 	CHAR_DATA *carried_by;
-	EXTRA_DESCR_DATA *extra_descr;
+	std::list<EXTRA_DESCR_DATA> extra_descr;
 	OBJ_APPLY_DATA *apply;
 	OBJ_AFFECT_DATA *affected;
 	AFFECT_DATA *charaffs;

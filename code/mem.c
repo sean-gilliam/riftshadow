@@ -223,7 +223,7 @@ ROOM_INDEX_DATA *new_room_index(void)
 	pRoom->aff_next = nullptr;
 	pRoom->people = nullptr;
 	pRoom->contents = nullptr;
-	pRoom->extra_descr = nullptr;
+	pRoom->extra_descr.clear();
 	pRoom->area = nullptr;
 	pRoom->alt_description = nullptr;
 	pRoom->alt_name = nullptr;
@@ -341,7 +341,7 @@ OBJ_INDEX_DATA *new_obj_index(void)
 	}
 
 	pObj->next = nullptr;
-	pObj->extra_descr = nullptr;
+	pObj->extra_descr.clear();
 	pObj->affected = nullptr;
 	pObj->area = nullptr;
 	pObj->name = palloc_string("no name");
@@ -373,7 +373,7 @@ OBJ_INDEX_DATA *new_obj_index(void)
 	pObj->notes = nullptr;
 	pObj->wear_loc_name = nullptr;
 	pObj->charaffs = nullptr;
-	pObj->extra_descr = nullptr;
+	pObj->extra_descr.clear();
 	pObj->apply = nullptr;
 
 	for (value = 0; value < 5; value++) /* 5 - ROM */
@@ -395,7 +395,6 @@ OBJ_INDEX_DATA *new_obj_index(void)
 
 void free_obj_index(OBJ_INDEX_DATA *pObj)
 {
-	EXTRA_DESCR_DATA *pExtra;
 	AFFECT_DATA *pAf;
 
 	free_pstring(pObj->name);
@@ -407,10 +406,7 @@ void free_obj_index(OBJ_INDEX_DATA *pObj)
 		free_affect(pAf);
 	}
 
-	for (pExtra = pObj->extra_descr; pExtra; pExtra = pExtra->next)
-	{
-		free_extra_descr(pExtra);
-	}
+	pObj->extra_descr.clear();
 
 	pObj->next = obj_index_free;
 	obj_index_free = pObj;

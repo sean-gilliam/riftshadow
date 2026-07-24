@@ -757,7 +757,6 @@ void fwrite_pet(CHAR_DATA *pet, FILE *fp)
  */
 void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 {
-	EXTRA_DESCR_DATA *ed = nullptr;
 	OBJ_AFFECT_DATA *paf;
 	OBJ_APPLY_DATA *oad;
 
@@ -894,10 +893,12 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 			fprintf(fp, "AddApp %d %d %d\n", oad->location, oad->modifier, oad->type);
 	}
 
-	if ((ed = obj->extra_descr) != nullptr)
+	if (!obj->extra_descr.empty())
 	{
-		if ((!obj->pIndexData->extra_descr) || (str_cmp(ed->keyword, obj->pIndexData->extra_descr->keyword)))
-			fprintf(fp, "ExDe %s~ %s~\n", ed->keyword, ed->description);
+		const EXTRA_DESCR_DATA &ed = obj->extra_descr.front();
+
+		if (obj->pIndexData->extra_descr.empty() || str_cmp(ed.keyword, obj->pIndexData->extra_descr.front().keyword))
+			fprintf(fp, "ExDe %s~ %s~\n", ed.keyword, ed.description);
 	}
 
 	fprintf(fp, "End\n\n");
@@ -2181,20 +2182,16 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 
 				if (!str_cmp(word, "ExtraDescr") || !str_cmp(word, "ExDe"))
 				{
-					EXTRA_DESCR_DATA *ed = new_extra_descr();
+					EXTRA_DESCR_DATA ed;
 
-					ed->keyword = fread_string(fp);
+					ed.keyword = fread_string(fp);
 
-					/* Don't repeat extra descriptions... */
-					if ((obj->extra_descr != nullptr) && !str_cmp(ed->keyword, obj->extra_descr->keyword))
+					/* Don't repeat extra descriptions; a duplicate of the head descr is
+					   dropped when ed goes out of scope (its dtor frees the keyword). */
+					if (obj->extra_descr.empty() || str_cmp(ed.keyword, obj->extra_descr.front().keyword))
 					{
-						free_extra_descr(ed);
-					}
-					else
-					{
-						ed->description = fread_string(fp);
-						ed->next = obj->extra_descr;
-						obj->extra_descr = ed;
+						ed.description = fread_string(fp);
+						obj->extra_descr.insert(obj->extra_descr.begin(), std::move(ed));
 					}
 
 					fMatch = true;

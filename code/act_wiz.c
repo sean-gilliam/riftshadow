@@ -1726,17 +1726,18 @@ void do_rstat(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "Description:\n\r%s", location->description);
 	send_to_char(buf, ch);
 
-	if (location->extra_descr != nullptr)
+	if (!location->extra_descr.empty())
 	{
-		EXTRA_DESCR_DATA *ed;
-
 		send_to_char("Extra description keywords: '", ch);
 
-		for (ed = location->extra_descr; ed; ed = ed->next)
+		bool first = true;
+		for (const auto &ed : location->extra_descr)
 		{
-			send_to_char(ed->keyword, ch);
-			if (ed->next != nullptr)
+			if (!first)
 				send_to_char(" ", ch);
+
+			send_to_char(ed.keyword, ch);
+			first = false;
 		}
 
 		send_to_char("'.\n\r", ch);
@@ -2073,26 +2074,25 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 		send_to_char(buf, ch);
 	}
 
-	if (obj->extra_descr != nullptr || obj->pIndexData->extra_descr != nullptr)
+	if (!obj->extra_descr.empty() || !obj->pIndexData->extra_descr.empty())
 	{
-		EXTRA_DESCR_DATA *ed, *ed2;
 		bool duplicate = false; /* Don't duplicate extradescs. */
 
 		send_to_char("Extra description keywords: '", ch);
 
-		for (ed = obj->extra_descr; ed != nullptr; ed = ed->next)
+		for (auto ed = obj->extra_descr.begin(); ed != obj->extra_descr.end(); ++ed)
 		{
 			send_to_char(ed->keyword, ch);
 
-			if (ed->next != nullptr)
+			if (std::next(ed) != obj->extra_descr.end())
 				send_to_char(" ", ch);
 		}
 
-		for (ed = obj->pIndexData->extra_descr; ed != nullptr; ed = ed->next)
+		for (auto ed = obj->pIndexData->extra_descr.begin(); ed != obj->pIndexData->extra_descr.end(); ++ed)
 		{
-			for (ed2 = obj->extra_descr; ed2; ed2 = ed2->next)
+			for (const auto &ed2 : obj->extra_descr)
 			{
-				if (!str_cmp(ed->keyword, ed2->keyword))
+				if (!str_cmp(ed->keyword, ed2.keyword))
 					duplicate = true;
 			}
 
@@ -2101,7 +2101,7 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 
 			send_to_char(ed->keyword, ch);
 
-			if (ed->next != nullptr)
+			if (std::next(ed) != obj->pIndexData->extra_descr.end())
 				send_to_char(" ", ch);
 		}
 
@@ -5600,8 +5600,6 @@ void do_string(CHAR_DATA *ch, char *argument)
 
 		if (!str_prefix(arg2, "ed") || !str_prefix(arg2, "extended"))
 		{
-			EXTRA_DESCR_DATA *ed;
-
 			argument = one_argument(argument, arg3);
 
 			if (argument == nullptr)
@@ -5612,12 +5610,11 @@ void do_string(CHAR_DATA *ch, char *argument)
 
 			strcat(argument, "\n\r");
 
-			ed = new_extra_descr();
+			EXTRA_DESCR_DATA ed;
 
-			ed->keyword = palloc_string(arg3);
-			ed->description = palloc_string(argument);
-			ed->next = obj->extra_descr;
-			obj->extra_descr = ed;
+			ed.keyword = palloc_string(arg3);
+			ed.description = palloc_string(argument);
+			obj->extra_descr.push_front(std::move(ed));
 			return;
 		}
 	}

@@ -2182,7 +2182,6 @@ void clone_mobile(CHAR_DATA *parent, CHAR_DATA *clone)
 OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 {
 	AFFECT_DATA *paf;
-	EXTRA_DESCR_DATA *ed;
 	OBJ_DATA *obj;
 	int i;
 
@@ -2236,14 +2235,8 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 	/* Morg - Valgrind Fix */
 	obj->contains = nullptr;
 
-	if (pObjIndex->extra_descr)
-	{
-		ed = new_extra_descr();
-		ed->description = palloc_string(pObjIndex->extra_descr->description);
-		ed->keyword = palloc_string(pObjIndex->extra_descr->keyword);
-		ed->next = obj->extra_descr;
-		obj->extra_descr = ed;
-	}
+	if (!pObjIndex->extra_descr.empty())
+		obj->extra_descr.push_back(pObjIndex->extra_descr.front());
 
 	if (level == -1 || pObjIndex->new_format)
 		obj->cost = pObjIndex->cost;
@@ -2374,7 +2367,6 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 {
 	int i;
 	OBJ_AFFECT_DATA *paf;
-	EXTRA_DESCR_DATA *ed, *ed_new;
 
 	if (parent == nullptr || clone == nullptr)
 		return;
@@ -2417,15 +2409,9 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 		affect_to_obj(clone, paf);
 	}
 
-	/* extended desc */
-	for (ed = parent->extra_descr; ed != nullptr; ed = ed->next)
-	{
-		ed_new = new_extra_descr();
-		ed_new->keyword = palloc_string(ed->keyword);
-		ed_new->description = palloc_string(ed->description);
-		ed_new->next = clone->extra_descr;
-		clone->extra_descr = ed_new;
-	}
+	/* extended desc — prepend each (reverses order), matching the old intrusive list */
+	for (const auto &ed : parent->extra_descr)
+		clone->extra_descr.insert(clone->extra_descr.begin(), ed);
 }
 
 /*
@@ -2472,12 +2458,12 @@ void clear_char(CHAR_DATA *ch)
 /*
  * Get an extra description from a list.
  */
-char *get_extra_descr(const char *name, EXTRA_DESCR_DATA *ed)
+char *get_extra_descr(const char *name, const std::list<EXTRA_DESCR_DATA> &eds)
 {
-	for (; ed != nullptr; ed = ed->next)
+	for (const auto &ed : eds)
 	{
-		if (is_name((char *)name, ed->keyword))
-			return ed->description;
+		if (is_name((char *)name, ed.keyword))
+			return ed.description;
 	}
 
 	return nullptr;
@@ -4028,7 +4014,7 @@ void load_rooms(FILE *fp)
 		pRoomIndex->move_progs= false;
 		pRoomIndex->people = nullptr;
 		pRoomIndex->contents = nullptr;
-		pRoomIndex->extra_descr = nullptr;
+		pRoomIndex->extra_descr.clear();
 		pRoomIndex->alt_description = nullptr;
 		pRoomIndex->alt_description_cond = 0;
 		pRoomIndex->alt_name = nullptr;
@@ -4126,13 +4112,11 @@ void load_rooms(FILE *fp)
 			}
 			else if (letter == 'E')
 			{
-				EXTRA_DESCR_DATA *ed;
+				EXTRA_DESCR_DATA ed;
 
-				ed = new EXTRA_DESCR_DATA;
-				ed->keyword = fread_string(fp);
-				ed->description = fread_string(fp);
-				ed->next = pRoomIndex->extra_descr;
-				pRoomIndex->extra_descr = ed;
+				ed.keyword = fread_string(fp);
+				ed.description = fread_string(fp);
+				pRoomIndex->extra_descr.insert(pRoomIndex->extra_descr.begin(), std::move(ed));
 				top_ed++;
 			}
 			else if (letter == 'T')
