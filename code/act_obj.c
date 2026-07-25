@@ -1971,7 +1971,6 @@ void wear_obj(CHAR_DATA *ch, OBJ_DATA *obj, bool fReplace)
 	OBJ_DATA *weapon;
 	OBJ_DATA *oldobj;
 	int sn, skill;
-	OBJ_AFFECT_DATA *paf;
 
 	if (can_wear(obj, ITEM_WEAR_COSMETIC))
 	{

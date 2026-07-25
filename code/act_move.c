@@ -905,10 +905,14 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 				new_affect_to_char(ch, &cvaf);
 			}
 
-			for (auto paf = ch->affected; paf != nullptr; paf = paf->next)
+			AFFECT_DATA *paf = nullptr;
+			for (auto &paf_elem : ch->affected)
 			{
-				if (paf->type == gsn_noxious_fumes)
+				if (paf_elem.type == gsn_noxious_fumes)
+				{
+					paf = &paf_elem;
 					break;
+				}
 			}
 
 			paf->modifier = URANGE(0, paf->modifier, 5);
@@ -1237,19 +1241,21 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 
 			send_to_char("Your blood burns as a deadly venom seeps into your body!\n\r", victim);
 
-			AFFECT_DATA af;
-			init_affect(&af);
-			af.where = TO_AFFECTS;
-			af.aftype = AFT_MALADY;
-			af.type = gsn_poison;
-			af.level = trap->quality * 7;
-			af.location = APPLY_STR;
-			af.modifier = -5;
-			af.duration = trap->quality * 2;
-			af.owner = victim;
-			SET_BIT(af.bitvector, AFF_POISON);
-			af.tick_fun = poison_tick;
-			affect_to_char(victim, &af);
+			{
+				AFFECT_DATA af;
+				init_affect(&af);
+				af.where = TO_AFFECTS;
+				af.aftype = AFT_MALADY;
+				af.type = gsn_poison;
+				af.level = trap->quality * 7;
+				af.location = APPLY_STR;
+				af.modifier = -5;
+				af.duration = trap->quality * 2;
+				af.owner = victim;
+				SET_BIT(af.bitvector, AFF_POISON);
+				af.tick_fun = poison_tick;
+				affect_to_char(victim, &af);
+			}
 			break;
 		case TRAP_FIREBALL:
 			for (auto vch = room->people; vch; vch = vch->next_in_room)

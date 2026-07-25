@@ -339,7 +339,7 @@ OBJ_INDEX_DATA *new_obj_index(void)
 
 	pObj->next = nullptr;
 	pObj->extra_descr.clear();
-	pObj->affected = nullptr;
+	pObj->affected.clear();
 	pObj->area = nullptr;
 	pObj->name = palloc_string("no name");
 	pObj->level = 1;
@@ -369,7 +369,7 @@ OBJ_INDEX_DATA *new_obj_index(void)
 	pObj->cabal = 0;
 	pObj->notes = nullptr;
 	pObj->wear_loc_name = nullptr;
-	pObj->charaffs = nullptr;
+	pObj->charaffs.clear();
 	pObj->extra_descr.clear();
 	pObj->apply.clear();
 
@@ -392,17 +392,12 @@ OBJ_INDEX_DATA *new_obj_index(void)
 
 void free_obj_index(OBJ_INDEX_DATA *pObj)
 {
-	AFFECT_DATA *pAf;
-
 	free_pstring(pObj->name);
 	free_pstring(pObj->short_descr);
 	free_pstring(pObj->description);
 
-	for (pAf = pObj->affected; pAf; pAf = pAf->next)
-	{
-		free_affect(pAf);
-	}
-
+	pObj->affected.clear();
+	pObj->charaffs.clear();
 	pObj->extra_descr.clear();
 
 	pObj->next = obj_index_free;

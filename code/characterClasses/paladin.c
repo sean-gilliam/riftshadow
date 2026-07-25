@@ -1283,7 +1283,6 @@ void ispirit_end(CHAR_DATA *ch, AFFECT_DATA *af)
 
 void spell_altruism(int level, int sn, CHAR_DATA *ch, void *vo, int target)
 {
-	AFFECT_DATA *from_af, *faf_next, to_af;
 	CHAR_DATA *vict = (CHAR_DATA *)vo;
 
 	if (ch == vict)
@@ -1292,36 +1291,40 @@ void spell_altruism(int level, int sn, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	for (from_af = vict->affected; from_af != nullptr; from_af = faf_next)
+	for (auto it = vict->affected.begin(); it != vict->affected.end(); )
 	{
-		faf_next = from_af->next;
+		auto next = std::next(it);
 
-		if (skill_table[from_af->type].dispel & CAN_CLEANSE)
+		if (skill_table[it->type].dispel & CAN_CLEANSE)
 		{
+			AFFECT_DATA to_af;
 			init_affect(&to_af);
-			to_af.owner = from_af->owner;
+			to_af.owner = it->owner;
 
-			if (from_af->name != nullptr)
-				to_af.name = talloc_string(from_af->name);
+			// palloc (not talloc): the affect owns this string and frees it
+			// with free_pstring; a temp-pool string would be freed wrong.
+			if (it->name != nullptr)
+				to_af.name = palloc_string(it->name);
 
-			to_af.valid = from_af->valid;
-			to_af.where = from_af->where;
-			to_af.type = from_af->type;
-			to_af.level = from_af->level;
-			to_af.duration = from_af->duration;
-			to_af.location = from_af->location;
-			to_af.modifier = from_af->modifier;
+			to_af.where = it->where;
+			to_af.type = it->type;
+			to_af.level = it->level;
+			to_af.duration = it->duration;
+			to_af.location = it->location;
+			to_af.modifier = it->modifier;
 
-			copy_vector(to_af.bitvector, from_af->bitvector);
+			copy_vector(to_af.bitvector, it->bitvector);
 
-			to_af.aftype = from_af->aftype;
-			to_af.tick_fun = from_af->tick_fun;
-			to_af.pulse_fun = from_af->pulse_fun;
-			to_af.end_fun = from_af->end_fun;
-			to_af.init_duration = from_af->init_duration;
+			to_af.aftype = it->aftype;
+			to_af.tick_fun = it->tick_fun;
+			to_af.pulse_fun = it->pulse_fun;
+			to_af.end_fun = it->end_fun;
+			to_af.init_duration = it->init_duration;
 			affect_to_char(ch, &to_af);
-			affect_remove(vict, from_af);
+			affect_remove(vict, &*it);
 		}
+
+		it = next;
 	}
 
 	act("You absorb all of $N's maledictions.", ch, 0, vict, TO_CHAR);

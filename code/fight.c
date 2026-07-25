@@ -1183,10 +1183,14 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 	/* empathy */
 	if (is_affected(victim, gsn_empathy))
 	{
-		for (laf = victim->affected; laf != nullptr; laf = laf->next)
+		laf = nullptr;
+		for (auto &laf_elem : victim->affected)
 		{
-			if (laf->type == gsn_empathy)
+			if (laf_elem.type == gsn_empathy)
+			{
+				laf = &laf_elem;
 				break;
+			}
 		}
 
 		if (ch != victim)
@@ -3263,7 +3267,7 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 {
 	int i, sn;
 	ROOM_INDEX_DATA *location;
-	AFFECT_DATA af, *paf, *paf_next;
+	AFFECT_DATA af;
 	ROOM_AFFECT_DATA raf;
 	AREA_AFFECT_DATA aaf;
 	CHAR_DATA *gch, *gch_next;
@@ -3398,26 +3402,26 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (is_affected(victim, gsn_disguise))
 		do_undisguise(victim, "");
 
-	for (paf = victim->affected; paf != nullptr; paf = paf_next)
+	for (auto it = victim->affected.begin(); it != victim->affected.end(); )
 	{
-		paf_next = paf->next;
+		auto next = std::next(it);
 
-		if (IS_SET(paf->bitvector, AFF_PERMANENT))
-			continue;
+		if (!IS_SET(it->bitvector, AFF_PERMANENT))
+			affect_remove(victim, &*it);
 
-		affect_remove(victim, paf);
+		it = next;
 	}
 
 	extract_char(victim, false);
 
-	for (paf = victim->affected; paf != nullptr; paf = paf_next)
+	for (auto it = victim->affected.begin(); it != victim->affected.end(); )
 	{
-		paf_next = paf->next;
+		auto next = std::next(it);
 
-		if (IS_SET(paf->bitvector, AFF_PERMANENT))
-			continue;
+		if (!IS_SET(it->bitvector, AFF_PERMANENT))
+			affect_remove(victim, &*it);
 
-		affect_remove(victim, paf);
+		it = next;
 	}
 
 	victim->talismanic = 0;

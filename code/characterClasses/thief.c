@@ -1993,15 +1993,18 @@ void thief_yell(CHAR_DATA *ch, CHAR_DATA *victim)
 
 AFFECT_DATA *check_bind(CHAR_DATA *ch, char *type)
 {
-	AFFECT_DATA *af;
+	AFFECT_DATA *af = nullptr;
 
-	for (af = ch->affected; af != nullptr; af = af->next)
+	for (auto &af_elem : ch->affected)
 	{
-		if (af->type == gsn_bind && !str_infix(type, af->name))
-			return af;
+		if (af_elem.type == gsn_bind && !str_infix(type, af_elem.name))
+		{
+			af = &af_elem;
+			break;
+		}
 	}
 
-	return nullptr;
+	return af;
 }
 
 void do_bind(CHAR_DATA *ch, char *argument)

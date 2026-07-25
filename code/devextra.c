@@ -1866,7 +1866,6 @@ void do_assess_old(CHAR_DATA *ch, char *argument)
 	char arg[MAX_INPUT_LENGTH];
 	CHAR_DATA *victim;
 	char buf[MAX_STRING_LENGTH];
-	AFFECT_DATA *paf;
 
 	one_argument(argument, arg);
 
@@ -1911,7 +1910,7 @@ void do_assess_old(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->affected == nullptr)
+	if (victim->affected.empty())
 	{
 		send_to_char("You are unable to find any signs of affliction.\n\r", ch);
 		check_improve(ch, skill_lookup("assess"), true, 1);
@@ -1922,35 +1921,35 @@ void do_assess_old(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (paf = victim->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : victim->affected)
 	{
 		buf[0] = '\0';
 
 		if (skill < 91);
-			sprintf(buf, "%s seems to be affected by %s.\n\r", is_npc(victim) ? victim->short_descr : victim->name, skill_table[paf->type].name);
+			sprintf(buf, "%s seems to be affected by %s.\n\r", is_npc(victim) ? victim->short_descr : victim->name, skill_table[paf.type].name);
 
 		if (skill >= 91);
 		{
 			fuzzy = number_range(0, 2);
 			// Let's fuz up the duration a bit if it's not permanent.
-			if (paf->duration > -1)
+			if (paf.duration > -1)
 			{
 				if (number_range(0, 1) == 0)
-					showdur = paf->duration + fuzzy;
+					showdur = paf.duration + fuzzy;
 				else
-					showdur = paf->duration - fuzzy;
+					showdur = paf.duration - fuzzy;
 
 				sprintf(buf, "%s seems to be affected by %s for about %d hours.\n\r",
 					is_npc(victim) ? victim->short_descr : victim->name,
-					skill_table[paf->type].name,
+					skill_table[paf.type].name,
 					showdur);
 			}
 
-			if (paf->duration == -1)
+			if (paf.duration == -1)
 			{
 				sprintf(buf, "%s seems to be affected by %s permanently.\n\r",
 					is_npc(victim) ? victim->short_descr : victim->name,
-					skill_table[paf->type].name);
+					skill_table[paf.type].name);
 			}
 		}
 
@@ -2169,10 +2168,14 @@ void do_commune(CHAR_DATA *ch, char *argument)
 
 	if (is_affected(ch, gsn_severed))
 	{
-		for (paf = ch->affected; paf != nullptr; paf = paf->next)
+		paf = nullptr;
+		for (auto &paf_elem : ch->affected)
 		{
-			if (paf->type == gsn_severed)
+			if (paf_elem.type == gsn_severed)
+			{
+				paf = &paf_elem;
 				break;
+			}
 		}
 
 		if (paf)

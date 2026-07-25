@@ -38,7 +38,6 @@
 
 /* externals for counting purposes */
 extern DESCRIPTOR_DATA *descriptor_free;
-extern AFFECT_DATA *affect_free;
 extern OBJ_DATA *obj_free;
 extern CHAR_DATA *char_free;
 extern PC_DATA *pcdata_free;
@@ -73,16 +72,14 @@ void free_race_data(RACE_DATA *race_specs);
 PATHFIND_DATA *new_path_data(void);
 void free_path(PATHFIND_DATA *path);
 /* extra descr — value type owned by parents in std::list; see entity/extra_descr.h */
+/* affect — value type owned by parents in std::list; see entity/affect_data.h */
 /* apply — value type owned by parents in std::list; see entity/affect_data.h */
-/* stuff for recycling affects */
-AFFECT_DATA *new_affect(void);
 TRAP_DATA *new_trap(void);
 void free_trap(TRAP_DATA *trap);
 RUNE_DATA *new_rune(void);
 void free_rune(RUNE_DATA *rune);
 QUEUE_DATA *new_queue(void);
 void free_queue(QUEUE_DATA *queue);
-void free_affect(AFFECT_DATA *af);
 /* object recycling */
 OBJ_DATA *new_obj(void);
 void free_obj(OBJ_DATA *obj);

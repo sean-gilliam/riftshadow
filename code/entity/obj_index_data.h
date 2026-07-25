@@ -17,8 +17,8 @@ struct obj_index_data
 {
 	OBJ_INDEX_DATA *next;
 	std::list<EXTRA_DESCR_DATA> extra_descr;
-	AFFECT_DATA *affected;
-	AFFECT_DATA *charaffs;
+	std::list<AFFECT_DATA> affected;
+	std::list<AFFECT_DATA> charaffs;
 	std::list<OBJ_APPLY_DATA> apply;
 	AREA_DATA *area;
 	bool new_format;

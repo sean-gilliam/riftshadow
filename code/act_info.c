@@ -378,9 +378,9 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 	if (is_affected_by(ch, AFF_DETECT_MAGIC))
 	{
 		auto spellaffs = 0;
-		for (auto af = victim->affected; af; af = af->next)
+		for (auto &af : victim->affected)
 		{
-			if (af->aftype == AFT_SPELL)
+			if (af.aftype == AFT_SPELL)
 				spellaffs++;
 		}
 
@@ -688,9 +688,9 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 	{
 		auto counter = 0;
 
-		for (auto paf = victim->affected; paf; paf = paf->next)
+		for (auto &paf : victim->affected)
 		{
-			if (paf->type == gsn_rotating_ward)
+			if (paf.type == gsn_rotating_ward)
 				counter++;
 		}
 
@@ -2701,7 +2701,7 @@ void do_score(CHAR_DATA *ch, char *argument)
 
 void do_affects(CHAR_DATA *ch, char *argument)
 {
-	if (ch->affected == nullptr || !(ch->affected->aftype != AFT_INVIS || ch->affected->next != nullptr))
+	if (ch->affected.empty() || !(ch->affected.front().aftype != AFT_INVIS || ch->affected.size() > 1))
 	{
 		send_to_char("You are not affected by anything.\n\r", ch);
 		return;
@@ -2711,9 +2711,9 @@ void do_affects(CHAR_DATA *ch, char *argument)
 
 	AFFECT_DATA *paf_last = nullptr;
 	char buf[MAX_STRING_LENGTH];
-	for (auto paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->aftype == AFT_INVIS)
+		if (paf.aftype == AFT_INVIS)
 			continue;
 
 		for (auto i = 0; i < MAX_STRING_LENGTH; i++)
@@ -2722,7 +2722,7 @@ void do_affects(CHAR_DATA *ch, char *argument)
 		}
 
 		if (paf_last != nullptr
-			&& (paf->type == paf_last->type && ((paf->name == nullptr && paf_last->name == nullptr) || !str_cmp(paf->name, paf_last->name))))
+			&& (paf.type == paf_last->type && ((paf.name == nullptr && paf_last->name == nullptr) || !str_cmp(paf.name, paf_last->name))))
 		{
 			if (ch->level >= 20)
 				sprintf(buf, "                          ");
@@ -2731,37 +2731,37 @@ void do_affects(CHAR_DATA *ch, char *argument)
 		}
 		else
 		{
-			if (paf->aftype == AFT_SKILL)
-				sprintf(buf, "Skill  : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_POWER)
-				sprintf(buf, "Power  : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_MALADY)
-				sprintf(buf, "Malady : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_COMMUNE)
-				sprintf(buf, "Commune: %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_RUNE)
-				sprintf(buf, "Rune   : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_TIMER)
-				sprintf(buf, "Timer  : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype != AFT_INVIS)
-				sprintf(buf, "Spell  : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
+			if (paf.aftype == AFT_SKILL)
+				sprintf(buf, "Skill  : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_POWER)
+				sprintf(buf, "Power  : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_MALADY)
+				sprintf(buf, "Malady : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_COMMUNE)
+				sprintf(buf, "Commune: %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_RUNE)
+				sprintf(buf, "Rune   : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_TIMER)
+				sprintf(buf, "Timer  : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype != AFT_INVIS)
+				sprintf(buf, "Spell  : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
 		}
 
 		send_to_char(buf, ch);
 
 		if (ch->level >= 20)
 		{
-			auto showdur = paf->duration + 1;
+			auto showdur = paf.duration + 1;
 
 			auto buffer = fmt::format("| modifies {}{}{} ",
-					(paf->mod_name > -1) ? mod_names[paf->mod_name].name : affect_loc_name(paf->location),
-					(paf->mod_name > -1) ? "" : " by ",
-					(paf->mod_name > -1) ? "" : std::to_string(paf->modifier)); //TODO: change the rest of the sprintf calls to format
+					(paf.mod_name > -1) ? mod_names[paf.mod_name].name : affect_loc_name(paf.location),
+					(paf.mod_name > -1) ? "" : " by ",
+					(paf.mod_name > -1) ? "" : std::to_string(paf.modifier)); //TODO: change the rest of the sprintf calls to format
 
-			if (paf->aftype != AFT_INVIS)
+			if (paf.aftype != AFT_INVIS)
 				send_to_char(buffer.c_str(), ch);
 
-			if (paf->duration == -1)
+			if (paf.duration == -1)
 			{
 				buffer = "permanently";
 			}
@@ -2773,14 +2773,14 @@ void do_affects(CHAR_DATA *ch, char *argument)
 					(showdur == 1 || showdur == 2) ? "" : "s");
 			}
 
-			if (paf->aftype != AFT_INVIS)
+			if (paf.aftype != AFT_INVIS)
 				send_to_char(buffer.c_str(), ch);
 		}
 
-		if (paf->aftype != AFT_INVIS)
+		if (paf.aftype != AFT_INVIS)
 			send_to_char("\n\r", ch);
 
-		paf_last = paf;
+		paf_last = &paf;
 	}
 }
 

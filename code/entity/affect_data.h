@@ -8,26 +8,39 @@
 // An affect.
 //
 
+// A character affect. Owns its `name` string (palloc_string / free_pstring) →
+// rule-of-5 (bodies in recycle.c). Parents hold these by value in a
+// std::list<AFFECT_DATA> (ch->affected, obj->charaffs, and the two Tier-0
+// prototype lists obj_index->affected / obj_index->charaffs). `owner` is a
+// non-owning CHAR_DATA back-reference and stays a raw pointer (scrubbed on
+// extract_char). std::list, not vector: callers cache an element pointer
+// returned by affect_find across later list mutations.
 struct affect_data
 {
-	AFFECT_DATA *next;
-	CHAR_DATA *owner;
-	char *name;
-	bool valid;
-	short where;
-	short type;
-	short level;
-	short duration;
-	short location;
-	short modifier;
-	short mod_name;
-	long bitvector[MAX_BITVECTOR];
-	int aftype;
-	AFF_FUN *tick_fun;		// goes off every tick that char is affected
-	AFF_FUN *pulse_fun;
-	AFF_FUN *end_fun;		// when the affect wears off this is called
-	short init_duration;
-	AFF_FUN *beat_fun;		// goes off every beat
+	CHAR_DATA *owner = nullptr;
+	char *name = nullptr;
+	short where = 0;
+	short type = 0;
+	short level = 0;
+	short duration = 0;
+	short location = 0;
+	short modifier = 0;
+	short mod_name = 0;
+	long bitvector[MAX_BITVECTOR] = {};
+	int aftype = 0;
+	AFF_FUN *tick_fun = nullptr;	// goes off every tick that char is affected
+	AFF_FUN *pulse_fun = nullptr;
+	AFF_FUN *end_fun = nullptr;		// when the affect wears off this is called
+	short init_duration = 0;
+	AFF_FUN *beat_fun = nullptr;	// goes off every beat
+
+	affect_data() = default;
+	~affect_data();
+
+	affect_data(const affect_data &other);
+	affect_data &operator=(const affect_data &other);
+	affect_data(affect_data &&other) noexcept;
+	affect_data &operator=(affect_data &&other) noexcept;
 };
 
 //

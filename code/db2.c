@@ -1046,14 +1046,14 @@ void load_objs(FILE *fp)
 		zero_vector(pObjIndex->vuln_flags);
 		pObjIndex->start_timer = -1;
 		pObjIndex->notes = nullptr;
-		pObjIndex->charaffs = nullptr;
+		pObjIndex->charaffs.clear();
 		pObjIndex->apply.clear();
 		pObjIndex->wear_echo[0] = nullptr;
 		pObjIndex->remove_echo[0] = nullptr;
 		pObjIndex->wear_echo[1] = nullptr;
 		pObjIndex->remove_echo[1] = nullptr;
 		pObjIndex->wear_loc_name = nullptr;
-		pObjIndex->affected = nullptr;
+		pObjIndex->affected.clear();
 		pObjIndex->spec_prog.trapvector = 0;
 		pObjIndex->cabal = 0;
 		pObjIndex->verb = nullptr;

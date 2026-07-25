@@ -827,9 +827,9 @@ void add_prof_affect(CHAR_DATA *ch, char *name, int duration, bool fInvis = true
 /// @returns true if the character is affected by the specific proficiency affliction.
 bool is_affected_prof(CHAR_DATA *ch, char *prof)
 {
-	for (auto paf = ch->affected; paf; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type == gsn_timer && paf->name && !str_cmp(paf->name, prof))
+		if (paf.type == gsn_timer && paf.name && !str_cmp(paf.name, prof))
 			return true;
 	}
 

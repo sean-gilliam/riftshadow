@@ -1168,8 +1168,6 @@ void char_update(void)
 	for (ch = char_list; ch != nullptr; ch = ch_next)
 	{
 		CHAR_DATA *master;
-		AFFECT_DATA *paf;
-		AFFECT_DATA *paf_next;
 		bool charm_gone;
 
 		ch_next = ch->next;
@@ -1351,9 +1349,11 @@ void char_update(void)
 		}
 		else
 		{
-			for (paf = ch->affected; paf != nullptr; paf = paf_next)
+			for (auto it = ch->affected.begin(); it != ch->affected.end(); )
 			{
-				paf_next = paf->next;
+				auto next = std::next(it);
+				AFFECT_DATA *paf = &*it;
+				AFFECT_DATA *paf_next = (next != ch->affected.end()) ? &*next : nullptr;
 				charm_gone= false;
 
 				if (!ghost && ch->ghost > 0)
@@ -1364,11 +1364,16 @@ void char_update(void)
 					if (paf->tick_fun)
 						(*paf->tick_fun)(ch, paf);
 
-					if (!ch || (!ghost && ch->ghost > 0))
+					/* A tick can extract (free) the character, clearing its
+					 * affect list; stop before touching the stale iterator. */
+					if (!ch->valid || (!ghost && ch->ghost > 0))
 						break;
 
 					if (!paf)
+					{
+						it = next;
 						continue;
+					}
 
 					paf->duration--;
 
@@ -1380,7 +1385,7 @@ void char_update(void)
 					if (paf->tick_fun)
 						(*paf->tick_fun)(ch, paf);
 
-					if (!ghost && ch->ghost > 0)
+					if (!ch->valid || (!ghost && ch->ghost > 0))
 						break;
 				}
 				else if (paf->type == gsn_entwine
@@ -1411,6 +1416,7 @@ void char_update(void)
 
 							paf->duration = paf->init_duration;
 							ch->mana = std::max(ch->mana - skill_table[paf->type].min_mana, 0);
+							it = next;
 							continue;
 						}
 					}
@@ -1428,6 +1434,8 @@ void char_update(void)
 					}
 					affect_remove(ch, paf);
 				}
+
+				it = next;
 			}
 		}
 
@@ -1793,7 +1801,6 @@ void aggr_update(void)
 	CHAR_DATA *vch;
 	CHAR_DATA *vch_next;
 	CHAR_DATA *victim;
-	AFFECT_DATA *paf;
 	int timer;
 	char buf[MAX_STRING_LENGTH];
 
@@ -1810,10 +1817,12 @@ void aggr_update(void)
 		if (is_npc(wch) && IS_SET(wch->progtypes, MPROG_BEAT))
 			(wch->pIndexData->mprogs->beat_prog)(wch);
 
-		for (paf = wch->affected; paf; paf = paf->next)
+		for (auto it = wch->affected.begin(); it != wch->affected.end(); )
 		{
-			if (paf->beat_fun)
-				(*paf->beat_fun)(wch, paf);
+			auto next = std::next(it);
+			if (it->beat_fun)
+				(*it->beat_fun)(wch, &*it);
+			it = next;
 		}
 
 		if ((!is_npc(wch) && wch->pulseTimer <= pc_race_table[wch->race].racePulse)
@@ -1922,14 +1931,17 @@ void aggr_update(void)
 			&& !wch->fighting
 			&& !(wch->desc == nullptr && !is_npc(wch)))
 		{
-			paf = affect_find(wch->affected, gsn_mark_of_wrath);
+			AFFECT_DATA *paf = affect_find(wch->affected, gsn_mark_of_wrath);
 
 			for (vch = wch->in_room->people; vch; vch = vch_next)
 			{
 				vch_next = vch->next_in_room;
 
 				if (paf->owner->ghost > 0)
+				{
 					affect_remove(wch, paf);
+					break;		// paf is gone; nothing further reads the mark
+				}
 
 				if (wch == vch || !can_see(wch, vch))
 					continue;
@@ -2286,7 +2298,6 @@ void affect_update(void)
 	OBJ_DATA *obj, *obj_next;
 	ROOM_INDEX_DATA *room;
 	AREA_DATA *area;
-	AFFECT_DATA *paf, *paf_next;
 
 	for (ch = char_list; ch; ch = ch_next)
 	{
@@ -2307,12 +2318,14 @@ void affect_update(void)
 			RS.Logger.Info(buf);
 		}
 
-		for (paf = ch->affected; paf; paf = paf_next)
+		for (auto it = ch->affected.begin(); it != ch->affected.end(); )
 		{
-			paf_next = paf->next;
+			auto next = std::next(it);
 
-			if (paf->pulse_fun)
-				(*paf->pulse_fun)(ch, paf);
+			if (it->pulse_fun)
+				(*it->pulse_fun)(ch, &*it);
+
+			it = next;
 		}
 	}
 
@@ -2682,10 +2695,14 @@ void room_affect_update(void)
 							new_affect_to_char(vch, &cvaf);
 						}
 
-						for (paf = vch->affected; paf != nullptr; paf = paf->next)
+						paf = nullptr;
+						for (auto &paf_elem : vch->affected)
 						{
-							if (paf->type == gsn_noxious_fumes)
+							if (paf_elem.type == gsn_noxious_fumes)
+							{
+								paf = &paf_elem;
 								break;
+							}
 						}
 
 						paf->modifier = URANGE(0, paf->modifier, 5);

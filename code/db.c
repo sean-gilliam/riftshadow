@@ -2092,7 +2092,6 @@ CHAR_DATA *create_mobile(MOB_INDEX_DATA *pMobIndex)
 void clone_mobile(CHAR_DATA *parent, CHAR_DATA *clone)
 {
 	int i;
-	AFFECT_DATA *paf;
 
 	if (parent == nullptr || clone == nullptr || !is_npc(parent))
 		return;
@@ -2171,10 +2170,8 @@ void clone_mobile(CHAR_DATA *parent, CHAR_DATA *clone)
 	}
 
 	/* now add the affects */
-	for (paf = parent->affected; paf != nullptr; paf = paf->next)
-	{
-		affect_to_char(clone, paf);
-	}
+	for (auto &paf : parent->affected)
+		affect_to_char(clone, &paf);
 }
 
 /*
@@ -2182,7 +2179,6 @@ void clone_mobile(CHAR_DATA *parent, CHAR_DATA *clone)
  */
 OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 {
-	AFFECT_DATA *paf;
 	OBJ_DATA *obj;
 	int i;
 
@@ -2218,7 +2214,7 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 	copy_vector(obj->extra_flags, pObjIndex->extra_flags);
 
 	obj->apply = pObjIndex->apply;		// deep-copies the prototype's applies (was a shared pointer)
-	obj->charaffs = pObjIndex->charaffs;
+	obj->charaffs = pObjIndex->charaffs;	// deep-copies the prototype's charaffs (was a shared pointer)
 
 	copy_vector(obj->wear_flags, pObjIndex->wear_flags);
 	copy_vector(obj->imm_flags, pObjIndex->imm_flags);
@@ -2337,20 +2333,20 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 			break;
 	}
 
-	for (paf = pObjIndex->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : pObjIndex->affected)
 	{
-		if (paf->location == APPLY_SPELL_AFFECT)
+		if (paf.location == APPLY_SPELL_AFFECT)
 		{
 			OBJ_AFFECT_DATA oaf;
 
 			init_affect_obj(&oaf);
-			oaf.where = paf->where;
-			oaf.type = paf->type;
-			oaf.level = paf->level;
-			oaf.duration = paf->duration;
-			oaf.location = paf->location;
-			oaf.modifier = paf->modifier;
-			copy_vector(oaf.bitvector, paf->bitvector);
+			oaf.where = paf.where;
+			oaf.type = paf.type;
+			oaf.level = paf.level;
+			oaf.duration = paf.duration;
+			oaf.location = paf.location;
+			oaf.modifier = paf.modifier;
+			copy_vector(oaf.bitvector, paf.bitvector);
 			affect_to_obj(obj, &oaf);
 		}
 	}
@@ -3200,7 +3196,6 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	ROOM_INDEX_DATA *room;
 	EXIT_DATA *exit;
 	DESCRIPTOR_DATA *d;
-	AFFECT_DATA *af;
 	FILE *fp;
 	int vnum, nMatch = 0;
 
@@ -3231,10 +3226,7 @@ void do_dump(CHAR_DATA *ch, char *argument)
 		if (fch->pcdata != nullptr)
 			num_pcs++;
 
-		for (af = fch->affected; af != nullptr; af = af->next)
-		{
-			aff_count++;
-		}
+		aff_count += fch->affected.size();
 	}
 
 	for (fch = char_free; fch != nullptr; fch = fch->next)
@@ -3277,10 +3269,7 @@ void do_dump(CHAR_DATA *ch, char *argument)
 
 		if (pObjIndex != nullptr)
 		{
-			for (af = pObjIndex->affected; af != nullptr; af = af->next)
-			{
-				aff_count++;
-			}
+			aff_count += pObjIndex->affected.size();
 
 			nMatch++;
 		}
@@ -3306,14 +3295,10 @@ void do_dump(CHAR_DATA *ch, char *argument)
 
 	fprintf(fp, "Objs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(*obj)), count2, count2 * (sizeof(*obj)));
 
-	/* affects */
+	/* affects — no free list any more (affects are owned by value) */
 	count = 0;
-	for (af = affect_free; af != nullptr; af = af->next)
-	{
-		count++;
-	}
 
-	fprintf(fp, "Affects	%4d (%8lu bytes), %2d free (%lu bytes)\n", aff_count, aff_count * (sizeof(*af)), count, count * (sizeof(*af)));
+	fprintf(fp, "Affects	%4d (%8lu bytes), %2d free (%lu bytes)\n", aff_count, aff_count * (sizeof(AFFECT_DATA)), count, count * (sizeof(AFFECT_DATA)));
 
 	/* rooms */
 	fprintf(fp, "Rooms	%4d (%8lu bytes)\n", top_room, top_room * (sizeof(*room)));

@@ -285,7 +285,6 @@ void do_affrem(CHAR_DATA *ch, char *argument)
 	char buf[MAX_STRING_LENGTH];
 	CHAR_DATA *victim;
 	int sn;
-	AFFECT_DATA *af, *af_next;
 	bool remove = true;
 	argument = one_argument(argument, arg1);
 	argument = one_argument(argument, arg2);
@@ -321,19 +320,22 @@ void do_affrem(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (af = victim->affected; af != nullptr; af = af_next)
+	for (auto it = victim->affected.begin(); it != victim->affected.end(); )
 	{
-		af_next = af->next;
+		auto next = std::next(it);
 
-		if (IS_SET(af->bitvector, AFF_PERMANENT) && get_trust(ch) < MAX_LEVEL && af->type == sn)
+		if (IS_SET(it->bitvector, AFF_PERMANENT) && get_trust(ch) < MAX_LEVEL && it->type == sn)
 		{
 			send_to_char("You cannot remove a permanent affect.\n\r", ch);
 			remove = false;
+			it = next;
 			continue;
 		}
 
-		if (af->type == sn)
-			affect_remove(victim, af);
+		if (it->type == sn)
+			affect_remove(victim, &*it);
+
+		it = next;
 	}
 
 	if (skill_table[sn].msg_off && remove)

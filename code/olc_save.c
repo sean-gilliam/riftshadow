@@ -369,7 +369,6 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 	long i;
 	long dummy[MAX_BITVECTOR];
 	OBJ_APPLY_DATA *app;
-	AFFECT_DATA *paf;
 
 	zero_vector(dummy);
 
@@ -516,12 +515,12 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 			fprintf(fp, "FLAG VUL %s\n", (upstring(flag_name_lookup(i, imm_flags))));
 	}
 
-	for (paf = pObjIndex->charaffs; paf; paf = paf->next)
+	for (auto &paf : pObjIndex->charaffs)
 	{
 		fprintf(fp, "FLAG AFF '%s' %s %s\n",
-			skill_table[paf->type].name,
-			affect_bit_name(paf->bitvector),
-			paf->aftype == AFT_SPELL ? "SHOW" : "NOSHOW");
+			skill_table[paf.type].name,
+			affect_bit_name(paf.bitvector),
+			paf.aftype == AFT_SPELL ? "SHOW" : "NOSHOW");
 	}
 
 	if (pObjIndex->wear_loc_name)

@@ -3912,9 +3912,7 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 {
 	OBJ_INDEX_DATA *pObj;
 	char buf[MAX_STRING_LENGTH];
-	OBJ_APPLY_DATA *paf;
 	int cnt, i;
-	AFFECT_DATA *af;
 
 	EDIT_OBJ(ch, pObj);
 
@@ -4148,7 +4146,7 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 	if (!IS_ZERO_VECTOR(pObj->imm_flags)
 		|| !IS_ZERO_VECTOR(pObj->res_flags)
 		|| !IS_ZERO_VECTOR(pObj->vuln_flags)
-		|| pObj->charaffs)
+		|| !pObj->charaffs.empty())
 	{
 		send_to_char("Flag data:\n\r", ch);
 
@@ -4170,17 +4168,17 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 			send_to_char(buf, ch);
 		}
 
-		if (pObj->charaffs)
+		if (!pObj->charaffs.empty())
 		{
 			i = 0;
 
 			std::string buffer = std::string(" AFF ");
-			for (af = pObj->charaffs; af; af = af->next)
+			for (auto &af : pObj->charaffs)
 			{
 				if (i > 0)
 					buffer += fmt::format("{}     ", buffer);
 
-				buffer += fmt::format("[{}]\n\r", skill_table[af->type].name);
+				buffer += fmt::format("[{}]\n\r", skill_table[af.type].name);
 				i++;
 			}
 
@@ -4660,11 +4658,7 @@ bool oedit_flag(CHAR_DATA *ch, char *argument)
 
 		if (!str_cmp(arg3, "delete"))
 		{
-			for (af = pObj->charaffs; af != nullptr; af = af->next)
-			{
-				if (af->type == skill_lookup(arg2))
-					break;
-			}
+			af = affect_find(pObj->charaffs, skill_lookup(arg2));
 
 			if (af == nullptr || skill_lookup(arg2) == -1)
 			{

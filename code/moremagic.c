@@ -309,10 +309,10 @@ bool cleansed(CHAR_DATA *ch, CHAR_DATA *victim, int diffmodifier, int sn)
 int get_affect_level(CHAR_DATA *ch, int sn)
 {
 	// Go through all affects on ch and return the level of the one that matches sn.
-	for (AFFECT_DATA *paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type == sn)
-			return paf->level;
+		if (paf.type == sn)
+			return paf.level;
 	}
 
 	return -1;
@@ -379,10 +379,14 @@ void spell_awaken(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	for (laf = victim->affected; laf != nullptr; laf = laf->next)
+	laf = nullptr;
+	for (auto &laf_elem : victim->affected)
 	{
-		if (IS_SET(laf->bitvector, AFF_SLEEP))
+		if (IS_SET(laf_elem.bitvector, AFF_SLEEP))
+		{
+			laf = &laf_elem;
 			break;
+		}
 	}
 
 	if (laf == nullptr)

@@ -238,7 +238,6 @@ void fread_charmie(CHAR_DATA *ch, FILE *fp)
 
 void fwrite_char(CHAR_DATA *ch, FILE *fp)
 {
-	AFFECT_DATA *paf;
 	int sn, gn, pos;
 	int i, j;
 	OBJ_DATA *obj;
@@ -574,26 +573,26 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 		}
 	}
 
-	for (paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type < 0 || paf->type >= MAX_SKILL)
+		if (paf.type < 0 || paf.type >= MAX_SKILL)
 			continue;
 
-		if (paf->type == gsn_word_of_command || paf->type == gsn_disguise || paf->type == gsn_indomitable_spirit)
+		if (paf.type == gsn_word_of_command || paf.type == gsn_disguise || paf.type == gsn_indomitable_spirit)
 			continue;
 
-		paf->aftype = isAftSpell(paf->aftype);
+		paf.aftype = isAftSpell(paf.aftype);
 
 		fprintf(fp, "Affc '%s' %3d %3d %3d %3d %3d %s %3d %s '%s'\n",
-			skill_table[paf->type].name,
-			paf->where,
-			paf->level,
-			paf->duration,
-			paf->modifier,
-			paf->location,
-			print_flags(paf->bitvector),
-			paf->aftype,
-			paf->owner ? paf->owner->name : "none", paf->name ? paf->name : "none");
+			skill_table[paf.type].name,
+			paf.where,
+			paf.level,
+			paf.duration,
+			paf.modifier,
+			paf.location,
+			print_flags(paf.bitvector),
+			paf.aftype,
+			paf.owner ? paf.owner->name : "none", paf.name ? paf.name : "none");
 	}
 
 	if (!ch->pcdata->trophy.empty()
@@ -1236,49 +1235,47 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 
 				if (!str_cmp(word, "Affc"))
 				{
-					AFFECT_DATA *paf;
+					AFFECT_DATA paf;
 					CHAR_DATA *wch;
 					char *owner;
 					char *afname;
 					int sn;
 
-					paf = new_affect();
-					init_affect(paf);
+					init_affect(&paf);
 					sn = skill_lookup(fread_word(fp));
 
 					if (sn < 0)
 						RS.Logger.Warn("Fread_char: unknown skill.");
 					else
-						paf->type = sn;
+						paf.type = sn;
 
-					paf->where = fread_number(fp);
-					paf->level = fread_number(fp);
-					paf->duration = fread_number(fp);
-					paf->modifier = fread_number(fp);
-					paf->location = fread_number(fp);
-					fread_flag_new(paf->bitvector, fp);
-					paf->aftype = fread_number(fp);
+					paf.where = fread_number(fp);
+					paf.level = fread_number(fp);
+					paf.duration = fread_number(fp);
+					paf.modifier = fread_number(fp);
+					paf.location = fread_number(fp);
+					fread_flag_new(paf.bitvector, fp);
+					paf.aftype = fread_number(fp);
 
 					owner = fread_word(fp);
 					for (wch = char_list; wch; wch = wch->next)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf->owner = wch;
+							paf.owner = wch;
 							break;
 						}
 					}
 
 					if (!str_cmp(ch->name, owner))
-						paf->owner = ch;
+						paf.owner = ch;
 
 					afname = fread_word(fp);
 
 					if (str_cmp(afname, "none"))
-						paf->name = palloc_string(afname);
+						paf.name = palloc_string(afname);
 
-					paf->next = ch->affected;
-					ch->affected = paf;
+					ch->affected.push_front(paf);
 					fMatch = true;
 					break;
 				}
@@ -1891,38 +1888,37 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 					CHAR_DATA *wch = nullptr;
 					char *owner;
 					char *afname;
-					AFFECT_DATA *paf;
+					AFFECT_DATA paf;
 					int sn;
 
-					paf = new_affect();
-					init_affect(paf);
+					init_affect(&paf);
 					sn = skill_lookup(fread_word(fp));
 
 					if (sn < 0)
 						RS.Logger.Warn("Fread_char: unknown skill.");
 					else
-						paf->type = sn;
+						paf.type = sn;
 
-					paf->where = fread_number(fp);
-					paf->level = fread_number(fp);
-					paf->duration = fread_number(fp);
-					paf->modifier = fread_number(fp);
-					paf->location = fread_number(fp);
+					paf.where = fread_number(fp);
+					paf.level = fread_number(fp);
+					paf.duration = fread_number(fp);
+					paf.modifier = fread_number(fp);
+					paf.location = fread_number(fp);
 
-					fread_flag_new(paf->bitvector, fp);
+					fread_flag_new(paf.bitvector, fp);
 
-					paf->aftype = fread_number(fp);
+					paf.aftype = fread_number(fp);
 
 					owner = fread_word(fp);
 
 					if (strcmp(owner, "none")) // safe default
-						paf->owner = ch;
+						paf.owner = ch;
 
 					for (wch = char_list; wch; wch = wch->next)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf->owner = wch;
+							paf.owner = wch;
 							break;
 						}
 					}
@@ -1930,10 +1926,9 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 					afname = fread_word(fp);
 
 					if (str_cmp(afname, "none"))
-						paf->name = palloc_string(afname);
+						paf.name = palloc_string(afname);
 
-					paf->next = pet->affected;
-					pet->affected = paf;
+					pet->affected.push_front(paf);
 					fMatch = true;
 					break;
 				}

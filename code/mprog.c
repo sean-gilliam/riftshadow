@@ -2497,11 +2497,13 @@ void pulse_prog_wizard_summon(CHAR_DATA *mob)
 
 		if (is_affected(mob, gsn_bash))
 		{
-			for (paf = mob->affected; paf; paf = paf->next)
+			paf = nullptr;
+			for (auto &paf_elem : mob->affected)
 			{
-				if (paf->type == gsn_bash && paf->owner == vch)
+				if (paf_elem.type == gsn_bash && paf_elem.owner == vch)
 				{
 					found = true;
+					paf = &paf_elem;
 					break;
 				}
 			}

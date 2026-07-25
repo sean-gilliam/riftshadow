@@ -58,7 +58,6 @@ const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192
 
 DESCRIPTOR_DATA *descriptor_free;
 GEN_DATA *gen_data_free;
-AFFECT_DATA *affect_free;
 RUNE_DATA *rune_free;
 QUEUE_DATA *queue_free;
 OBJ_DATA *obj_free;
@@ -356,27 +355,72 @@ extra_descr_data &extra_descr_data::operator=(extra_descr_data &&other) noexcept
 	return *this;
 }
 
-/* stuff for recycling affects */
-
-AFFECT_DATA *new_affect(void)
+/* An affect owns its `name` string; the rest of its fields are trivially
+ * copied. `owner` is a non-owning back-reference copied as-is. */
+static void copy_affect_payload(AFFECT_DATA &dst, const AFFECT_DATA &src)
 {
-	static AFFECT_DATA af_zero;
-	AFFECT_DATA *af;
+	dst.owner = src.owner;
+	dst.where = src.where;
+	dst.type = src.type;
+	dst.level = src.level;
+	dst.duration = src.duration;
+	dst.location = src.location;
+	dst.modifier = src.modifier;
+	dst.mod_name = src.mod_name;
+	copy_vector(dst.bitvector, src.bitvector);
+	dst.aftype = src.aftype;
+	dst.tick_fun = src.tick_fun;
+	dst.pulse_fun = src.pulse_fun;
+	dst.end_fun = src.end_fun;
+	dst.init_duration = src.init_duration;
+	dst.beat_fun = src.beat_fun;
+}
 
-	if (affect_free == nullptr)
+affect_data::~affect_data()
+{
+	free_pstring(name);
+}
+
+affect_data::affect_data(const affect_data &other)
+{
+	copy_affect_payload(*this, other);
+	name = other.name ? palloc_string(other.name) : nullptr;
+}
+
+affect_data &affect_data::operator=(const affect_data &other)
+{
+	if (this != &other)
 	{
-		af = new AFFECT_DATA;
+		char *new_name = other.name ? palloc_string(other.name) : nullptr;
+
+		free_pstring(name);
+		name = new_name;
+
+		copy_affect_payload(*this, other);
 	}
-	else
+
+	return *this;
+}
+
+affect_data::affect_data(affect_data &&other) noexcept
+{
+	copy_affect_payload(*this, other);
+	name = other.name;
+	other.name = nullptr;
+}
+
+affect_data &affect_data::operator=(affect_data &&other) noexcept
+{
+	if (this != &other)
 	{
-		af = affect_free;
-		affect_free = affect_free->next;
+		free_pstring(name);
+
+		copy_affect_payload(*this, other);
+		name = other.name;
+		other.name = nullptr;
 	}
 
-	*af = af_zero;
-
-	af->valid = true;
-	return af;
+	return *this;
 }
 
 TRAP_DATA *new_trap(void)
@@ -444,18 +488,6 @@ void free_queue(QUEUE_DATA *queue)
 	queue_free = queue;
 }
 
-void free_affect(AFFECT_DATA *af)
-{
-	if (!(af != nullptr && af->valid))
-		return;
-
-	free_pstring(af->name);
-
-	af->valid = false;
-	af->next = affect_free;
-	affect_free = af;
-}
-
 /* stuff for recycling objects */
 
 OBJ_DATA *new_obj(void)
@@ -485,6 +517,7 @@ void free_obj(OBJ_DATA *obj)
 		return;
 
 	obj->affected.clear();
+	obj->charaffs.clear();	// obj owns its charaffs copy now (was shared with the index)
 	obj->extra_descr.clear();
 	obj->apply.clear();		// obj owns its apply copy now (was shared with the index)
 
@@ -569,8 +602,6 @@ void free_char(CHAR_DATA *ch)
 {
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
-	AFFECT_DATA *paf;
-	AFFECT_DATA *paf_next;
 
 	if (!(ch != nullptr && ch->valid) || !ch)
 		return;
@@ -584,13 +615,14 @@ void free_char(CHAR_DATA *ch)
 		extract_obj(obj);
 	}
 
-	for (paf = ch->affected; paf != nullptr; paf = paf_next)
+	for (auto it = ch->affected.begin(); it != ch->affected.end(); )
 	{
-		paf_next = paf->next;
-		paf->pulse_fun = nullptr;
-		paf->tick_fun = nullptr;
-		paf->end_fun = nullptr;
-		affect_remove(ch, paf);
+		auto next = std::next(it);
+		it->pulse_fun = nullptr;
+		it->tick_fun = nullptr;
+		it->end_fun = nullptr;
+		affect_remove(ch, &*it);
+		it = next;
 	}
 
 	ch->memory.clear();

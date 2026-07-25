@@ -66,16 +66,16 @@ void spell_healing_sleep(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void healing_sleep_end(CHAR_DATA *ch, AFFECT_DATA *af)
 {
-	AFFECT_DATA *laf;
-
 	if (is_awake(ch))
 		return;
 
-	for (laf = ch->affected; laf != nullptr; laf = laf->next)
-	{
-		if (laf->type > 5 && skill_table[laf->type].dispel & CAN_CLEANSE)
-			affect_strip(ch, laf->type);
-	}
+	std::vector<int> cleanse_types;
+	for (auto &laf : ch->affected)
+		if (laf.type > 5 && skill_table[laf.type].dispel & CAN_CLEANSE)
+			cleanse_types.push_back(laf.type);
+
+	for (int cleanse_type : cleanse_types)
+		affect_strip(ch, cleanse_type);
 
 	ch->position = POS_STANDING;
 	ch->hit = ch->max_hit;

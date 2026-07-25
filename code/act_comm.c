@@ -98,9 +98,9 @@ void do_delete(CHAR_DATA *ch, char *argument)
 			wiznet("$N turns $Mself into line noise.", ch, nullptr, 0, 0, 0);
 			ch->pause = 0;
 
-			while (ch->affected)
+			while (!ch->affected.empty())
 			{
-				affect_remove(ch, ch->affected);
+				affect_remove(ch, &ch->affected.front());
 			}
 
 			stop_fighting(ch, true);
@@ -1867,11 +1867,14 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 
 		if (is_affected(wch, gsn_empathy))
 		{
-			auto laf = wch->affected;
-			for (; laf != nullptr; laf = laf->next)
+			AFFECT_DATA *laf = nullptr;
+			for (auto &laf_elem : wch->affected)
 			{
-				if (laf->type == gsn_empathy)
+				if (laf_elem.type == gsn_empathy)
+				{
+					laf = &laf_elem;
 					break;
+				}
 			}
 
 			if (laf->owner == ch)

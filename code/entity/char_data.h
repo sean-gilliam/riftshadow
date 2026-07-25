@@ -11,6 +11,7 @@
 #include "mob_index_data.h"				// Class() falls back through pIndexData
 #include "pc_data.h"					// Profs() reaches into pcdata
 #include "mem_data.h"					// MEM_DATA held by value in ch->memory
+#include "affect_data.h"				// AFFECT_DATA held by value in ch->affected
 
 //
 // One character (PC or NPC).
@@ -39,7 +40,7 @@ public:
 	GAME_FUN *game_fun;
 	MOB_INDEX_DATA *pIndexData;
 	DESCRIPTOR_DATA *desc;
-	AFFECT_DATA *affected;
+	std::list<AFFECT_DATA> affected;
 	NOTE_DATA *pnote;
 	OBJ_DATA *carrying;
 	OBJ_DATA *on;

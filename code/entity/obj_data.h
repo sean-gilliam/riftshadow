@@ -23,7 +23,7 @@ struct obj_data
 	std::list<EXTRA_DESCR_DATA> extra_descr;
 	std::list<OBJ_APPLY_DATA> apply;
 	std::list<OBJ_AFFECT_DATA> affected;
-	AFFECT_DATA *charaffs;
+	std::list<AFFECT_DATA> charaffs;
 	OBJ_INDEX_DATA *pIndexData;
 	ROOM_INDEX_DATA *in_room;
 	RUNE_DATA *rune;

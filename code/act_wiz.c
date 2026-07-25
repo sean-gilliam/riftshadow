@@ -1829,7 +1829,6 @@ void do_rstat(CHAR_DATA *ch, char *argument)
 void do_ostat(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_STRING_LENGTH], arg[MAX_INPUT_LENGTH], buf2[MSL];
-	AFFECT_DATA *paf2;
 	OBJ_DATA *obj;
 
 	one_argument(argument, arg);
@@ -2286,11 +2285,11 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 		send_to_char(buf, ch);
 	}
 
-	for (paf2 = obj->charaffs; paf2; paf2 = paf2->next)
+	for (auto &paf2 : obj->charaffs)
 	{
-		if (paf2->bitvector)
+		if (paf2.bitvector)
 		{
-			sprintf(buf, "Imbues wearer with %s.\n\r", affect_bit_name(paf2->bitvector));
+			sprintf(buf, "Imbues wearer with %s.\n\r", affect_bit_name(paf2.bitvector));
 			send_to_char(buf, ch);
 		}
 	}
@@ -2507,7 +2506,6 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	char buf2[MAX_STRING_LENGTH];
 	char cred[MSL], tbuf[MSL];
 	char arg[MAX_INPUT_LENGTH];
-	AFFECT_DATA *paf;
 	CHAR_DATA *victim;
 	ROOM_INDEX_DATA *barred;
 	int i, x;
@@ -3027,43 +3025,43 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		send_to_char(buf, ch);
 	}
 
-	for (paf = victim->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : victim->affected)
 	{
-		if (paf->aftype == AFT_SPELL)
+		if (paf.aftype == AFT_SPELL)
 			sprintf(buf2, "Spell");
-		else if (paf->aftype == AFT_SKILL)
+		else if (paf.aftype == AFT_SKILL)
 			sprintf(buf2, "Skill");
-		else if (paf->aftype == AFT_POWER)
+		else if (paf.aftype == AFT_POWER)
 			sprintf(buf2, "Power");
-		else if (paf->aftype == AFT_MALADY)
+		else if (paf.aftype == AFT_MALADY)
 			sprintf(buf2, "Malady");
-		else if (paf->aftype == AFT_COMMUNE)
+		else if (paf.aftype == AFT_COMMUNE)
 			sprintf(buf2, "Commune");
-		else if (paf->aftype == AFT_INVIS)
+		else if (paf.aftype == AFT_INVIS)
 			sprintf(buf2, "Hidden Affect");
-		else if (paf->aftype == AFT_RUNE)
+		else if (paf.aftype == AFT_RUNE)
 			sprintf(buf2, "Rune");
-		else if (paf->aftype == AFT_TIMER)
+		else if (paf.aftype == AFT_TIMER)
 			sprintf(buf2, "Timer");
 		else
 			sprintf(buf2, "Spell");
 
 		buffer = fmt::sprintf("%s: '%s' %s%s%smodifies %s by %d for %d%s hours with %s-bits %s, owner %s, level %d.\n\r",
 			buf2,
-			skill_table[(int)paf->type].name,
-			paf->name ? "(" : "", paf->name ? paf->name : "",
-			paf->name ? ") " : "",
-			str_cmp(affect_loc_name(paf->location), "none")
-				? affect_loc_name(paf->location)
-				: apply_locations[paf->location].name,
-			paf->modifier,
-			(paf->duration == -1) ? -1 : (paf->duration / 2) + 1,
-			(paf->duration % 2 == 0) ? "" : (paf->duration == -1) ? "" : ".5",
-			paf->where == TO_IMMUNE ? "imm" : paf->where == TO_RESIST ? "res" : paf->where == TO_VULN ? "vuln" : "aff",
-			paf->where == TO_IMMUNE || paf->where == TO_RESIST || paf->where == TO_VULN
-				? imm_bit_name(paf->bitvector)
-				: affect_bit_name(paf->bitvector),
-			paf->owner != nullptr ? paf->owner->true_name : "none", paf->level);
+			skill_table[(int)paf.type].name,
+			paf.name ? "(" : "", paf.name ? paf.name : "",
+			paf.name ? ") " : "",
+			str_cmp(affect_loc_name(paf.location), "none")
+				? affect_loc_name(paf.location)
+				: apply_locations[paf.location].name,
+			paf.modifier,
+			(paf.duration == -1) ? -1 : (paf.duration / 2) + 1,
+			(paf.duration % 2 == 0) ? "" : (paf.duration == -1) ? "" : ".5",
+			paf.where == TO_IMMUNE ? "imm" : paf.where == TO_RESIST ? "res" : paf.where == TO_VULN ? "vuln" : "aff",
+			paf.where == TO_IMMUNE || paf.where == TO_RESIST || paf.where == TO_VULN
+				? imm_bit_name(paf.bitvector)
+				: affect_bit_name(paf.bitvector),
+			paf.owner != nullptr ? paf.owner->true_name : "none", paf.level);
 		send_to_char(buffer.c_str(), ch);
 	}
 
@@ -6288,7 +6286,6 @@ void do_prefix(CHAR_DATA *ch, char *argument)
 void do_astrip(CHAR_DATA *ch, char *argument)
 {
 	CHAR_DATA *victim;
-	AFFECT_DATA *af, *af_next;
 	char arg[MAX_STRING_LENGTH];
 
 	one_argument(argument, arg);
@@ -6304,14 +6301,14 @@ void do_astrip(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (af = victim->affected; af != nullptr; af = af_next)
+	for (auto it = victim->affected.begin(); it != victim->affected.end(); )
 	{
-		af_next = af->next;
+		auto next = std::next(it);
 
-		if (IS_SET(af->bitvector, AFF_PERMANENT))
-			continue;
+		if (!IS_SET(it->bitvector, AFF_PERMANENT))
+			affect_remove(victim, &*it);
 
-		affect_remove(victim, af);
+		it = next;
 	}
 
 	if (victim != ch)
@@ -6525,7 +6522,7 @@ void do_max_limits(CHAR_DATA *ch, char *argument)
 void do_addapply(CHAR_DATA *ch, char *argument)
 {
 	OBJ_DATA *obj;
-	AFFECT_DATA *paf, *paf_next, af;
+	AFFECT_DATA af;
 	char arg1[MAX_INPUT_LENGTH];
 	char arg2[MAX_INPUT_LENGTH];
 	char arg3[MAX_INPUT_LENGTH];
@@ -6559,13 +6556,7 @@ void do_addapply(CHAR_DATA *ch, char *argument)
 
 	if (!str_prefix(arg2, "clear"))
 	{
-		for (paf = obj->charaffs; paf; paf = paf_next)
-		{
-			paf_next = paf->next;
-			free_affect(paf);
-		}
-
-		obj->charaffs = nullptr;
+		obj->charaffs.clear();
 
 		obj->apply.clear();
 

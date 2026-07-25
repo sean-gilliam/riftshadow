@@ -738,7 +738,6 @@ void reset_char(CHAR_DATA *ch)
 {
 	int loc, stat;
 	OBJ_DATA *obj;
-	AFFECT_DATA *af;
 	int i;
 
 	if (is_npc(ch))
@@ -757,9 +756,9 @@ void reset_char(CHAR_DATA *ch)
 			if (obj == nullptr)
 				continue;
 
-			for (af = obj->charaffs; af != nullptr; af = af->next)
+			for (auto &af : obj->charaffs)
 			{
-				affect_strip(ch, af->type);
+				affect_strip(ch, af.type);
 			}
 
 			for (const auto &app : obj->apply)
@@ -819,9 +818,9 @@ void reset_char(CHAR_DATA *ch)
 			ch->armor[i] += apply_ac(obj, loc, i);
 		}
 
-		for (af = obj->charaffs; af != nullptr; af = af->next)
+		for (auto &af : obj->charaffs)
 		{
-			affect_modify(ch, af, true);
+			affect_modify(ch, &af, true);
 		}
 
 		for (const auto &app : obj->apply)
@@ -831,9 +830,9 @@ void reset_char(CHAR_DATA *ch)
 	}
 
 	/* now add back spell effects */
-	for (af = ch->affected; af != nullptr; af = af->next)
+	for (auto &af : ch->affected)
 	{
-		modify_location(ch, af->location, af->modifier, true);
+		modify_location(ch, af.location, af.modifier, true);
 	}
 
 	/* make sure sex is RIGHT!!!! */
@@ -1316,14 +1315,12 @@ void affect_modify(CHAR_DATA *ch, AFFECT_DATA *paf, bool fAdd)
 }
 
 /* find an effect in an affect list */
-AFFECT_DATA *affect_find(AFFECT_DATA *paf, int sn)
+AFFECT_DATA *affect_find(std::list<AFFECT_DATA> &affects, int sn)
 {
-	AFFECT_DATA *paf_find;
-
-	for (paf_find = paf; paf_find != nullptr; paf_find = paf_find->next)
+	for (auto &paf : affects)
 	{
-		if (paf_find->type == sn)
-			return paf_find;
+		if (paf.type == sn)
+			return &paf;
 	}
 
 	return nullptr;
@@ -1365,14 +1362,12 @@ AREA_AFFECT_DATA *affect_find_area(std::list<AREA_AFFECT_DATA> &affects, int sn)
 /* fix object affects when removing one */
 void affect_check(CHAR_DATA *ch, int where, long vector[])
 {
-	AFFECT_DATA *paf;
-
 	if (where == TO_OBJECT || where == TO_WEAPON || vector == 0)
 		return;
 
-	for (paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->where == where && vector_equal(paf->bitvector, vector))
+		if (paf.where == where && vector_equal(paf.bitvector, vector))
 		{
 			switch (where)
 			{
@@ -1405,8 +1400,6 @@ void affect_to_char(CHAR_DATA *ch, AFFECT_DATA *paf)
 
 void new_affect_to_char(CHAR_DATA *ch, AFFECT_DATA *paf)
 {
-	AFFECT_DATA *paf_new;
-
 	if (IS_SET(ch->imm_flags, IMM_SLEEP) && IS_SET(paf->bitvector, AFF_SLEEP) && paf->where == TO_AFFECTS)
 	{
 		send_to_char("You are unaffected.\n\r", ch);
@@ -1426,16 +1419,9 @@ void new_affect_to_char(CHAR_DATA *ch, AFFECT_DATA *paf)
 	// set initial duration
 	paf->init_duration = paf->duration;
 
-	paf_new = new_affect();
-	*paf_new = *paf;
+	ch->affected.push_front(*paf);
 
-	paf_new->next = ch->affected;
-	ch->affected = paf_new;
-
-	/* Morg - Valgrind fix */
-	paf_new->valid = true;
-
-	affect_modify(ch, paf_new, true);
+	affect_modify(ch, &ch->affected.front(), true);
 }
 
 /*
@@ -1446,7 +1432,7 @@ void affect_remove(CHAR_DATA *ch, AFFECT_DATA *paf)
 	int where;
 	long vector[MAX_BITVECTOR];
 
-	if (ch->affected == nullptr)
+	if (ch->affected.empty())
 	{
 		RS.Logger.Warn("Affect_remove: no affect on {}.", ch->name);
 		return;
@@ -1459,31 +1445,23 @@ void affect_remove(CHAR_DATA *ch, AFFECT_DATA *paf)
 	where = paf->where;
 	copy_vector(vector, paf->bitvector);
 
-	if (paf == ch->affected)
+	bool found = false;
+	for (auto it = ch->affected.begin(); it != ch->affected.end(); ++it)
 	{
-		ch->affected = paf->next;
-	}
-	else
-	{
-		AFFECT_DATA *prev;
-
-		for (prev = ch->affected; prev != nullptr; prev = prev->next)
+		if (&*it == paf)
 		{
-			if (prev->next == paf)
-			{
-				prev->next = paf->next;
-				break;
-			}
-		}
-
-		if (prev == nullptr)
-		{
-			RS.Logger.Warn("Affect_remove: cannot find paf.");
-			return;
+			ch->affected.erase(it);
+			found = true;
+			break;
 		}
 	}
 
-	free_affect(paf);
+	if (!found)
+	{
+		RS.Logger.Warn("Affect_remove: cannot find paf.");
+		return;
+	}
+
 	affect_check(ch, where, vector);
 }
 
@@ -1492,17 +1470,14 @@ void affect_remove(CHAR_DATA *ch, AFFECT_DATA *paf)
  */
 void affect_strip(CHAR_DATA *ch, int sn)
 {
-	AFFECT_DATA *paf;
-	AFFECT_DATA *paf_next;
-
-	for (paf = ch->affected; paf != nullptr; paf = paf_next)
+	for (auto it = ch->affected.begin(); it != ch->affected.end(); )
 	{
-		paf_next = paf->next;
+		auto next = std::next(it);
 
-		if (paf->type == sn)
-		{
-			affect_remove(ch, paf);
-		}
+		if (it->type == sn)
+			affect_remove(ch, &*it);
+
+		it = next;
 	}
 }
 
@@ -1511,14 +1486,12 @@ void affect_strip(CHAR_DATA *ch, int sn)
  */
 bool is_affected(CHAR_DATA *ch, int sn)
 {
-	AFFECT_DATA *paf;
-
 	if (!ch)
 		return false;
 
-	for (paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type == sn)
+		if (paf.type == sn)
 			return true;
 	}
 
@@ -1552,17 +1525,15 @@ void affect_join(CHAR_DATA *ch, AFFECT_DATA *paf)
 
 void new_affect_join(CHAR_DATA *ch, AFFECT_DATA *paf)
 {
-	AFFECT_DATA *paf_old;
-
-	for (paf_old = ch->affected; paf_old != nullptr; paf_old = paf_old->next)
+	for (auto &paf_old : ch->affected)
 	{
-		if (paf_old->type == paf->type)
+		if (paf_old.type == paf->type)
 		{
-			paf->level = (paf->level + paf_old->level) / 2;
-			paf->duration += paf_old->duration;
-			paf->modifier += paf_old->modifier;
+			paf->level = (paf->level + paf_old.level) / 2;
+			paf->duration += paf_old.duration;
+			paf->modifier += paf_old.modifier;
 
-			affect_remove(ch, paf_old);
+			affect_remove(ch, &paf_old);
 			break;
 		}
 	}
@@ -1647,10 +1618,14 @@ void char_from_room(CHAR_DATA *ch)
 	}
 	if (!is_affected(ch, gsn_pull) && (check_entwine(ch, 1) || check_entwine(ch, 2)))
 	{
-		for (aaf = ch->affected; aaf != nullptr; aaf = aaf->next)
+		aaf = nullptr;
+		for (auto &aaf_elem : ch->affected)
 		{
-			if (aaf->type == gsn_entwine && (aaf->modifier == 1 || aaf->location == APPLY_DEX))
+			if (aaf_elem.type == gsn_entwine && (aaf_elem.modifier == 1 || aaf_elem.location == APPLY_DEX))
+			{
+				aaf = &aaf_elem;
 				break;
+			}
 		}
 
 		do_uncoil(aaf->owner, "automagic");
@@ -1712,12 +1687,13 @@ void char_to_room(CHAR_DATA *ch, ROOM_INDEX_DATA *pRoomIndex)
 
 	if (is_affected_by(ch, AFF_PLAGUE))
 	{
-		AFFECT_DATA *af;
+		AFFECT_DATA *af = nullptr;
 
-		for (af = ch->affected; af; af = af->next)
+		for (auto &af_elem : ch->affected)
 		{
-			if (af->tick_fun == plague_tick)
+			if (af_elem.tick_fun == plague_tick)
 			{
+				af = &af_elem;
 				break;
 			}
 		}
@@ -1874,7 +1850,6 @@ bool is_worn(OBJ_DATA *obj)
  */
 void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
 {
-	AFFECT_DATA *paf, *fmaf;
 	int i;
 	bool status;
 
@@ -1889,17 +1864,16 @@ void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
 
 	if (!is_npc(ch) && is_affected(ch, gsn_false_motives))
 	{
-		AFFECT_DATA *pal;
-		for (pal = ch->affected; pal; pal = pal->next)
+		for (auto &pal : ch->affected)
 		{
-			if (pal->type == gsn_false_motives && pal->location == APPLY_ALIGNMENT)
-				palign -= pal->modifier;
+			if (pal.type == gsn_false_motives && pal.location == APPLY_ALIGNMENT)
+				palign -= pal.modifier;
 		}
 
-		for (pal = ch->affected; pal; pal = pal->next)
+		for (auto &pal : ch->affected)
 		{
-			if (pal->type == gsn_false_motives && pal->location == APPLY_ETHOS)
-				pethos -= pal->modifier;
+			if (pal.type == gsn_false_motives && pal.location == APPLY_ETHOS)
+				pethos -= pal.modifier;
 		}
 	}
 
@@ -1947,9 +1921,9 @@ void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
 		modify_location(ch, app.location, app.modifier, true);
 	}
 
-	for (paf = obj->charaffs; paf != nullptr; paf = paf->next)
+	for (auto &paf : obj->charaffs)
 	{
-		affect_to_char(ch, paf);
+		affect_to_char(ch, &paf);
 	}
 
 	if ((obj->item_type == ITEM_LIGHT || is_obj_stat(obj, ITEM_GLOW)) && ch->in_room)
@@ -1967,7 +1941,6 @@ void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
  */
 void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 {
-	AFFECT_DATA *paf = nullptr;
 	int i, wearloc = obj->wear_loc;
 
 	if (obj->wear_loc == WEAR_NONE)
@@ -2006,9 +1979,9 @@ void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 		modify_location(ch, app.location, app.modifier, false);
 	}
 
-	for (paf = obj->charaffs; paf != nullptr; paf = paf->next)
+	for (auto &paf : obj->charaffs)
 	{
-		affect_strip(ch, paf->type);
+		affect_strip(ch, paf.type);
 	}
 
 	if ((obj->item_type == ITEM_LIGHT || is_obj_stat(obj, ITEM_GLOW)) && ch->in_room)
@@ -2249,7 +2222,6 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 	OBJ_DATA *obj_next;
 	CHAR_DATA *tch;
 	ROOM_INDEX_DATA *room;
-	AFFECT_DATA *af;
 
 	if (ch->in_room == nullptr)
 	{
@@ -2274,10 +2246,10 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 		if (!is_npc(tch) && !is_npc(ch) && tch->pcdata->trusting == ch)
 			tch->pcdata->trusting = nullptr;
 
-		for (af = tch->affected; af; af = af->next)
+		for (auto &af : tch->affected)
 		{
-			if (af->owner == ch)
-				af->owner = nullptr;
+			if (af.owner == ch)
+				af.owner = nullptr;
 		}
 	}
 
@@ -4217,56 +4189,32 @@ char *raffect_bit_name(long vector[])
 
 void charaff_to_obj(OBJ_DATA *obj, AFFECT_DATA *paf)
 {
-	AFFECT_DATA *paf_new;
-
-	paf_new = new_affect();
-	*paf_new = *paf;
-	paf_new->next = obj->charaffs;
-	obj->charaffs = paf_new;
+	obj->charaffs.push_front(*paf);
 }
 
 void charaff_to_obj_index(OBJ_INDEX_DATA *obj, AFFECT_DATA *paf)
 {
-	AFFECT_DATA *paf_new;
-
-	paf_new = new_affect();
-	*paf_new = *paf;
-	paf_new->next = obj->charaffs;
-	obj->charaffs = paf_new;
+	obj->charaffs.push_front(*paf);
 }
 
 void charaff_from_obj_index(OBJ_INDEX_DATA *obj, AFFECT_DATA *paf)
 {
-	if (obj->charaffs == nullptr)
+	if (obj->charaffs.empty())
 	{
 		RS.Logger.Warn("charaff_from_obj_index: no affect.");
 		return;
 	}
 
-	if (paf == obj->charaffs)
+	for (auto it = obj->charaffs.begin(); it != obj->charaffs.end(); ++it)
 	{
-		obj->charaffs = paf->next;
-	}
-	else
-	{
-		AFFECT_DATA *prev;
-		for (prev = obj->charaffs; prev != nullptr; prev = prev->next)
+		if (&*it == paf)
 		{
-			if (prev->next == paf)
-			{
-				prev->next = paf->next;
-				break;
-			}
-		}
-
-		if (prev == nullptr)
-		{
-			RS.Logger.Warn("charaff_from_obj_index: cannot find paf.");
+			obj->charaffs.erase(it);
 			return;
 		}
 	}
 
-	free_affect(paf);
+	RS.Logger.Warn("charaff_from_obj_index: cannot find paf.");
 }
 
 /*
