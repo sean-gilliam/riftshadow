@@ -83,8 +83,6 @@ void free_rune(RUNE_DATA *rune);
 QUEUE_DATA *new_queue(void);
 void free_queue(QUEUE_DATA *queue);
 void free_affect(AFFECT_DATA *af);
-ROOM_AFFECT_DATA *new_affect_room(void);
-void free_affect_room(ROOM_AFFECT_DATA *af);
 OBJ_AFFECT_DATA *new_affect_obj(void);
 void free_affect_obj(OBJ_AFFECT_DATA *af);
 /* object recycling */

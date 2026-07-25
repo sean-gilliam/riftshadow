@@ -4019,7 +4019,7 @@ void load_rooms(FILE *fp)
 		pRoomIndex->alt_description_cond = 0;
 		pRoomIndex->alt_name = nullptr;
 		pRoomIndex->trap = nullptr;
-		pRoomIndex->affected = nullptr;
+		pRoomIndex->affected.clear();
 		zero_vector(pRoomIndex->room_flags);
 
 		pRoomIndex->area = area_last;

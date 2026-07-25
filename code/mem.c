@@ -249,7 +249,7 @@ ROOM_INDEX_DATA *new_room_index(void)
 	pRoom->mana_rate = 100;
 	pRoom->cabal = 0;
 	pRoom->guild = 0;
-	pRoom->affected = nullptr;
+	pRoom->affected.clear();
 
 	zero_vector(pRoom->affected_by);
 

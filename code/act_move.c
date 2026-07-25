@@ -174,12 +174,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (is_affected_room(ch->in_room, gsn_smokescreen))
 	{
-		auto raf = ch->in_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_smokescreen)
-				break;
-		}
+		auto raf = affect_find_room(ch->in_room->affected, gsn_smokescreen);
 
 		if (raf != nullptr)
 		{
@@ -680,18 +675,24 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (is_affected_room(in_room, gsn_tripwire) && is_affected_room(to_room, gsn_tripwire))
 	{
-		auto raf = in_room->affected;
-		for (; raf != nullptr; raf = raf->next)
+		ROOM_AFFECT_DATA *raf = nullptr;
+		for (auto &r : in_room->affected)
 		{
-			if (raf->modifier == door && raf->type == gsn_tripwire)
+			if (r.modifier == door && r.type == gsn_tripwire)
+			{
+				raf = &r;
 				break;
+			}
 		}
 
-		auto raf_two = to_room->affected;
-		for (; raf_two != nullptr; raf_two = raf_two->next)
+		ROOM_AFFECT_DATA *raf_two = nullptr;
+		for (auto &r : to_room->affected)
 		{
-			if (raf_two->modifier == reverse_d(door) && raf->type == gsn_tripwire)
+			if (r.modifier == reverse_d(door) && raf->type == gsn_tripwire)
+			{
+				raf_two = &r;
 				break;
+			}
 		}
 
 		if (is_affected_by(ch, AFF_FLYING))
@@ -722,22 +723,22 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (is_affected_room(to_room, gsn_riptide))
 	{
-		for (auto raf = to_room->affected; raf != nullptr; raf = raf->next)
+		for (auto &raf : to_room->affected)
 		{
-			if (raf->type == gsn_riptide && raf->location == APPLY_ROOM_NONE && raf->modifier == 1)
+			if (raf.type == gsn_riptide && raf.location == APPLY_ROOM_NONE && raf.modifier == 1)
 			{
-				if (is_safe_new(raf->owner, ch, false) || raf->owner == ch)
+				if (is_safe_new(raf.owner, ch, false) || raf.owner == ch)
 					break;
 
-				ROOM_INDEX_DATA *riptideroom;
+				ROOM_INDEX_DATA *riptideroom = nullptr;
 				for (auto room = top_affected_room; room; room = room->aff_next)
 				{
 					if (is_affected_room(room, gsn_riptide))
 					{
-						for (auto raf_two = room->affected; raf_two != nullptr; raf_two = raf_two->next)
+						for (auto &raf_two : room->affected)
 						{
-							if (raf_two->type == gsn_riptide && raf_two->owner == raf->owner &&
-								raf_two->location == APPLY_ROOM_NONE && raf_two->modifier == 2)
+							if (raf_two.type == gsn_riptide && raf_two.owner == raf.owner &&
+								raf_two.location == APPLY_ROOM_NONE && raf_two.modifier == 2)
 								riptideroom = room;
 						}
 					}
@@ -768,12 +769,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	while (is_affected_room(to_room, gsn_frost_growth))
 	{
-		auto raf = to_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_frost_growth)
-				break;
-		}
+		auto raf = affect_find_room(to_room->affected, gsn_frost_growth);
 
 		if (is_affected_by(ch, AFF_FLYING))
 			break;
@@ -809,12 +805,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_npc(ch))
 			break;
 
-		auto raf = to_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_quicksand)
-				break;
-		}
+		auto raf = affect_find_room(to_room->affected, gsn_quicksand);
 
 		if (is_safe_new(raf->owner, ch, false) || is_same_group(raf->owner, ch) || is_same_cabal(raf->owner, ch))
 			break;
@@ -851,12 +842,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	while (is_affected_room(to_room, gsn_stalactites))
 	{
-		auto raf = to_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_stalactites)
-				break;
-		}
+		auto raf = affect_find_room(to_room->affected, gsn_stalactites);
 
 		if (is_safe_new(raf->owner, ch, false) || is_same_group(raf->owner, ch) || is_same_cabal(raf->owner, ch))
 			break;
@@ -894,12 +880,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (is_affected_room(to_room, gsn_caustic_vapor))
 	{
-		auto raf = to_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_caustic_vapor)
-				break;
-		}
+		auto raf = affect_find_room(to_room->affected, gsn_caustic_vapor);
 
 		if (is_immortal(ch))
 			return;

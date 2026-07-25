@@ -1342,14 +1342,12 @@ OBJ_AFFECT_DATA *affect_find_obj(OBJ_AFFECT_DATA *paf, int sn)
 	return nullptr;
 }
 
-ROOM_AFFECT_DATA *affect_find_room(ROOM_AFFECT_DATA *paf, int sn)
+ROOM_AFFECT_DATA *affect_find_room(std::list<ROOM_AFFECT_DATA> &affects, int sn)
 {
-	ROOM_AFFECT_DATA *paf_find;
-
-	for (paf_find = paf; paf_find != nullptr; paf_find = paf_find->next)
+	for (auto &paf : affects)
 	{
-		if (paf_find->type == sn)
-			return paf_find;
+		if (paf.type == sn)
+			return &paf;
 	}
 
 	return nullptr;
@@ -1644,11 +1642,7 @@ void char_from_room(CHAR_DATA *ch)
 
 	if (is_affected_room(prev_room, gsn_gravity_well))
 	{
-		for (af = prev_room->affected; af != nullptr; af = af->next)
-		{
-			if (af->type == gsn_gravity_well)
-				break;
-		}
+		af = affect_find_room(prev_room->affected, gsn_gravity_well);
 
 		if (ch == af->owner)
 			gravity_well_explode(prev_room, af);
@@ -2257,7 +2251,6 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 	OBJ_DATA *obj_next;
 	CHAR_DATA *tch;
 	ROOM_INDEX_DATA *room;
-	ROOM_AFFECT_DATA *raf;
 	AFFECT_DATA *af;
 
 	if (ch->in_room == nullptr)
@@ -2343,12 +2336,14 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 
 	for (room = top_affected_room; room; room = room->aff_next)
 	{
-		for (raf = room->affected; raf != nullptr; raf = raf->next)
+		for (auto it = room->affected.begin(); it != room->affected.end(); )
 		{
-			if (raf->owner == ch)
-			{
-				affect_remove_room(room, raf);
-			}
+			auto next = std::next(it);
+
+			if (it->owner == ch)
+				affect_remove_room(room, &*it);
+
+			it = next;
 		}
 	}
 
@@ -3929,8 +3924,6 @@ void init_affect_room(ROOM_AFFECT_DATA *paf)
 	paf->tick_fun = nullptr;
 	paf->end_fun = nullptr;
 	paf->owner = nullptr;
-	/* Morg - Valgrind fix */
-	paf->valid= false;
 }
 
 void affect_modify_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf, bool fAdd)
@@ -4002,10 +3995,9 @@ void affect_to_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 
 void new_affect_to_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 {
-	ROOM_AFFECT_DATA *paf_new;
 	ROOM_INDEX_DATA *pRoomIndex;
 
-	if (!room->affected)
+	if (room->affected.empty())
 	{
 		if (top_affected_room)
 		{
@@ -4025,25 +4017,19 @@ void new_affect_to_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 		room->aff_next = nullptr;
 	}
 
-	paf_new = new_affect_room();
+	room->affected.push_front(*paf);
 
-	*paf_new = *paf;
-	paf_new->next = room->affected;
-	room->affected = paf_new;
-
-	affect_modify_room(room, paf_new, true);
+	affect_modify_room(room, &room->affected.front(), true);
 }
 
 void affect_check_room(ROOM_INDEX_DATA *room, int where, long vector[])
 {
-	ROOM_AFFECT_DATA *paf;
-
 	if (IS_ZERO_VECTOR(vector))
 		return;
 
-	for (paf = room->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : room->affected)
 	{
-		if (paf->where == where && vector_equal(paf->bitvector, vector))
+		if (paf.where == where && vector_equal(paf.bitvector, vector))
 		{
 			switch (where)
 			{
@@ -4070,7 +4056,7 @@ void affect_remove_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 	int where;
 	long vector[MAX_BITVECTOR];
 
-	if (room->affected == nullptr)
+	if (room->affected.empty())
 	{
 		RS.Logger.Warn("Affect_remove_room: no affect.");
 		return;
@@ -4083,31 +4069,24 @@ void affect_remove_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 	where = paf->where;
 	copy_vector(vector, paf->bitvector);
 
-	if (paf == room->affected)
+	bool found = false;
+	for (auto it = room->affected.begin(); it != room->affected.end(); ++it)
 	{
-		room->affected = paf->next;
-	}
-	else
-	{
-		ROOM_AFFECT_DATA *prev;
-
-		for (prev = room->affected; prev != nullptr; prev = prev->next)
+		if (&*it == paf)
 		{
-			if (prev->next == paf)
-			{
-				prev->next = paf->next;
-				break;
-			}
-		}
-
-		if (prev == nullptr)
-		{
-			RS.Logger.Warn("Affect_remove_room: cannot find paf.");
-			return;
+			room->affected.erase(it);
+			found = true;
+			break;
 		}
 	}
 
-	if (!room->affected)
+	if (!found)
+	{
+		RS.Logger.Warn("Affect_remove_room: cannot find paf.");
+		return;
+	}
+
+	if (room->affected.empty())
 	{
 		ROOM_INDEX_DATA *prev;
 
@@ -4136,8 +4115,6 @@ void affect_remove_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 		room->aff_next = nullptr;
 	}
 
-	free_affect_room(paf);
-
 	affect_check_room(room, where, vector);
 }
 
@@ -4146,15 +4123,14 @@ void affect_remove_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
  */
 void affect_strip_room(ROOM_INDEX_DATA *room, int sn)
 {
-	ROOM_AFFECT_DATA *paf;
-	ROOM_AFFECT_DATA *paf_next;
-
-	for (paf = room->affected; paf != nullptr; paf = paf_next)
+	for (auto it = room->affected.begin(); it != room->affected.end(); )
 	{
-		paf_next = paf->next;
+		auto next = std::next(it);
 
-		if (paf->type == sn)
-			affect_remove_room(room, paf);
+		if (it->type == sn)
+			affect_remove_room(room, &*it);
+
+		it = next;
 	}
 }
 
@@ -4163,14 +4139,12 @@ void affect_strip_room(ROOM_INDEX_DATA *room, int sn)
  */
 bool is_affected_room(ROOM_INDEX_DATA *room, int sn)
 {
-	ROOM_AFFECT_DATA *paf;
-
 	if (!room)
 		return false;
 
-	for (paf = room->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : room->affected)
 	{
-		if (paf->type == sn)
+		if (paf.type == sn)
 			return true;
 	}
 
@@ -4182,16 +4156,14 @@ bool is_affected_room(ROOM_INDEX_DATA *room, int sn)
  */
 void affect_join_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 {
-	ROOM_AFFECT_DATA *paf_old;
-
-	for (paf_old = room->affected; paf_old != nullptr; paf_old = paf_old->next)
+	for (auto &paf_old : room->affected)
 	{
-		if (paf_old->type == paf->type)
+		if (paf_old.type == paf->type)
 		{
-			paf->level = (paf->level + paf_old->level) / 2;
-			paf->duration += paf_old->duration;
-			paf->modifier += paf_old->modifier;
-			affect_remove_room(room, paf_old);
+			paf->level = (paf->level + paf_old.level) / 2;
+			paf->duration += paf_old.duration;
+			paf->modifier += paf_old.modifier;
+			affect_remove_room(room, &paf_old);
 			break;
 		}
 	}

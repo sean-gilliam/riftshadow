@@ -1253,11 +1253,7 @@ void WAIT_STATE(CHAR_DATA *ch, int npulse)
 
 	if (ch->in_room && is_affected_room(ch->in_room, gsn_gravity_well))
 	{
-		for (raf = ch->in_room->affected; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_gravity_well)
-				break;
-		}
+		raf = affect_find_room(ch->in_room->affected, gsn_gravity_well);
 
 		if (ch == raf->owner)
 			wait += PULSE_VIOLENCE;

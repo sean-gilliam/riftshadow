@@ -1857,10 +1857,10 @@ void do_look(CHAR_DATA *ch, char *argument)
 
 		if (is_affected_room(ch->in_room, gsn_riptide))
 		{
-			for (auto raf = ch->in_room->affected; raf != nullptr; raf = raf->next)
+			for (auto &raf : ch->in_room->affected)
 			{
-				if (raf->type == gsn_riptide && raf->owner == ch && raf->location == APPLY_ROOM_NONE &&
-					raf->modifier == 1)
+				if (raf.type == gsn_riptide && raf.owner == ch && raf.location == APPLY_ROOM_NONE &&
+					raf.modifier == 1)
 				{
 					sprintf(buf, "%sThe calm surface of the water belies the deadly riptide churning beneath!%s\n\r",
 						get_char_color(ch, "cyan"),
@@ -1869,8 +1869,8 @@ void do_look(CHAR_DATA *ch, char *argument)
 					send_to_char(buf, ch);
 					break;
 				}
-				else if (raf->type == gsn_riptide && raf->owner == ch && raf->location == APPLY_ROOM_NONE &&
-						 raf->modifier == 2)
+				else if (raf.type == gsn_riptide && raf.owner == ch && raf.location == APPLY_ROOM_NONE &&
+						 raf.modifier == 2)
 				{
 					sprintf(buf, "%sThe waters swirl menacingly, ready to receive the riptide's prey.%s\n\r",
 						get_char_color(ch, "cyan"),

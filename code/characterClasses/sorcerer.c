@@ -2316,11 +2316,7 @@ void spell_flood(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 		if (is_affected_room(ch->in_room, sn))
 		{
-			for (oaf = ch->in_room->affected; oaf != nullptr; oaf = oaf->next)
-			{
-				if (oaf->type == sn)
-					break;
-			}
+			oaf = affect_find_room(ch->in_room->affected, sn);
 
 			duration = std::max(oaf->duration - 1, 0);
 		}
@@ -2535,14 +2531,14 @@ void spell_riptide(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	{
 		if (is_affected_room(room, sn))
 		{
-			for (raf = room->affected; raf != nullptr; raf = raf->next)
+			for (auto &raf : room->affected)
 			{
-				if (raf->type == sn && raf->owner == ch && raf->location == APPLY_ROOM_NONE && raf->modifier == 1)
+				if (raf.type == sn && raf.owner == ch && raf.location == APPLY_ROOM_NONE && raf.modifier == 1)
 				{
 					first_room = room;
-					fraf = raf;
+					fraf = &raf;
 				}
-				else if (raf->type == sn && raf->owner == ch && raf->location == APPLY_ROOM_NONE && raf->modifier == 2)
+				else if (raf.type == sn && raf.owner == ch && raf.location == APPLY_ROOM_NONE && raf.modifier == 2)
 				{
 					second_room = room;
 				}
@@ -5477,11 +5473,17 @@ void spell_pure_air(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 			}
 		}
 
-		for (raf = ch->in_room->affected; raf != nullptr; raf = raf->next)
+		// Snapshot the types to purify before stripping: affect_strip_room
+		// erases matching elements, which would invalidate a live iterator.
+		std::vector<int> purify_types;
+		for (auto &raf : ch->in_room->affected)
 		{
-			if (skill_table[raf->type].dispel & CAN_PURIFY)
-				affect_strip_room(ch->in_room, raf->type);
+			if (skill_table[raf.type].dispel & CAN_PURIFY)
+				purify_types.push_back(raf.type);
 		}
+
+		for (auto purify_type : purify_types)
+			affect_strip_room(ch->in_room, purify_type);
 
 		if (cleansed)
 			act("The air around $n is purified.", vch, 0, 0, TO_ROOM);

@@ -5,6 +5,7 @@
 
 #include "fwd.h"
 #include "limits.h"
+#include "affect_data.h"					// ROOM_AFFECT_DATA held by value in room->affected
 #include "extra_descr.h"
 #include "track_data.h"
 
@@ -37,7 +38,7 @@ struct room_index_data
 	short mana_rate;
 	short cabal;
 	short guild;
-	ROOM_AFFECT_DATA *affected;
+	std::list<ROOM_AFFECT_DATA> affected;
 	long affected_by[MAX_BITVECTOR];
 	RPROG_DATA *rprogs;
 	long progtypes[MAX_BITVECTOR];

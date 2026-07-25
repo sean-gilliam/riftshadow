@@ -7140,44 +7140,43 @@ void do_empower(CHAR_DATA *ch, char *argument)
 
 void do_raffects(CHAR_DATA *ch, char *argument)
 {
-	ROOM_AFFECT_DATA *paf;
 	RUNE_DATA *rune;
 	char buf[MAX_STRING_LENGTH];
 	bool found = false;
 	int i = 0;
 
-	if (ch->in_room->affected != nullptr)
+	if (!ch->in_room->affected.empty())
 	{
 		found = true;
 		send_to_char("The room is affected by:\n\r", ch);
 
-		for (paf = ch->in_room->affected; paf != nullptr; paf = paf->next)
+		for (auto &paf : ch->in_room->affected)
 		{
-			if (paf->aftype == AFT_SPELL)
-				sprintf(buf, "Spell: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_SPELL)
+				sprintf(buf, "Spell: '%s' ", skill_table[paf.type].name);
 
-			if (paf->aftype == AFT_SKILL)
-				sprintf(buf, "Skill: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_SKILL)
+				sprintf(buf, "Skill: '%s' ", skill_table[paf.type].name);
 
-			if (paf->aftype == AFT_POWER)
-				sprintf(buf, "Power: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_POWER)
+				sprintf(buf, "Power: '%s' ", skill_table[paf.type].name);
 
-			if (paf->aftype == AFT_COMMUNE)
-				sprintf(buf, "Commune: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_COMMUNE)
+				sprintf(buf, "Commune: '%s' ", skill_table[paf.type].name);
 
-			if (paf->aftype != AFT_SPELL && paf->aftype != AFT_SKILL && paf->aftype != AFT_POWER &&
-				paf->aftype != AFT_MALADY && paf->aftype != AFT_COMMUNE)
-				sprintf(buf, "Spell: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype != AFT_SPELL && paf.aftype != AFT_SKILL && paf.aftype != AFT_POWER &&
+				paf.aftype != AFT_MALADY && paf.aftype != AFT_COMMUNE)
+				sprintf(buf, "Spell: '%s' ", skill_table[paf.type].name);
 			send_to_char(buf, ch);
 
 			sprintf(buf, "modifies %s by %d for %d hours with %s-bits %s, owner %s, level %d.\n\r",
-				raffect_loc_name(paf->location),
-				paf->modifier,
-				paf->duration / 2,
-				paf->where == TO_ROOM_FLAGS ? "flag" : paf->where == TO_ROOM_CONST ? "const" : "aff",
+				raffect_loc_name(paf.location),
+				paf.modifier,
+				paf.duration / 2,
+				paf.where == TO_ROOM_FLAGS ? "flag" : paf.where == TO_ROOM_CONST ? "const" : "aff",
 				"nullptr",
-				paf->owner != nullptr ? paf->owner->name : "none",
-				paf->level);
+				paf.owner != nullptr ? paf.owner->name : "none",
+				paf.level);
 			send_to_char(buf, ch);
 		}
 	}
@@ -7218,7 +7217,6 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 
 void do_rastrip(CHAR_DATA *ch, char *argument)
 {
-	ROOM_AFFECT_DATA *af, *af_next;
 	ROOM_INDEX_DATA *location = nullptr;
 
 	if (argument[0] == '\0')
@@ -7230,10 +7228,11 @@ void do_rastrip(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (af = location->affected; af != nullptr; af = af_next)
+	for (auto it = location->affected.begin(); it != location->affected.end(); )
 	{
-		af_next = af->next;
-		affect_remove_room(location, af);
+		auto next = std::next(it);
+		affect_remove_room(location, &*it);
+		it = next;
 	}
 
 	act("All affects stripped from '$t'.", ch, location->name, 0, TO_CHAR);

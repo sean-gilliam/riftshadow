@@ -2278,7 +2278,6 @@ void affect_update(void)
 	ROOM_INDEX_DATA *room;
 	AREA_DATA *area;
 	AFFECT_DATA *paf, *paf_next;
-	ROOM_AFFECT_DATA *raf, *raf_next;
 	OBJ_AFFECT_DATA *oaf, *oaf_next;
 
 	for (ch = char_list; ch; ch = ch_next)
@@ -2324,12 +2323,14 @@ void affect_update(void)
 
 	for (room = top_affected_room; room; room = room->aff_next)
 	{
-		for (raf = room->affected; raf; raf = raf_next)
+		for (auto it = room->affected.begin(); it != room->affected.end(); )
 		{
-			raf_next = raf->next;
+			auto next = std::next(it);
 
-			if (raf->pulse_fun)
-				(*raf->pulse_fun)(room, raf);
+			if (it->pulse_fun)
+				(*it->pulse_fun)(room, &*it);
+
+			it = next;
 		}
 
 		if (IS_SET(room->progtypes, RPROG_PULSE))
@@ -2360,26 +2361,25 @@ void room_update(void)
 
 	for (room = top_affected_room; room; room = room_next)
 	{
-		ROOM_AFFECT_DATA *paf;
-		ROOM_AFFECT_DATA *paf_next;
-
 		room_next = room->aff_next;
 
-		for (paf = room->affected; paf != nullptr; paf = paf_next)
+		for (auto it = room->affected.begin(); it != room->affected.end(); )
 		{
-			paf_next = paf->next;
+			auto next = std::next(it);
 
-			if (paf->duration != 0)
+			if (it->duration != 0)
 			{
-				if (paf->tick_fun)
-					(*paf->tick_fun)(room, paf);
+				if (it->tick_fun)
+					(*it->tick_fun)(room, &*it);
 			}
 
-			if (paf->duration > 0)
-				paf->duration--;
-			else if (paf->duration < 0); //TODO: possible logic error
+			if (it->duration > 0)
+				it->duration--;
+			else if (it->duration < 0); //TODO: possible logic error
 			else
-				affect_remove_room(room, paf);
+				affect_remove_room(room, &*it);
+
+			it = next;
 		}
 	}
 }
@@ -2405,11 +2405,7 @@ void room_affect_update(void)
 			OBJ_DATA *well;
 			char *dirname;
 
-			for (af = room->affected; af != nullptr; af = af->next)
-			{
-				if (af->type == gsn_gravity_well)
-					break;
-			}
+			af = affect_find_room(room->affected, gsn_gravity_well);
 
 			for (well = object_list; well != nullptr; well = well->next)
 			{
@@ -2483,11 +2479,7 @@ void room_affect_update(void)
 
 		if (is_affected_room(room, gsn_vacuum))
 		{
-			for (af = room->affected; af != nullptr; af = af->next)
-			{
-				if (af->type == gsn_vacuum)
-					break;
-			}
+			af = affect_find_room(room->affected, gsn_vacuum);
 
 			af->modifier++;
 
@@ -2523,11 +2515,7 @@ void room_affect_update(void)
 
 		if (is_affected_room(room, gsn_earthquake))
 		{
-			for (af = room->affected; af != nullptr; af = af->next)
-			{
-				if (af->type == gsn_earthquake)
-					break;
-			}
+			af = affect_find_room(room->affected, gsn_earthquake);
 
 			if (number_range(1, 4) == 1)
 			{
@@ -2553,10 +2541,14 @@ void room_affect_update(void)
 
 		if (is_affected_room(room, gsn_tidalwave))
 		{
-			for (af = room->affected; af != nullptr; af = af->next)
+			af = nullptr;
+			for (auto &r : room->affected)
 			{
-				if (af->type == gsn_tidalwave && af->location == APPLY_ROOM_NONE)
+				if (r.type == gsn_tidalwave && r.location == APPLY_ROOM_NONE)
+				{
+					af = &r;
 					break;
+				}
 			}
 
 			if (af->modifier == 1)
@@ -2573,10 +2565,14 @@ void room_affect_update(void)
 			}
 			else if (af->modifier == 0)
 			{
-				for (af2 = room->affected; af2 != nullptr; af2 = af2->next)
+				af2 = nullptr;
+				for (auto &r : room->affected)
 				{
-					if (af2->type == gsn_tidalwave && af2->location == APPLY_ROOM_NOPE)
+					if (r.type == gsn_tidalwave && r.location == APPLY_ROOM_NOPE)
+					{
+						af2 = &r;
 						break;
+					}
 				}
 
 				for (vch = room->people; vch != nullptr; vch = vch->next_in_room)
@@ -2655,11 +2651,7 @@ void room_affect_update(void)
 				{
 					v_next = vch->next_in_room;
 
-					for (af = vch->in_room->affected; af != nullptr; af = af->next)
-					{
-						if (af->type == gsn_caustic_vapor)
-							break;
-					}
+					af = affect_find_room(vch->in_room->affected, gsn_caustic_vapor);
 
 					if (is_immortal(vch))
 						continue;

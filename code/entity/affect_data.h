@@ -34,22 +34,23 @@ struct affect_data
 // A room affect.
 //
 
+// A room affect. Plain value type; a room owns these by value in a
+// std::list<ROOM_AFFECT_DATA> (room->affected). `owner` is a non-owning
+// CHAR_DATA back-reference and stays a raw pointer.
 struct room_affect_data
 {
-	ROOM_AFFECT_DATA *next;
-	CHAR_DATA *owner;
-	bool valid;
-	short where;
-	short type;
-	short level;
-	short duration;
-	short location;
-	short modifier;
-	long bitvector[MAX_BITVECTOR];
-	int aftype;
-	RAFF_FUN *pulse_fun;
-	RAFF_FUN *tick_fun;	// goes off every tick
-	RAFF_FUN *end_fun;	// when the affect wears off this is called
+	CHAR_DATA *owner = nullptr;
+	short where = 0;
+	short type = 0;
+	short level = 0;
+	short duration = 0;
+	short location = 0;
+	short modifier = 0;
+	long bitvector[MAX_BITVECTOR] = {};
+	int aftype = 0;
+	RAFF_FUN *pulse_fun = nullptr;
+	RAFF_FUN *tick_fun = nullptr;	// goes off every tick
+	RAFF_FUN *end_fun = nullptr;	// when the affect wears off this is called
 };
 
 //

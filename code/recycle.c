@@ -59,7 +59,6 @@ const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192
 DESCRIPTOR_DATA *descriptor_free;
 GEN_DATA *gen_data_free;
 AFFECT_DATA *affect_free;
-ROOM_AFFECT_DATA *raffect_free;
 OBJ_AFFECT_DATA *oaffect_free;
 RUNE_DATA *rune_free;
 QUEUE_DATA *queue_free;
@@ -456,37 +455,6 @@ void free_affect(AFFECT_DATA *af)
 	af->valid = false;
 	af->next = affect_free;
 	affect_free = af;
-}
-
-ROOM_AFFECT_DATA *new_affect_room(void)
-{
-	static ROOM_AFFECT_DATA af_zero;
-	ROOM_AFFECT_DATA *af;
-
-	if (raffect_free == nullptr)
-	{
-		af = new ROOM_AFFECT_DATA;
-	}
-	else
-	{
-		af = raffect_free;
-		raffect_free = raffect_free->next;
-	}
-
-	*af = af_zero;
-
-	af->valid = true;
-	return af;
-}
-
-void free_affect_room(ROOM_AFFECT_DATA *af)
-{
-	if (!(af != nullptr && af->valid))
-		return;
-
-	af->valid = false;
-	af->next = raffect_free;
-	raffect_free = af;
 }
 
 OBJ_AFFECT_DATA *new_affect_obj(void)
