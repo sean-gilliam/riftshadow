@@ -716,7 +716,7 @@ void load_area(FILE *fp)
 	zero_vector(pArea->area_flags);
 	SET_BIT(pArea->area_flags, AREA_LOADING); /* OLC */
 	pArea->vnum = top_area;					  /* OLC */
-	pArea->affected = nullptr;
+	pArea->affected.clear();
 	pArea->name = fread_string(fp);
 	pArea->credits = fread_string(fp);
 	pArea->low_range = fread_number(fp);
@@ -1336,7 +1336,6 @@ void find_adjacents(void)
 void area_update(void)
 {
 	AREA_DATA *pArea;
-	AREA_AFFECT_DATA *paf, *paf_next;
 	char buf[MAX_STRING_LENGTH];
 
 	for (pArea = area_first; pArea != nullptr; pArea = pArea->next)
@@ -1344,22 +1343,24 @@ void area_update(void)
 		if (IS_SET(pArea->progtypes, APROG_TICK))
 			(pArea->aprogs->tick_prog)(pArea);
 
-		for (paf = pArea->affected; paf; paf = paf_next)
+		for (auto it = pArea->affected.begin(); it != pArea->affected.end(); )
 		{
-			paf_next = paf->next;
+			auto next = std::next(it);
 
-			if (paf->duration > 0)
+			if (it->duration > 0)
 			{
-				if (paf->tick_fun)
-					(*paf->tick_fun)(pArea, paf);
+				if (it->tick_fun)
+					(*it->tick_fun)(pArea, &*it);
 
-				paf->duration--;
+				it->duration--;
 			}
-			else if (paf->duration < 0);
+			else if (it->duration < 0);
 			else
 			{
-				affect_remove_area(pArea, paf);
+				affect_remove_area(pArea, &*it);
 			}
+
+			it = next;
 		}
 
 		if (pArea->nplayer == 0)

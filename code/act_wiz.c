@@ -2334,7 +2334,6 @@ void do_astat(CHAR_DATA *ch, char *argument)
 	char buf[MSL];
 	int count = 0;
 	AREA_DATA *area, *pArea;
-	AREA_AFFECT_DATA *paf;
 
 	area = ch->in_room->area;
 
@@ -2468,31 +2467,31 @@ void do_astat(CHAR_DATA *ch, char *argument)
 	else
 		send_to_char(".\n\r", ch);
 
-	if (area->affected)
+	if (!area->affected.empty())
 	{
 		send_to_char("The area is affected by:\n\r", ch);
 
-		for (paf = area->affected; paf; paf = paf->next)
+		for (auto &paf : area->affected)
 		{
-			if (paf->aftype == AFT_SKILL)
-				sprintf(buf, "Skill: '%s' ", skill_table[paf->type].name);
-			else if (paf->aftype == AFT_POWER)
-				sprintf(buf, "Power: '%s' ", skill_table[paf->type].name);
-			else if (paf->aftype == AFT_COMMUNE)
-				sprintf(buf, "Commune: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_SKILL)
+				sprintf(buf, "Skill: '%s' ", skill_table[paf.type].name);
+			else if (paf.aftype == AFT_POWER)
+				sprintf(buf, "Power: '%s' ", skill_table[paf.type].name);
+			else if (paf.aftype == AFT_COMMUNE)
+				sprintf(buf, "Commune: '%s' ", skill_table[paf.type].name);
 			else
-				sprintf(buf, "Spell: '%s' ", skill_table[paf->type].name);
+				sprintf(buf, "Spell: '%s' ", skill_table[paf.type].name);
 
 			send_to_char(buf, ch);
 
 			sprintf(buf, "modifies %s by %d for %d hours with %s-bits %s, owner %s, level %d.\n\r",
-				aaffect_loc_name(paf->location),
-				paf->modifier,
-				(paf->duration == -1) ? paf->duration : paf->duration / 2,
+				aaffect_loc_name(paf.location),
+				paf.modifier,
+				(paf.duration == -1) ? paf.duration : paf.duration / 2,
 				"flag",
 				"nullptr",
-				paf->owner != nullptr ? paf->owner->name : "none",
-				paf->level);
+				paf.owner != nullptr ? paf.owner->name : "none",
+				paf.level);
 			send_to_char(buf, ch);
 		}
 	}
@@ -7242,13 +7241,13 @@ void do_rastrip(CHAR_DATA *ch, char *argument)
 
 void do_aastrip(CHAR_DATA *ch, char *argument)
 {
-	AREA_AFFECT_DATA *af, *af_next;
 	AREA_DATA *area = ch->in_room->area;
 
-	for (af = area->affected; af; af = af_next)
+	for (auto it = area->affected.begin(); it != area->affected.end(); )
 	{
-		af_next = af->next;
-		affect_remove_area(area, af);
+		auto next = std::next(it);
+		affect_remove_area(area, &*it);
+		it = next;
 	}
 
 	act("All affects stripped from '$t'.", ch, area->name, 0, TO_CHAR);

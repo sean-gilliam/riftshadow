@@ -87,8 +87,6 @@ ROOM_AFFECT_DATA *new_affect_room(void);
 void free_affect_room(ROOM_AFFECT_DATA *af);
 OBJ_AFFECT_DATA *new_affect_obj(void);
 void free_affect_obj(OBJ_AFFECT_DATA *af);
-AREA_AFFECT_DATA *new_affect_area(void);
-void free_affect_area(AREA_AFFECT_DATA *af);
 /* object recycling */
 OBJ_DATA *new_obj(void);
 void free_obj(OBJ_DATA *obj);

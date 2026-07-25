@@ -1355,14 +1355,12 @@ ROOM_AFFECT_DATA *affect_find_room(ROOM_AFFECT_DATA *paf, int sn)
 	return nullptr;
 }
 
-AREA_AFFECT_DATA *affect_find_area(AREA_AFFECT_DATA *paf, int sn)
+AREA_AFFECT_DATA *affect_find_area(std::list<AREA_AFFECT_DATA> &affects, int sn)
 {
-	AREA_AFFECT_DATA *paf_find;
-
-	for (paf_find = paf; paf_find != nullptr; paf_find = paf_find->next)
+	for (auto &paf : affects)
 	{
-		if (paf_find->type == sn)
-			return paf_find;
+		if (paf.type == sn)
+			return &paf;
 	}
 
 	return nullptr;
@@ -2869,13 +2867,9 @@ bool can_see(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	if (is_affected_area(ch->in_room->area, gsn_whiteout) && is_outside(ch))
 	{
-		for (paf = ch->in_room->area->affected; paf; paf = paf->next)
-		{
-			if (paf->type == gsn_whiteout)
-				break;
-		}
+		paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
-		if (paf->owner != ch)
+		if (paf && paf->owner != ch)
 			return false;
 	}
 
@@ -2982,11 +2976,7 @@ bool can_see_obj(CHAR_DATA *ch, OBJ_DATA *obj)
 
 	if (is_affected_area(ch->in_room->area, gsn_whiteout) && is_outside(ch) && obj->item_type != ITEM_POTION)
 	{
-		for (paf = ch->in_room->area->affected; paf; paf = paf->next)
-		{
-			if (paf->type == gsn_whiteout)
-				break;
-		}
+		paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
 		if (paf && paf->owner != ch)
 			return false;
@@ -4687,27 +4677,19 @@ void affect_modify_area(AREA_DATA *area, AREA_AFFECT_DATA *paf, bool fAdd)
 
 void affect_to_area(AREA_DATA *area, AREA_AFFECT_DATA *paf)
 {
-	AREA_AFFECT_DATA *paf_new;
+	area->affected.push_front(*paf);
 
-	paf_new = new_affect_area();
-
-	*paf_new = *paf;
-	paf_new->next = area->affected;
-	area->affected = paf_new;
-
-	affect_modify_area(area, paf_new, true);
+	affect_modify_area(area, &area->affected.front(), true);
 }
 
 void affect_check_area(AREA_DATA *area, int where, long vector[])
 {
-	AREA_AFFECT_DATA *paf;
-
 	if (vector == 0)
 		return;
 
-	for (paf = area->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : area->affected)
 	{
-		if (paf->where == where && vector_equal(paf->bitvector, vector))
+		if (paf.where == where && vector_equal(paf.bitvector, vector))
 		{
 			switch (where)
 			{
@@ -4726,7 +4708,7 @@ void affect_remove_area(AREA_DATA *area, AREA_AFFECT_DATA *paf)
 	int where;
 	long vector[MAX_BITVECTOR];
 
-	if (!area->affected)
+	if (area->affected.empty())
 	{
 		RS.Logger.Warn("affect_remove_area: no affect!");
 		return;
@@ -4739,46 +4721,36 @@ void affect_remove_area(AREA_DATA *area, AREA_AFFECT_DATA *paf)
 	where = paf->where;
 	copy_vector(vector, paf->bitvector);
 
-	if (paf == area->affected)
+	bool found = false;
+	for (auto it = area->affected.begin(); it != area->affected.end(); ++it)
 	{
-		area->affected = paf->next;
-	}
-	else
-	{
-		AREA_AFFECT_DATA *prev;
-
-		for (prev = area->affected; prev != nullptr; prev = prev->next)
+		if (&*it == paf)
 		{
-			if (prev->next == paf)
-			{
-				prev->next = paf->next;
-				break;
-			}
-		}
-
-		if (!prev)
-		{
-			RS.Logger.Warn("affect_remove_area: cannot find paf!");
-			return;
+			area->affected.erase(it);
+			found = true;
+			break;
 		}
 	}
 
-	free_affect_area(paf);
+	if (!found)
+	{
+		RS.Logger.Warn("affect_remove_area: cannot find paf!");
+		return;
+	}
 
 	affect_check_area(area, where, vector);
 }
 
 void affect_strip_area(AREA_DATA *area, int sn)
 {
-	AREA_AFFECT_DATA *paf;
-	AREA_AFFECT_DATA *paf_next;
-
-	for (paf = area->affected; paf != nullptr; paf = paf_next)
+	for (auto it = area->affected.begin(); it != area->affected.end(); )
 	{
-		paf_next = paf->next;
+		auto next = std::next(it);
 
-		if (paf->type == sn)
-			affect_remove_area(area, paf);
+		if (it->type == sn)
+			affect_remove_area(area, &*it);
+
+		it = next;
 	}
 }
 
@@ -4787,9 +4759,9 @@ bool is_affected_area(AREA_DATA *area, int sn)
 	if (area == nullptr)
 		return false;
 
-	for (auto paf = area->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : area->affected)
 	{
-		if (paf->type == sn)
+		if (paf.type == sn)
 			return true;
 	}
 
@@ -4798,16 +4770,14 @@ bool is_affected_area(AREA_DATA *area, int sn)
 
 void affect_join_area(AREA_DATA *area, AREA_AFFECT_DATA *paf)
 {
-	AREA_AFFECT_DATA *paf_old;
-
-	for (paf_old = area->affected; paf_old != nullptr; paf_old = paf_old->next)
+	for (auto &paf_old : area->affected)
 	{
-		if (paf_old->type == paf->type)
+		if (paf_old.type == paf->type)
 		{
-			paf->level = (paf->level + paf_old->level) / 2;
-			paf->duration += paf_old->duration;
-			paf->modifier += paf_old->modifier;
-			affect_remove_area(area, paf_old);
+			paf->level = (paf->level + paf_old.level) / 2;
+			paf->duration += paf_old.duration;
+			paf->modifier += paf_old.modifier;
+			affect_remove_area(area, &paf_old);
 			break;
 		}
 	}

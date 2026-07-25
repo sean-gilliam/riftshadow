@@ -82,8 +82,7 @@ AREA_DATA *new_area(void)
 
 	if (!area_free)
 	{
-		pArea = new AREA_DATA;
-		CLEAR_MEM(pArea, sizeof(AREA_DATA))
+		pArea = new AREA_DATA();
 		top_area++;
 	}
 	else
@@ -125,6 +124,8 @@ void free_area(AREA_DATA *pArea)
 	free_pstring(pArea->name);
 	free_pstring(pArea->file_name);
 	free_pstring(pArea->builders);
+
+	pArea->affected.clear();
 
 	pArea->next = area_free->next;
 	area_free = pArea;

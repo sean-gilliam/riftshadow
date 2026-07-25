@@ -2280,7 +2280,6 @@ void affect_update(void)
 	AFFECT_DATA *paf, *paf_next;
 	ROOM_AFFECT_DATA *raf, *raf_next;
 	OBJ_AFFECT_DATA *oaf, *oaf_next;
-	AREA_AFFECT_DATA *aaf, *aaf_next;
 
 	for (ch = char_list; ch; ch = ch_next)
 	{
@@ -2339,12 +2338,14 @@ void affect_update(void)
 
 	for (area = area_first; area; area = area->next)
 	{
-		for (aaf = area->affected; aaf; aaf = aaf_next)
+		for (auto it = area->affected.begin(); it != area->affected.end(); )
 		{
-			aaf_next = aaf->next;
+			auto next = std::next(it);
 
-			if (aaf->pulse_fun)
-				(*aaf->pulse_fun)(area, aaf);
+			if (it->pulse_fun)
+				(*it->pulse_fun)(area, &*it);
+
+			it = next;
 		}
 
 		if (IS_SET(area->progtypes, APROG_PULSE))
@@ -2746,11 +2747,7 @@ void room_affect_update(void)
 
 		if (is_affected_area(room->area, gsn_cyclone))
 		{
-			for (aaf = room->area->affected; aaf; aaf = aaf->next)
-			{
-				if (aaf->type == gsn_cyclone)
-					break;
-			}
+			aaf = affect_find_area(room->area->affected, gsn_cyclone);
 
 			for (obj = room->contents; obj != nullptr; obj = obj->next_content)
 			{

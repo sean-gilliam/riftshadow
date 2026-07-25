@@ -61,7 +61,6 @@ GEN_DATA *gen_data_free;
 AFFECT_DATA *affect_free;
 ROOM_AFFECT_DATA *raffect_free;
 OBJ_AFFECT_DATA *oaffect_free;
-AREA_AFFECT_DATA *aaffect_free;
 RUNE_DATA *rune_free;
 QUEUE_DATA *queue_free;
 OBJ_DATA *obj_free;
@@ -519,37 +518,6 @@ void free_affect_obj(OBJ_AFFECT_DATA *af)
 	af->valid = false;
 	af->next = oaffect_free;
 	oaffect_free = af;
-}
-
-AREA_AFFECT_DATA *new_affect_area(void)
-{
-	static AREA_AFFECT_DATA af_zero;
-	AREA_AFFECT_DATA *af;
-
-	if (aaffect_free == nullptr)
-	{
-		af = new AREA_AFFECT_DATA;
-	}
-	else
-	{
-		af = aaffect_free;
-		aaffect_free = aaffect_free->next;
-	}
-
-	*af = af_zero;
-
-	af->valid = true;
-	return af;
-}
-
-void free_affect_area(AREA_AFFECT_DATA *af)
-{
-	if (!(af != nullptr && af->valid))
-		return;
-
-	af->valid = false;
-	af->next = aaffect_free;
-	aaffect_free = af;
 }
 
 /* stuff for recycling objects */

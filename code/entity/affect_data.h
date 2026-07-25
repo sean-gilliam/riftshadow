@@ -56,22 +56,23 @@ struct room_affect_data
 // An area affect.
 //
 
+// An area affect. Plain value type; an area owns these by value in a
+// std::list<AREA_AFFECT_DATA> (area->affected). `owner` is a non-owning
+// CHAR_DATA back-reference and stays a raw pointer.
 struct area_affect_data
 {
-	AREA_AFFECT_DATA *next;
-	CHAR_DATA *owner;
-	bool valid;
-	short where;
-	short type;
-	short level;
-	short duration;
-	short location;
-	short modifier;
-	long bitvector[MAX_BITVECTOR];
-	int aftype;
-	AAFF_FUN *pulse_fun;
-	AAFF_FUN *tick_fun;
-	AAFF_FUN *end_fun;
+	CHAR_DATA *owner = nullptr;
+	short where = 0;
+	short type = 0;
+	short level = 0;
+	short duration = 0;
+	short location = 0;
+	short modifier = 0;
+	long bitvector[MAX_BITVECTOR] = {};
+	int aftype = 0;
+	AAFF_FUN *pulse_fun = nullptr;
+	AAFF_FUN *tick_fun = nullptr;
+	AAFF_FUN *end_fun = nullptr;
 };
 
 struct obj_affect_data

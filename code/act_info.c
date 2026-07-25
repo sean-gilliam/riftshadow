@@ -1005,14 +1005,9 @@ bool check_blind(CHAR_DATA *ch)
 
 	if (is_affected_area(ch->in_room->area, gsn_whiteout) && is_outside(ch))
 	{
-		auto paf = ch->in_room->area->affected;
-		for (; paf != nullptr; paf = paf->next)
-		{
-			if (paf->type == gsn_whiteout)
-				break;
-		}
+		auto paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
-		if (paf->owner != ch)
+		if (paf && paf->owner != ch)
 		{
 			send_to_char("You can't see a thing through the snow!\n\r", ch);
 			return false;
