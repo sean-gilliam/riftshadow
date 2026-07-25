@@ -190,80 +190,16 @@ trophy_data &trophy_data::operator=(trophy_data &&other) noexcept
 
 /* mob speech memory management */
 
-SPEECH_DATA *new_speech_data(void)
+/* Speech/line list elements own their strings (freed on destruction; the
+   parent std::list handles the unlinking the old free_speech/free_line did). */
+line_data::~line_data()
 {
-	SPEECH_DATA *speech = new SPEECH_DATA;
-
-	speech->next = nullptr;
-	speech->prev = nullptr;
-	speech->mob = nullptr;
-	speech->name = nullptr;
-	speech->first_line = nullptr;
-	speech->current_line = nullptr;
-
-	return speech;
+	free_pstring(text);
 }
 
-void free_speech(SPEECH_DATA *speech)
+speech_data::~speech_data()
 {
-	free_pstring(speech->name);
-
-	if (speech->next)
-	{
-		if (speech->prev)
-		{
-			speech->prev->next = speech->next;
-			speech->next->prev = speech->prev;
-		}
-		else
-		{
-			speech->mob->speech = speech->next;
-		}
-	}
-
-	delete speech;
-}
-
-void free_line(LINE_DATA *line)
-{
-	LINE_DATA *lptr;
-
-	free_pstring(line->text);
-
-	if (line->next)
-	{
-		if (line->prev)
-		{
-			line->prev->next = line->next;
-			line->next->prev = line->prev;
-		}
-		else
-		{
-			line->speech->first_line = line->next;
-		}
-	}
-
-	for (lptr = line; lptr; lptr = lptr->next)
-	{
-		lptr->number--;
-	}
-
-	delete line;
-}
-
-LINE_DATA *new_line_data(void)
-{
-	LINE_DATA *line = new LINE_DATA;
-
-	line->speech = nullptr;
-	line->next = nullptr;
-	line->prev = nullptr;
-	line->number = -1;
-	line->delay = -1;
-	line->type = -1;
-	line->text = nullptr;
-
-	return line;
+	free_pstring(name);
 }
 
 IPROG_DATA *new_iprog(void)

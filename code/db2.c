@@ -411,8 +411,6 @@ void load_mobs(FILE *fp)
 	MOB_INDEX_DATA *pMobIndex;
 	int i = 0, pos = 0;
 	char *aword, *bword, *temp_wealth;
-	SPEECH_DATA *speech;
-	LINE_DATA *line;
 	char bugtext[250];
 	short wealth;
 
@@ -628,44 +626,20 @@ void load_mobs(FILE *fp)
 			{
 				char *word;
 
-				speech = new_speech_data();
-				speech->mob = pMobIndex;
+				SPEECH_DATA *speech = &pMobIndex->speech.emplace_back();
 				speech->name = palloc_string(bword);
-
-				if (!pMobIndex->speech)
-				{
-					pMobIndex->speech = speech;
-				}
-				else
-				{
-					SPEECH_DATA *sptr;
-
-					for (sptr = pMobIndex->speech; sptr->next; sptr = sptr->next);
-
-					sptr->next = speech;
-					speech->prev = sptr;
-				}
 
 				for (;;)
 				{
 					word = fread_word(fp);
 					if (!str_cmp(word, "LINE"))
 					{
-						line = new_line_data();
-						line->speech = speech;
-						if (!speech->first_line)
-						{
-							line->number = 0;
-							speech->first_line = line;
-							speech->current_line = line;
-						}
-						else
-						{
-							line->number = speech->current_line->number + 1;
-							speech->current_line->next = line;
-							line->prev = speech->current_line;
-							speech->current_line = line;
-						}
+						int number = speech->first_line.empty()
+							? 0
+							: speech->first_line.back().number + 1;
+
+						LINE_DATA *line = &speech->first_line.emplace_back();
+						line->number = number;
 
 						line->delay = fread_number(fp);
 						line->type = pos = flag_lookup(fread_word(fp), speech_table);
@@ -678,7 +652,7 @@ void load_mobs(FILE *fp)
 					}
 					else if (!str_cmp(word, "END"))
 					{
-						speech->current_line = speech->first_line;
+						speech->current_line = speech->first_line.begin();
 						break;
 					}
 					else

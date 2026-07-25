@@ -659,7 +659,7 @@ void greet_prog_ruins_mouth(CHAR_DATA *mob, CHAR_DATA *ch)
 void speech_prog_testmob(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 {
 	if (strstr(speech, "test"))
-		execute_speech(ch, mob, mob->pIndexData->speech);
+		execute_speech(ch, mob, mob->pIndexData->speech.empty() ? nullptr : &mob->pIndexData->speech.front());
 }
 
 void speech_prog_ruins_mouth(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)

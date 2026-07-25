@@ -663,9 +663,8 @@ bool medit_group(CHAR_DATA *ch, char *argument)
 bool medit_speech(CHAR_DATA *ch, char *argument)
 {
 	MOB_INDEX_DATA *pMobIndex;
-	SPEECH_DATA *speech, *sptr;
+	SPEECH_DATA *speech;
 	char buf[MSL], cmd[MSL], name[MSL], arg3[MSL], arg4[MSL], arg5[MSL];
-	LINE_DATA *lptr, *new_line;
 	int type;
 
 	EDIT_MOB(ch, pMobIndex);
@@ -700,7 +699,7 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 			{
 				if (!str_prefix(arg3, "list"))
 				{
-					if (!speech->first_line)
+					if (speech->first_line.empty())
 					{
 						send_to_char("This speech has no lines.\n\r", ch);
 						return false;
@@ -709,13 +708,13 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 					sprintf(buf, "%s Lines:\n\r", speech->name);
 					send_to_char(buf, ch);
 
-					for (lptr = speech->first_line; lptr; lptr = lptr->next)
+					for (auto &line : speech->first_line)
 					{
 						sprintf(buf, "Line #%d: %d %s %s\n\r",
-							lptr->number,
-							lptr->delay,
-							flag_name_lookup(lptr->type, speech_table),
-							lptr->text);
+							line.number,
+							line.delay,
+							flag_name_lookup(line.type, speech_table),
+							line.text);
 						send_to_char(buf, ch);
 					}
 				}
@@ -723,9 +722,7 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 				{
 					argument = one_argument(argument, arg4);
 					argument = one_argument(argument, arg5);
-					new_line = new_line_data();
 
-					new_line->delay = atoi(arg4);
 					type = flag_lookup(arg5, speech_table);
 
 					if (type == NO_FLAG)
@@ -734,13 +731,16 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 						return false;
 					}
 
-					new_line->type = type;
-					new_line->text = palloc_string(argument);
-
-					for (lptr = speech->first_line; lptr->next != nullptr; lptr = lptr->next)
-					{
-						lptr->next = new_line;
-					}
+					// Append to the end of the line list. (The old code walked
+					// off the end and orphaned the tail, and never assigned a
+					// line number; std::list appends cleanly and next_sline
+					// gives the new line its number.)
+					int number = next_sline(speech);
+					LINE_DATA &new_line = speech->first_line.emplace_back();
+					new_line.number = number;
+					new_line.delay = atoi(arg4);
+					new_line.type = type;
+					new_line.text = palloc_string(argument);
 
 					send_to_char("Added.\n\r", ch);
 					return true;
@@ -749,13 +749,14 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 				{
 					argument = one_argument(argument, arg4);
 
-					for (lptr = speech->first_line; lptr; lptr = lptr->next)
+					auto lptr = speech->first_line.begin();
+					for (; lptr != speech->first_line.end(); ++lptr)
 					{
 						if (lptr->number == atoi(arg3))
 							break;
 					}
 
-					if (!lptr)
+					if (lptr == speech->first_line.end())
 					{
 						send_to_char("Not a valid line number.\n\r", ch);
 						return false;
@@ -764,7 +765,9 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 					{
 						if (!str_cmp(arg4, "delete"))
 						{
-							delete lptr;
+							// Properly unlink and free (the old code did a raw
+							// `delete` that left a dangling node in the list).
+							speech->first_line.erase(lptr);
 							send_to_char("Deleted.\n\r", ch);
 							return true;
 						}
@@ -813,7 +816,7 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 		}
 		else if (!str_prefix(cmd, "list"))
 		{
-			if (!pMobIndex->speech)
+			if (pMobIndex->speech.empty())
 			{
 				send_to_char("Mobile has no speeches defined.\n\r", ch);
 				return false;
@@ -821,9 +824,9 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 
 			send_to_char("Mobile has the following speeches defined:\n\r", ch);
 
-			for (sptr = pMobIndex->speech; sptr; sptr = sptr->next)
+			for (auto &sp : pMobIndex->speech)
 			{
-				sprintf(buf, "%s\n\r", sptr->name);
+				sprintf(buf, "%s\n\r", sp.name);
 				send_to_char(buf, ch);
 			}
 		}
@@ -835,19 +838,8 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 				return false;
 			}
 
-			speech = new_speech_data();
-			speech->name = palloc_string(name);
-
-			if (!pMobIndex->speech)
-			{
-				pMobIndex->speech = speech;
-			}
-			else
-			{
-				for (sptr = pMobIndex->speech; sptr->next; sptr = sptr->next);
-				sptr->next = speech;
-				speech->prev = sptr;
-			}
+			SPEECH_DATA &sp = pMobIndex->speech.emplace_back();
+			sp.name = palloc_string(name);
 
 			send_to_char("Speech added.\n\r", ch);
 			return true;
@@ -860,15 +852,20 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 				return false;
 			}
 
-			speech = find_speech(pMobIndex, name);
+			auto sit = pMobIndex->speech.begin();
+			for (; sit != pMobIndex->speech.end(); ++sit)
+			{
+				if (!str_cmp(sit->name, name))
+					break;
+			}
 
-			if (!speech)
+			if (sit == pMobIndex->speech.end())
 			{
 				send_to_char("No speech by that name found.\n\r", ch);
 				return false;
 			}
 
-			free_speech(speech);
+			pMobIndex->speech.erase(sit);
 			send_to_char("Speech deleted.\n\r", ch);
 			return true;
 		}

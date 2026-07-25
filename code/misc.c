@@ -301,13 +301,12 @@ void do_rngtest(CHAR_DATA *ch, char *argument)
 
 int next_sline(SPEECH_DATA *speech)
 {
-	LINE_DATA *lptr;
 	int max = 0;
 
-	for (lptr = speech->first_line; lptr; lptr = lptr->next)
+	for (auto &line : speech->first_line)
 	{
-		if (lptr->number > max)
-			max = lptr->number;
+		if (line.number > max)
+			max = line.number;
 	}
 
 	return max + 1;
@@ -315,45 +314,11 @@ int next_sline(SPEECH_DATA *speech)
 
 void sort_speech(SPEECH_DATA *speech)
 {
-	LINE_DATA *lptr, *hold;
-	bool sorted= false, first= false;
-
-	while (!sorted)
-	{
-		sorted = true;
-
-		for (lptr = speech->first_line; lptr; lptr = lptr->next)
-		{
-			first= false;
-
-			if (!lptr->next)
-				break;
-
-			if (lptr == speech->first_line)
-				first = true;
-
-			if (lptr->number > lptr->next->number)
-			{
-				sorted= false;
-
-				if (lptr->next->next)
-					lptr->next->next->prev = lptr;
-
-				lptr->next->prev = lptr->prev;
-
-				if (!first)
-					lptr->prev->next = lptr->next;
-
-				lptr->prev = lptr->next;
-				hold = lptr->next->next;
-				lptr->next->next = lptr;
-				lptr->next = hold;
-
-				if (first)
-					speech->first_line = lptr->prev;
-			}
-		}
-	}
+	// std::list::sort is a stable relink (element addresses -- and so the
+	// current_line cursor -- stay valid), matching the old ascending bubble sort.
+	speech->first_line.sort([](const LINE_DATA &a, const LINE_DATA &b) {
+		return a.number < b.number;
+	});
 }
 
 void BITWISE_OR(long bit1[], const long bit2[])

@@ -1135,6 +1135,10 @@ struct kill_data
 
 
 
+#include "entity/line_data.h"
+
+#include "entity/speech_data.h"
+
 #include "entity/mob_index_data.h"
 
 //
@@ -1142,27 +1146,6 @@ struct kill_data
 //
 
 
-struct speech_data
-{
-	MOB_INDEX_DATA *mob;
-	SPEECH_DATA *next;
-	SPEECH_DATA *prev;
-	char *name;
-	LINE_DATA *first_line;
-	LINE_DATA *current_line;
-};
-
-struct line_data
-{
-	SPEECH_DATA *speech;
-	LINE_DATA *next;
-	LINE_DATA *prev;
-	int number;
-	int delay;
-	short type;
-	char *text;
-};
-	
 //
 // Color codes
 //

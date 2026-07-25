@@ -65,11 +65,6 @@ void free_descriptor(DESCRIPTOR_DATA *d);
 /* char gen data recycling */
 GEN_DATA *new_gen_data(void);
 void free_gen_data(GEN_DATA * gen);
-/* speech recycling */
-SPEECH_DATA *new_speech_data(void);
-void free_speech(SPEECH_DATA *speech);
-void free_line(LINE_DATA *line);
-LINE_DATA *new_line_data(void);
 IPROG_DATA *new_iprog(void);
 /* race_data recycling (never gonna happen!) */
 RACE_DATA *new_race_data(void);

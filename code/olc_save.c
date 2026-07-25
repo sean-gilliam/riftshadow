@@ -332,25 +332,19 @@ void save_mobile(FILE *fp, MOB_INDEX_DATA *pMobIndex)
 		}
 	}
 
-	if (pMobIndex->speech)
+	for (auto &speech : pMobIndex->speech)
 	{
-		SPEECH_DATA *sptr;
-		LINE_DATA *lptr;
+		fprintf(fp, "SPEECH %s\n", speech.name);
 
-		for (sptr = pMobIndex->speech; sptr; sptr = sptr->next)
+		for (auto &line : speech.first_line)
 		{
-			fprintf(fp, "SPEECH %s\n", sptr->name);
-
-			for (lptr = sptr->first_line; lptr; lptr = lptr->next)
-			{
-				fprintf(fp, "LINE %d %s %s~\n",
-					lptr->delay,
-					flag_name_lookup(lptr->type, speech_table),
-					lptr->text);
-			}
-
-			fprintf(fp, "END\n");
+			fprintf(fp, "LINE %d %s %s~\n",
+				line.delay,
+				flag_name_lookup(line.type, speech_table),
+				line.text);
 		}
+
+		fprintf(fp, "END\n");
 	}
 }
 

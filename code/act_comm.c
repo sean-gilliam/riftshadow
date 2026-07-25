@@ -2502,13 +2502,10 @@ void do_gtell(CHAR_DATA *ch, char *argument)
 
 SPEECH_DATA *find_speech(MOB_INDEX_DATA *mob, char *name)
 {
-	if (!mob->speech)
-		return nullptr;
-
-	for (auto speech = mob->speech; speech; speech = speech->next)
+	for (auto &speech : mob->speech)
 	{
-		if (!str_cmp(speech->name, name))
-			return speech;
+		if (!str_cmp(speech.name, name))
+			return &speech;
 	}
 
 	return nullptr;
@@ -2516,10 +2513,10 @@ SPEECH_DATA *find_speech(MOB_INDEX_DATA *mob, char *name)
 
 void execute_speech(CHAR_DATA *ch, CHAR_DATA *mob, SPEECH_DATA *speech)
 {
-	if (!speech || !speech->first_line || !mob || !mob->in_room)
+	if (!speech || speech->first_line.empty() || !mob || !mob->in_room)
 		return;
 
-	if (speech->first_line != speech->current_line)
+	if (speech->current_line != speech->first_line.begin())
 		return;
 
 	speech_handler(ch, mob, speech);
@@ -2527,16 +2524,16 @@ void execute_speech(CHAR_DATA *ch, CHAR_DATA *mob, SPEECH_DATA *speech)
 
 void speech_handler(CHAR_DATA *ch, CHAR_DATA *mob, SPEECH_DATA *speech)
 {
-	if (!speech || !speech->first_line || !mob || !mob->in_room)
+	if (!speech || speech->first_line.empty() || !mob || !mob->in_room)
 		return;
 
 	if (mob->position < POS_RESTING)
 		return;
 
 	auto line = speech->current_line;
-	if (line == nullptr)
+	if (line == speech->first_line.end())
 	{
-		speech->current_line = speech->first_line;
+		speech->current_line = speech->first_line.begin();
 		return;
 	}
 
@@ -2606,13 +2603,13 @@ void speech_handler(CHAR_DATA *ch, CHAR_DATA *mob, SPEECH_DATA *speech)
 		return;
 	}
 
-	if (!line->next)
+	if (std::next(line) == speech->first_line.end())
 	{
-		speech->current_line = speech->first_line;
+		speech->current_line = speech->first_line.begin();
 		return;
 	}
 
-	speech->current_line = line->next;
+	speech->current_line = std::next(line);
 
 	if (speech->current_line->delay <= 0)
 	{

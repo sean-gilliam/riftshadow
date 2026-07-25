@@ -415,8 +415,7 @@ MOB_INDEX_DATA *new_mob_index(void)
 
 	if (!mob_index_free)
 	{
-		pMob = new MOB_INDEX_DATA;
-		CLEAR_MEM(pMob, sizeof(MOB_INDEX_DATA))
+		pMob = new MOB_INDEX_DATA();
 		top_mob_index++;
 	}
 	else
@@ -491,7 +490,7 @@ MOB_INDEX_DATA *new_mob_index(void)
 		pMob->cast_spell[i] = nullptr;
 	}
 
-	pMob->speech = nullptr; // DIE MORGLUM DIE
+	pMob->speech.clear(); // DIE MORGLUM DIE
 	pMob->cabal = 0;
 	pMob->attack_yell = nullptr;
 	pMob->notes = nullptr;
@@ -517,6 +516,8 @@ void free_mob_index(MOB_INDEX_DATA *pMob)
 	free_pstring(pMob->description);
 
 	free_shop(pMob->pShop);
+
+	pMob->speech.clear();
 
 	pMob->next = mob_index_free;
 	mob_index_free = pMob;
