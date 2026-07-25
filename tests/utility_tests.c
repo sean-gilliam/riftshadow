@@ -741,7 +741,7 @@ SCENARIO("checking if a player character is ethicallly lawful", "[is_lawful]")
 		WHEN("is_lawful is called")
 		{
 			auto pc = new char_data();
-			pc->pcdata = new PC_DATA();
+			pc->pcdata = std::make_unique<pc_data>();
 			pc->pcdata->ethos = 1000;
 			auto isLawful = is_lawful(pc);
 
@@ -757,7 +757,7 @@ SCENARIO("checking if a player character is ethicallly lawful", "[is_lawful]")
 		WHEN("is_lawful is called")
 		{
 			auto pc = new char_data();
-			pc->pcdata = new PC_DATA();
+			pc->pcdata = std::make_unique<pc_data>();
 			pc->pcdata->ethos = 0;
 			auto isLawful = is_lawful(pc);
 
@@ -789,7 +789,7 @@ SCENARIO("checking if a player character is ethicallly chaotic", "[is_chaotic]")
 		WHEN("is_chaotic is called")
 		{
 			auto pc = new char_data();
-			pc->pcdata = new PC_DATA();
+			pc->pcdata = std::make_unique<pc_data>();
 			pc->pcdata->ethos = -1000;
 			auto isChaotic = is_chaotic(pc);
 
@@ -805,7 +805,7 @@ SCENARIO("checking if a player character is ethicallly chaotic", "[is_chaotic]")
 		WHEN("is_chaotic is called")
 		{
 			auto pc = new char_data();
-			pc->pcdata = new PC_DATA();
+			pc->pcdata = std::make_unique<pc_data>();
 			pc->pcdata->ethos = 0;
 			auto isChaotic = is_chaotic(pc);
 
@@ -837,7 +837,7 @@ SCENARIO("checking if a player character is ethicallly neutral", "[is_eneutral]"
 		WHEN("is_eneutral is called")
 		{
 			auto pc = new char_data();
-			pc->pcdata = new PC_DATA();
+			pc->pcdata = std::make_unique<pc_data>();
 			pc->pcdata->ethos = 0;
 			auto isNeutral = is_eneutral(pc);
 
@@ -853,7 +853,7 @@ SCENARIO("checking if a player character is ethicallly neutral", "[is_eneutral]"
 		WHEN("is_neutral is called")
 		{
 			auto pc = new char_data();
-			pc->pcdata = new PC_DATA();
+			pc->pcdata = std::make_unique<pc_data>();
 			pc->pcdata->ethos = 1000;
 			auto isNeutral = is_eneutral(pc);
 

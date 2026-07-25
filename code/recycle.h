@@ -34,13 +34,14 @@
 #ifndef RECYCLE_H
 #define RECYCLE_H
 
+#include <memory>
+
 #include "entity/fwd.h"
 
 /* externals for counting purposes */
 extern DESCRIPTOR_DATA *descriptor_free;
 extern OBJ_DATA *obj_free;
 extern CHAR_DATA *char_free;
-extern PC_DATA *pcdata_free;
 
 
 /* stuff for providing a crash-proof buffer */
@@ -86,10 +87,9 @@ void free_obj(OBJ_DATA *obj);
 /* character recycling */
 CHAR_DATA *new_char(void);
 void free_char(CHAR_DATA *ch);
-PC_DATA *new_pcdata(void);
+std::unique_ptr<PC_DATA> new_pcdata(void);
 OLD_CHAR *new_oldchar(void);
 void free_oldchar(OLD_CHAR *old);
-void free_pcdata(PC_DATA *pcdata);
 /* mob id procedures */
 long get_pc_id(void);
 long get_mob_id(void);

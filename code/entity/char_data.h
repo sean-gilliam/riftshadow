@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <list>
+#include <memory>
 
 #include "fwd.h"
 #include "limits.h"
@@ -47,7 +48,7 @@ public:
 	ROOM_INDEX_DATA *in_room;
 	ROOM_INDEX_DATA *was_in_room;
 	AREA_DATA *zone;
-	PC_DATA *pcdata;
+	std::unique_ptr<PC_DATA> pcdata;
 	GEN_DATA *gen_data;
 	PATHFIND_DATA *path;	// For smart pathfinding/tracking.  Mob only.
 	PATHFIND_DATA *best;	// Stores best direction thus far.  Mob only.

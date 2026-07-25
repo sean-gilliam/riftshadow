@@ -62,7 +62,6 @@ RUNE_DATA *rune_free;
 QUEUE_DATA *queue_free;
 OBJ_DATA *obj_free;
 CHAR_DATA *char_free;
-PC_DATA *pcdata_free;
 OLD_CHAR *oldtype_free;
 
 long last_pc_id;
@@ -535,7 +534,6 @@ void free_obj(OBJ_DATA *obj)
 
 CHAR_DATA *new_char(void)
 {
-	static CHAR_DATA ch_zero;
 	CHAR_DATA *ch;
 	int i;
 
@@ -552,7 +550,10 @@ CHAR_DATA *new_char(void)
 		char_free = char_free->next;
 	}
 
-	*ch = ch_zero;
+	// Reset to a pristine char. A unique_ptr member rules out the old
+	// `*ch = ch_zero` copy-assign; move-assigning a value-initialized
+	// temporary zeroes the PODs and frees/clears the owned members.
+	*ch = CHAR_DATA();
 
 	ch->valid = true;
 
@@ -635,8 +636,7 @@ void free_char(CHAR_DATA *ch)
 	free_pstring(ch->prompt);
 	free_pstring(ch->prefix);
 
-	if (ch->pcdata != nullptr)
-		free_pcdata(ch->pcdata);
+	ch->pcdata.reset();
 
 	ch->next = char_free;
 	char_free = ch;
@@ -644,37 +644,13 @@ void free_char(CHAR_DATA *ch)
 	ch->valid = false;
 }
 
-PC_DATA *new_pcdata(void)
+std::unique_ptr<PC_DATA> new_pcdata(void)
 {
-	int alias;
-
-	static PC_DATA pcdata_zero;
-	PC_DATA *pcdata;
-
-	if (pcdata_free == nullptr)
-	{
-		pcdata = new PC_DATA;
-	}
-	else
-	{
-		pcdata = pcdata_free;
-		pcdata_free = pcdata_free->next;
-	}
-
-	*pcdata = pcdata_zero;
-
-	for (alias = 0; alias < MAX_ALIAS; alias++)
-	{
-		pcdata->alias[alias] = nullptr;
-		pcdata->alias_sub[alias] = nullptr;
-	}
+	auto pcdata = std::make_unique<PC_DATA>();	// value-init zeroes every POD field
 
 	pcdata->buffer = new BUFFER;
-
 	pcdata->valid = true;
 
-	pcdata->trusting = nullptr;
-	pcdata->death_status = 0;
 	return pcdata;
 }
 
@@ -708,40 +684,23 @@ void free_oldchar(OLD_CHAR *old)
 	oldtype_free = old;
 }
 
-void free_pcdata(PC_DATA *pcdata)
+pc_data::~pc_data()
 {
-	if (!(pcdata != nullptr && pcdata->valid))
-		return;
-
-	free_pstring(pcdata->pwd);
-	free_pstring(pcdata->bamfin);
-	free_pstring(pcdata->bamfout);
-	free_pstring(pcdata->title);
-	delete pcdata->buffer;
+	free_pstring(pwd);
+	free_pstring(bamfin);
+	free_pstring(bamfout);
+	free_pstring(title);
+	delete buffer;
 
 	for (int i = 0; i < 100; i++)
 	{
-		if (pcdata->recentkills[i] != nullptr)
-			free_pstring(pcdata->recentkills[i]);
+		if (recentkills[i] != nullptr)
+			free_pstring(recentkills[i]);
 	}
 
-	pcdata->trophy.clear();
-
-	/*
-	for (alias = 0; alias < MAX_ALIAS; alias++)
-	{
-		if(pcdata->alias[alias] != nullptr)
-		{
-			free_pstring(pcdata->alias[alias]);
-			free_pstring(pcdata->alias_sub[alias]);
-		}
-	}
-	*/
-
-	pcdata->valid = false;
-
-	pcdata->next = pcdata_free;
-	pcdata_free = pcdata;
+	// trophy (std::list) and profs (CProficiencies) auto-destruct.
+	// alias[]/alias_sub[] are intentionally not freed, matching the prior
+	// free_pcdata (a pre-existing leak preserved here, not introduced).
 }
 
 /* stuff for setting ids */

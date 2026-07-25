@@ -139,6 +139,8 @@ struct pc_data
 	//
 
 	CProficiencies	profs;
+
+	~pc_data();		// frees the owned strings + buffer (body in recycle.c)
 };
 
 #endif /* ENTITY_PC_DATA_H */

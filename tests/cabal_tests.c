@@ -9,7 +9,7 @@
 char_data* TestHelperCreatePlayer(char *name = "player 1")
 {
 	auto player = new char_data();
-	player->pcdata = new pc_data();
+	player->pcdata = std::make_unique<pc_data>();
 	player->name = name;
 	auto dnew = new descriptor_data();
 	dnew->showstr_head = nullptr;

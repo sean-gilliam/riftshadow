@@ -2413,10 +2413,9 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
  */
 void clear_char(CHAR_DATA *ch)
 {
-	static CHAR_DATA ch_zero;
 	int i;
 
-	*ch = ch_zero;
+	*ch = CHAR_DATA();
 	ch->name = &str_empty[0];
 	ch->short_descr = &str_empty[0];
 	ch->long_descr = &str_empty[0];
@@ -3190,7 +3189,6 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	int count, count2, num_pcs, aff_count;
 	CHAR_DATA *fch;
 	MOB_INDEX_DATA *pMobIndex;
-	PC_DATA *pc;
 	OBJ_DATA *obj;
 	OBJ_INDEX_DATA *pObjIndex;
 	ROOM_INDEX_DATA *room;
@@ -3236,15 +3234,10 @@ void do_dump(CHAR_DATA *ch, char *argument)
 
 	fprintf(fp, "Mobs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(*fch)), count2, count2 * (sizeof(*fch)));
 
-	/* pcdata */
+	/* pcdata — no free list any more (pcdata is owned by unique_ptr) */
 	count = 0;
 
-	for (pc = pcdata_free; pc != nullptr; pc = pc->next)
-	{
-		count++;
-	}
-
-	fprintf(fp, "Pcdata	%4d (%8lu bytes), %2d free (%lu bytes)\n", num_pcs, num_pcs * (sizeof(*pc)), count, count * (sizeof(*pc)));
+	fprintf(fp, "Pcdata	%4d (%8lu bytes), %2d free (%lu bytes)\n", num_pcs, num_pcs * (sizeof(PC_DATA)), count, count * (sizeof(PC_DATA)));
 
 	/* descriptors */
 	count = 0;

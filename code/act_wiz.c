@@ -3699,7 +3699,10 @@ void do_switch(CHAR_DATA *ch, char *argument)
 	ch->desc->character = victim;
 	ch->desc->original = ch;
 	victim->desc = ch->desc;
-	victim->pcdata = ch->pcdata;
+	// The possessed mob borrows the immortal's pcdata (it's an NPC, so its own
+	// pcdata is null). Ownership stays with the original body; do_return calls
+	// release() so this borrow is never freed through the mob.
+	victim->pcdata.reset(ch->pcdata.get());
 	ch->desc = nullptr;
 	/* change communications to match */
 	/*
@@ -3738,7 +3741,7 @@ void do_return(CHAR_DATA *ch, char *argument)
 
 	wiznet(buf, ch->desc->original, 0, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
 
-	ch->pcdata = nullptr;
+	ch->pcdata.release();		// relinquish the borrowed pcdata WITHOUT freeing it
 	ch->desc->character = ch->desc->original;
 	ch->desc->original = nullptr;
 	ch->desc->character->desc = ch->desc;
