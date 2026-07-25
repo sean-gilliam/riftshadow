@@ -59,7 +59,6 @@ const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192
 DESCRIPTOR_DATA *descriptor_free;
 GEN_DATA *gen_data_free;
 AFFECT_DATA *affect_free;
-OBJ_AFFECT_DATA *oaffect_free;
 RUNE_DATA *rune_free;
 QUEUE_DATA *queue_free;
 OBJ_DATA *obj_free;
@@ -457,37 +456,6 @@ void free_affect(AFFECT_DATA *af)
 	affect_free = af;
 }
 
-OBJ_AFFECT_DATA *new_affect_obj(void)
-{
-	static OBJ_AFFECT_DATA af_zero;
-	OBJ_AFFECT_DATA *af;
-
-	if (oaffect_free == nullptr)
-	{
-		af = new OBJ_AFFECT_DATA;
-	}
-	else
-	{
-		af = oaffect_free;
-		oaffect_free = oaffect_free->next;
-	}
-
-	*af = af_zero;
-
-	af->valid = true;
-	return af;
-}
-
-void free_affect_obj(OBJ_AFFECT_DATA *af)
-{
-	if (!(af != nullptr && af->valid))
-		return;
-
-	af->valid = false;
-	af->next = oaffect_free;
-	oaffect_free = af;
-}
-
 /* stuff for recycling objects */
 
 OBJ_DATA *new_obj(void)
@@ -513,19 +481,10 @@ OBJ_DATA *new_obj(void)
 
 void free_obj(OBJ_DATA *obj)
 {
-	OBJ_AFFECT_DATA *paf, *paf_next;
-
 	if (!(obj != nullptr && obj->valid))
 		return;
 
-	for (paf = obj->affected; paf != nullptr; paf = paf_next)
-	{
-		paf_next = paf->next;
-		free_affect_obj(paf);
-	}
-
-	obj->affected = nullptr;
-
+	obj->affected.clear();
 	obj->extra_descr.clear();
 	obj->apply.clear();		// obj owns its apply copy now (was shared with the index)
 

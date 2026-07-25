@@ -138,18 +138,17 @@ void acid_effect(void *vo, int level, int dam, int target)
 
 		if (obj->item_type == ITEM_ARMOR) /* etch it */
 		{
-			OBJ_AFFECT_DATA *paf;
 			bool af_found = false;
 			int i;
 
-			for (paf = obj->affected; paf != nullptr; paf = paf->next)
+			for (auto &paf : obj->affected)
 			{
-				if (paf->location == APPLY_AC)
+				if (paf.location == APPLY_AC)
 				{
 					af_found = true;
-					paf->type = -1;
-					paf->modifier += 1;
-					paf->level = std::max((int)paf->level, level);
+					paf.type = -1;
+					paf.modifier += 1;
+					paf.level = std::max((int)paf.level, level);
 					break;
 				}
 			}
@@ -157,15 +156,14 @@ void acid_effect(void *vo, int level, int dam, int target)
 			/* needs a new affect */
 			if (!af_found)
 			{
-				paf = new_affect_obj();
+				OBJ_AFFECT_DATA paf;
 
-				paf->type = -1;
-				paf->level = level;
-				paf->duration = -1;
-				paf->location = APPLY_AC;
-				paf->modifier = 1;
-				paf->next = obj->affected;
-				obj->affected = paf;
+				paf.type = -1;
+				paf.level = level;
+				paf.duration = -1;
+				paf.location = APPLY_AC;
+				paf.modifier = 1;
+				obj->affected.push_front(paf);
 			}
 
 			if (obj->carried_by != nullptr && obj->wear_loc != WEAR_NONE)

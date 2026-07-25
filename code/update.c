@@ -1469,7 +1469,6 @@ void obj_update(void)
 {
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
-	OBJ_AFFECT_DATA *paf, *paf_next;
 	CHAR_DATA *owner, *cguard;
 
 	for (obj = object_list; obj != nullptr; obj = obj_next)
@@ -1496,13 +1495,20 @@ void obj_update(void)
 		}
 
 		/* go through affects and decrement */
-		for (paf = obj->affected; paf != nullptr; paf = paf_next)
+		for (auto it = obj->affected.begin(); it != obj->affected.end(); )
 		{
-			paf_next = paf->next;
+			auto next = std::next(it);
+			OBJ_AFFECT_DATA *paf = &*it;
 
 			if (paf->duration != 0)
 				if (paf->tick_fun)
 					(*paf->tick_fun)(obj, paf);
+
+			/* A tick can extract (free) the object — e.g. a spent crystal
+			 * crumbling to dust — which clears its affect list. Stop before
+			 * touching the now-invalidated iterator. */
+			if (!obj->valid)
+				break;
 
 			if (paf->duration > 0)
 			{
@@ -1513,12 +1519,15 @@ void obj_update(void)
 			}
 			else if (paf->duration < 0)
 			{
+				it = next;
 				continue;
 			}
 			else
 			{
 				affect_remove_obj(obj, paf, true);
 			}
+
+			it = next;
 		}
 
 		/* crumbling stuff */
@@ -2278,7 +2287,6 @@ void affect_update(void)
 	ROOM_INDEX_DATA *room;
 	AREA_DATA *area;
 	AFFECT_DATA *paf, *paf_next;
-	OBJ_AFFECT_DATA *oaf, *oaf_next;
 
 	for (ch = char_list; ch; ch = ch_next)
 	{
@@ -2312,12 +2320,14 @@ void affect_update(void)
 	{
 		obj_next = obj->next;
 
-		for (oaf = obj->affected; oaf; oaf = oaf_next)
+		for (auto it = obj->affected.begin(); it != obj->affected.end(); )
 		{
-			oaf_next = oaf->next;
+			auto next = std::next(it);
 
-			if (oaf->pulse_fun)
-				(*oaf->pulse_fun)(obj, oaf);
+			if (it->pulse_fun)
+				(*it->pulse_fun)(obj, &*it);
+
+			it = next;
 		}
 	}
 

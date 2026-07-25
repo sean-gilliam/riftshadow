@@ -2367,7 +2367,6 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 {
 	int i;
-	OBJ_AFFECT_DATA *paf;
 
 	if (parent == nullptr || clone == nullptr)
 		return;
@@ -2405,10 +2404,8 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 
 	/* affects */
 
-	for (paf = parent->affected; paf != nullptr; paf = paf->next)
-	{
-		affect_to_obj(clone, paf);
-	}
+	for (auto &paf : parent->affected)
+		affect_to_obj(clone, &paf);
 
 	/* extended desc — prepend each (reverses order), matching the old intrusive list */
 	for (const auto &ed : parent->extra_descr)
@@ -3204,7 +3201,6 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	EXIT_DATA *exit;
 	DESCRIPTOR_DATA *d;
 	AFFECT_DATA *af;
-	OBJ_AFFECT_DATA *oaf;
 	FILE *fp;
 	int vnum, nMatch = 0;
 
@@ -3300,10 +3296,7 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	{
 		count++;
 
-		for (oaf = obj->affected; oaf != nullptr; oaf = oaf->next)
-		{
-			aff_count++;
-		}
+		aff_count += obj->affected.size();
 	}
 
 	for (obj = obj_free; obj != nullptr; obj = obj->next)

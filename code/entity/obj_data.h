@@ -22,7 +22,7 @@ struct obj_data
 	CHAR_DATA *carried_by;
 	std::list<EXTRA_DESCR_DATA> extra_descr;
 	std::list<OBJ_APPLY_DATA> apply;
-	OBJ_AFFECT_DATA *affected;
+	std::list<OBJ_AFFECT_DATA> affected;
 	AFFECT_DATA *charaffs;
 	OBJ_INDEX_DATA *pIndexData;
 	ROOM_INDEX_DATA *in_room;

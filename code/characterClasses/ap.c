@@ -814,7 +814,6 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
 	char buf[MSL];
 	CHAR_DATA *ch;
-	OBJ_AFFECT_DATA *af2;
 
 	if ((ch = obj->carried_by) == nullptr)
 		return;
@@ -876,22 +875,22 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 
 	if (!ch->fighting && number_percent() <= 33)
 	{
-		af2 = new_affect_obj();
-		af2->where = af->where;
-		af2->aftype = af->aftype;
-		af2->type = af->type;
-		af2->owner = af->owner;
-		af2->level = af->level;
-		af2->location = af->location;
-		af2->modifier = af->modifier;
-		af2->duration = af->duration;
-		af2->end_fun = af->end_fun;
-		af2->pulse_fun = af->pulse_fun;
+		OBJ_AFFECT_DATA af2;
+		af2.where = af->where;
+		af2.aftype = af->aftype;
+		af2.type = af->type;
+		af2.owner = af->owner;
+		af2.level = af->level;
+		af2.location = af->location;
+		af2.modifier = af->modifier;
+		af2.duration = af->duration;
+		af2.end_fun = af->end_fun;
+		af2.pulse_fun = af->pulse_fun;
 		affect_remove_obj(obj, af, false);
 
-		af2->modifier--;
-		af2->modifier = std::max(0, (int)af2->modifier);
-		affect_to_obj(obj, af2);
+		af2.modifier--;
+		af2.modifier = std::max(0, (int)af2.modifier);
+		affect_to_obj(obj, &af2);
 
 		return;
 	}
@@ -906,37 +905,37 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	if (is_npc(ch->fighting) && number_percent() > 5)
 		return;
 
-	af2 = new_affect_obj();
-	af2->where = af->where;
-	af2->aftype = af->aftype;
-	af2->type = af->type;
-	af2->owner = af->owner;
-	af2->level = af->level;
-	af2->location = af->location;
-	af2->modifier = af->modifier;
-	af2->duration = af->duration;
-	af2->end_fun = af->end_fun;
-	af2->pulse_fun = af->pulse_fun;
+	OBJ_AFFECT_DATA af2;
+	af2.where = af->where;
+	af2.aftype = af->aftype;
+	af2.type = af->type;
+	af2.owner = af->owner;
+	af2.level = af->level;
+	af2.location = af->location;
+	af2.modifier = af->modifier;
+	af2.duration = af->duration;
+	af2.end_fun = af->end_fun;
+	af2.pulse_fun = af->pulse_fun;
 	affect_remove_obj(obj, af, false);
 
-	if (is_npc(ch->fighting) && af2->modifier <= 15)
+	if (is_npc(ch->fighting) && af2.modifier <= 15)
 	{
-		af2->modifier++;
-		af2->modifier = std::min((int)af2->modifier, 15);
+		af2.modifier++;
+		af2.modifier = std::min((int)af2.modifier, 15);
 	}
 	else if (is_npc(ch->fighting))
 	{
-		af2->modifier -= 2;
+		af2.modifier -= 2;
 	}
 	else
 	{
-		af2->modifier++;
-		af2->modifier = std::min((int)af2->modifier, 50);
+		af2.modifier++;
+		af2.modifier = std::min((int)af2.modifier, 50);
 	}
 
-	affect_to_obj(obj, af2);
+	affect_to_obj(obj, &af2);
 
-	if (number_percent() < 10 && af2->location == APPLY_DAMROLL)
+	if (number_percent() < 10 && af2.location == APPLY_DAMROLL)
 	{
 		switch (number_range(1, 3))
 		{

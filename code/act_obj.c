@@ -75,7 +75,6 @@
 bool check_arms(CHAR_DATA *ch, OBJ_DATA *obj)
 {
 	char buf[MSL];
-	OBJ_AFFECT_DATA *paf = nullptr;
 
 	if (is_affected_obj(obj, gsn_arms_of_light)
 		|| is_affected_obj(obj, gsn_arms_of_wrath)
@@ -83,13 +82,13 @@ bool check_arms(CHAR_DATA *ch, OBJ_DATA *obj)
 		|| is_affected_obj(obj, gsn_arms_of_judgement))
 	{
 
-		for (paf = obj->affected; paf != nullptr; paf = paf->next)
+		for (auto &paf : obj->affected)
 		{
-			if ((paf->type == gsn_arms_of_light
-					|| paf->type == gsn_arms_of_wrath
-					|| paf->type == gsn_arms_of_purity
-					|| paf->type == gsn_arms_of_judgement)
-				&& paf->owner != ch)
+			if ((paf.type == gsn_arms_of_light
+					|| paf.type == gsn_arms_of_wrath
+					|| paf.type == gsn_arms_of_purity
+					|| paf.type == gsn_arms_of_judgement)
+				&& paf.owner != ch)
 			{
 				act("$p shocks you, falling from your numb hands.", ch, obj, 0, TO_CHAR);
 				act("$n drops $p.", ch, obj, 0, TO_ROOM);

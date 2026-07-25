@@ -1329,14 +1329,12 @@ AFFECT_DATA *affect_find(AFFECT_DATA *paf, int sn)
 	return nullptr;
 }
 
-OBJ_AFFECT_DATA *affect_find_obj(OBJ_AFFECT_DATA *paf, int sn)
+OBJ_AFFECT_DATA *affect_find_obj(std::list<OBJ_AFFECT_DATA> &affects, int sn)
 {
-	OBJ_AFFECT_DATA *paf_find;
-
-	for (paf_find = paf; paf_find != nullptr; paf_find = paf_find->next)
+	for (auto &paf : affects)
 	{
-		if (paf_find->type == sn)
-			return paf_find;
+		if (paf.type == sn)
+			return &paf;
 	}
 
 	return nullptr;
@@ -2947,11 +2945,7 @@ bool can_see_obj(CHAR_DATA *ch, OBJ_DATA *obj)
 
 	if (is_affected_obj(obj, gsn_stash))
 	{
-		for (oaf = obj->affected; oaf != nullptr; oaf = oaf->next)
-		{
-			if (oaf->type == gsn_stash)
-				break;
-		}
+		oaf = affect_find_obj(obj->affected, gsn_stash);
 
 		if (oaf->owner != ch && !is_immortal(ch))
 			return false;
@@ -4408,27 +4402,19 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 
 void affect_to_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf)
 {
-	OBJ_AFFECT_DATA *paf_new;
+	obj->affected.push_front(*paf);
 
-	paf_new = new_affect_obj();
-
-	*paf_new = *paf;
-	paf_new->next = obj->affected;
-	obj->affected = paf_new;
-
-	affect_modify_obj(obj, paf_new, true);
+	affect_modify_obj(obj, &obj->affected.front(), true);
 }
 
 void affect_check_obj(OBJ_DATA *obj, int where, long vector[])
 {
-	OBJ_AFFECT_DATA *paf;
-
 	if (IS_ZERO_VECTOR(vector))
 		return;
 
-	for (paf = obj->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : obj->affected)
 	{
-		if (paf->where == where && vector_equal(paf->bitvector, vector))
+		if (paf.where == where && vector_equal(paf.bitvector, vector))
 		{
 			switch (where)
 			{
@@ -4447,7 +4433,7 @@ void affect_remove_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool show)
 	int where;
 	long vector[MAX_BITVECTOR];
 
-	if (!obj->affected)
+	if (obj->affected.empty())
 	{
 		RS.Logger.Warn("affect_remove_obj: no affect!");
 		return;
@@ -4460,55 +4446,44 @@ void affect_remove_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool show)
 	where = paf->where;
 	copy_vector(vector, paf->bitvector);
 
-	if (paf == obj->affected)
+	bool found = false;
+	for (auto it = obj->affected.begin(); it != obj->affected.end(); ++it)
 	{
-		obj->affected = paf->next;
-	}
-	else
-	{
-		OBJ_AFFECT_DATA *prev;
-
-		for (prev = obj->affected; prev != nullptr; prev = prev->next)
+		if (&*it == paf)
 		{
-			if (prev->next == paf)
-			{
-				prev->next = paf->next;
-				break;
-			}
-		}
-
-		if (!prev)
-		{
-			RS.Logger.Warn("affect_remove_obj: cannot find paf on obj #{}!", obj->pIndexData->vnum);
-			return;
+			obj->affected.erase(it);
+			found = true;
+			break;
 		}
 	}
 
-	free_affect_obj(paf);
+	if (!found)
+	{
+		RS.Logger.Warn("affect_remove_obj: cannot find paf on obj #{}!", obj->pIndexData->vnum);
+		return;
+	}
+
 	affect_check_obj(obj, where, vector);
 }
 
 void affect_strip_obj(OBJ_DATA *obj, int sn)
 {
-	OBJ_AFFECT_DATA *paf;
-	OBJ_AFFECT_DATA *paf_next;
-
-	for (paf = obj->affected; paf != nullptr; paf = paf_next)
+	for (auto it = obj->affected.begin(); it != obj->affected.end(); )
 	{
-		paf_next = paf->next;
+		auto next = std::next(it);
 
-		if (paf->type == sn)
-			affect_remove_obj(obj, paf, true);
+		if (it->type == sn)
+			affect_remove_obj(obj, &*it, true);
+
+		it = next;
 	}
 }
 
 bool is_affected_obj(OBJ_DATA *obj, int sn)
 {
-	OBJ_AFFECT_DATA *paf;
-
-	for (paf = obj->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : obj->affected)
 	{
-		if (paf->type == sn)
+		if (paf.type == sn)
 			return true;
 	}
 
@@ -4517,16 +4492,14 @@ bool is_affected_obj(OBJ_DATA *obj, int sn)
 
 void affect_join_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf)
 {
-	OBJ_AFFECT_DATA *paf_old;
-
-	for (paf_old = obj->affected; paf_old != nullptr; paf_old = paf_old->next)
+	for (auto &paf_old : obj->affected)
 	{
-		if (paf_old->type == paf->type)
+		if (paf_old.type == paf->type)
 		{
-			paf->level = (paf->level + paf_old->level) / 2;
-			paf->duration += paf_old->duration;
-			paf->modifier += paf_old->modifier;
-			affect_remove_obj(obj, paf_old, true);
+			paf->level = (paf->level + paf_old.level) / 2;
+			paf->duration += paf_old.duration;
+			paf->modifier += paf_old.modifier;
+			affect_remove_obj(obj, &paf_old, true);
 			break;
 		}
 	}

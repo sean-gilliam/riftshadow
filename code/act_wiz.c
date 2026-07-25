@@ -1829,7 +1829,6 @@ void do_rstat(CHAR_DATA *ch, char *argument)
 void do_ostat(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_STRING_LENGTH], arg[MAX_INPUT_LENGTH], buf2[MSL];
-	OBJ_AFFECT_DATA *paf;
 	AFFECT_DATA *paf2;
 	OBJ_DATA *obj;
 
@@ -2296,35 +2295,35 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	for (paf = obj->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : obj->affected)
 	{
-		if (paf->aftype == AFT_SKILL)
+		if (paf.aftype == AFT_SKILL)
 			sprintf(buf2, "Skill");
-		else if (paf->aftype == AFT_POWER)
+		else if (paf.aftype == AFT_POWER)
 			sprintf(buf2, "Power");
-		else if (paf->aftype == AFT_COMMUNE)
+		else if (paf.aftype == AFT_COMMUNE)
 			sprintf(buf2, "Commune");
-		else if (paf->aftype == AFT_RUNE)
+		else if (paf.aftype == AFT_RUNE)
 			sprintf(buf2, "Rune");
 		else
 			sprintf(buf2, "Spell");
 
 		auto buffer = fmt::sprintf(buf, "%s: '%s' modifies %s by %d for %d%s hours with %s-bits %s, owner %s, level %d.\n\r",
 			buf2,
-			skill_table[(int)paf->type].name,
-			(paf->where == TO_OBJ_AFFECTS)
-				? str_cmp(oaffect_loc_name(paf->location), "none")
-					? oaffect_loc_name(paf->location)
-					: (paf->where == TO_OBJ_APPLY)
-						? affect_loc_name(paf->location)
-						: apply_locations[paf->location].name
+			skill_table[(int)paf.type].name,
+			(paf.where == TO_OBJ_AFFECTS)
+				? str_cmp(oaffect_loc_name(paf.location), "none")
+					? oaffect_loc_name(paf.location)
+					: (paf.where == TO_OBJ_APPLY)
+						? affect_loc_name(paf.location)
+						: apply_locations[paf.location].name
 				: "none",
-			paf->modifier,
-			(paf->duration == -1) ? -1 : (paf->duration / 2) + 1,
-			(paf->duration == 0) ? "" : (paf->duration == -1) ? "" : ".5",
-			(paf->where == TO_OBJ_AFFECTS) ? "aff" : (paf->where == TO_OBJ_APPLY) ? "apply" : "?",
-			oaffect_bit_name(paf->bitvector),
-			(paf->owner) ? paf->owner->name : "none", paf->level);
+			paf.modifier,
+			(paf.duration == -1) ? -1 : (paf.duration / 2) + 1,
+			(paf.duration == 0) ? "" : (paf.duration == -1) ? "" : ".5",
+			(paf.where == TO_OBJ_AFFECTS) ? "aff" : (paf.where == TO_OBJ_APPLY) ? "apply" : "?",
+			oaffect_bit_name(paf.bitvector),
+			(paf.owner) ? paf.owner->name : "none", paf.level);
 		send_to_char(buffer.c_str(), ch);
 	}
 }
@@ -7255,7 +7254,6 @@ void do_aastrip(CHAR_DATA *ch, char *argument)
 void do_oastrip(CHAR_DATA *ch, char *argument)
 {
 	OBJ_DATA *obj;
-	OBJ_AFFECT_DATA *af, *af_next;
 	char arg[MSL];
 
 	one_argument(argument, arg);
@@ -7276,14 +7274,14 @@ void do_oastrip(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (af = obj->affected; af != nullptr; af = af_next)
+	for (auto it = obj->affected.begin(); it != obj->affected.end(); )
 	{
-		af_next = af->next;
+		auto next = std::next(it);
 
-		if (IS_SET(af->bitvector, AFF_PERMANENT))
-			continue;
+		if (!IS_SET(it->bitvector, AFF_PERMANENT))
+			affect_remove_obj(obj, &*it, true);
 
-		affect_remove_obj(obj, af, true);
+		it = next;
 	}
 
 	act("All affects stripped from $p.", ch, obj, 0, TO_CHAR);

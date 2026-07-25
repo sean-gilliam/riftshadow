@@ -187,13 +187,7 @@ char *format_obj_to_char(OBJ_DATA *obj, CHAR_DATA *ch, bool fShort)
 
 	if (is_affected_obj(obj, gsn_stash) && is_immortal(ch))
 	{
-		auto oaf = obj->affected;
-		for (; oaf != nullptr; oaf = oaf->next)
-		{
-			if (oaf->type == gsn_stash)
-				break;
-		}
-
+		OBJ_AFFECT_DATA *oaf = affect_find_obj(obj->affected, gsn_stash);
 		sprintf(buf, "(Stashed by %s) ", oaf->owner->name);
 	}
 

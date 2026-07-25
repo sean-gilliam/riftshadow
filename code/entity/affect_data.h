@@ -76,22 +76,23 @@ struct area_affect_data
 	AAFF_FUN *end_fun = nullptr;
 };
 
+// An object affect. Plain value type; an object owns these by value in a
+// std::list<OBJ_AFFECT_DATA> (obj->affected). `owner` is a non-owning
+// CHAR_DATA back-reference and stays a raw pointer.
 struct obj_affect_data
 {
-	OBJ_AFFECT_DATA *next;
-	CHAR_DATA *owner;
-	bool valid;
-	short where;
-	short type;
-	short level;
-	short duration;
-	short location;
-	short modifier;
-	long bitvector[MAX_BITVECTOR];
-	int aftype;
-	OAFF_FUN *pulse_fun;
-	OAFF_FUN *tick_fun;
-	OAFF_FUN *end_fun;
+	CHAR_DATA *owner = nullptr;
+	short where = 0;
+	short type = 0;
+	short level = 0;
+	short duration = 0;
+	short location = 0;
+	short modifier = 0;
+	long bitvector[MAX_BITVECTOR] = {};
+	int aftype = 0;
+	OAFF_FUN *pulse_fun = nullptr;
+	OAFF_FUN *tick_fun = nullptr;
+	OAFF_FUN *end_fun = nullptr;
 };
 
 // A stat apply on an object. Plain value type; parents own these by value in a

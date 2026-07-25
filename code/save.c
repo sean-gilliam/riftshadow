@@ -755,8 +755,6 @@ void fwrite_pet(CHAR_DATA *pet, FILE *fp)
  */
 void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 {
-	OBJ_AFFECT_DATA *paf;
-
 	/*
 	 * Slick recursion to write lists backwards,
 	 *   so loading them will load in forwards order.
@@ -857,23 +855,23 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 			break;
 	}
 
-	for (paf = obj->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : obj->affected)
 	{
-		if (paf->type < 0 || paf->type >= MAX_SKILL)
+		if (paf.type < 0 || paf.type >= MAX_SKILL)
 			continue;
 
-		paf->aftype = isAftSpell(paf->aftype);
+		paf.aftype = isAftSpell(paf.aftype);
 
 		fprintf(fp, "Affc '%s' %3d %3d %3d %3d %3d %s %d %s\n",
-			skill_table[paf->type].name,
-			paf->where,
-			paf->level,
-			paf->duration,
-			paf->modifier,
-			paf->location,
-			print_flags(paf->bitvector),
-			paf->aftype,
-			paf->owner ? paf->owner->name : "none");
+			skill_table[paf.type].name,
+			paf.where,
+			paf.level,
+			paf.duration,
+			paf.modifier,
+			paf.location,
+			print_flags(paf.bitvector),
+			paf.aftype,
+			paf.owner ? paf.owner->name : "none");
 	}
 
 	// Save only applies the object has beyond its prototype. The list was a
@@ -2114,26 +2112,25 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 				{
 					CHAR_DATA *wch;
 					char *owner;
-					OBJ_AFFECT_DATA *paf;
+					OBJ_AFFECT_DATA paf;
 					int sn;
 
-					paf = new_affect_obj();
-					init_affect_obj(paf);
+					init_affect_obj(&paf);
 					sn = skill_lookup(fread_word(fp));
 
 					if (sn < 0)
 						RS.Logger.Warn("Fread_obj: unknown skill.");
 					else
-						paf->type = sn;
+						paf.type = sn;
 
-					paf->where = fread_number(fp);
-					paf->level = fread_number(fp);
-					paf->duration = fread_number(fp);
-					paf->modifier = fread_number(fp);
-					paf->location = fread_number(fp);
+					paf.where = fread_number(fp);
+					paf.level = fread_number(fp);
+					paf.duration = fread_number(fp);
+					paf.modifier = fread_number(fp);
+					paf.location = fread_number(fp);
 
-					fread_flag_new(paf->bitvector, fp);
-					paf->aftype = fread_number(fp);
+					fread_flag_new(paf.bitvector, fp);
+					paf.aftype = fread_number(fp);
 
 					owner = fread_word(fp);
 
@@ -2141,16 +2138,15 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf->owner = wch;
+							paf.owner = wch;
 							break;
 						}
 					}
 
 					if (!str_cmp(ch->name, owner))
-						paf->owner = ch;
+						paf.owner = ch;
 
-					paf->next = obj->affected;
-					obj->affected = paf;
+					obj->affected.push_front(paf);
 					fMatch = true;
 					break;
 				}
