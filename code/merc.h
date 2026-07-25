@@ -1260,18 +1260,7 @@ struct aprog_data
 
 #include "entity/pc_data.h"
 
-//
-// Data for generating characters -- only used during generation
-//
-
-struct gen_data
-{
-	GEN_DATA *next;
-	bool valid;
-	bool skill_chosen[MAX_SKILL];
-	bool group_chosen[MAX_GROUP];
-	int points_chosen;
-};
+#include "entity/gen_data.h"
 
 #include "entity/extra_descr.h"
 

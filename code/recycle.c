@@ -57,7 +57,6 @@
 const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192, 16384};
 
 DESCRIPTOR_DATA *descriptor_free;
-GEN_DATA *gen_data_free;
 RUNE_DATA *rune_free;
 QUEUE_DATA *queue_free;
 OBJ_DATA *obj_free;
@@ -100,38 +99,6 @@ void free_descriptor(DESCRIPTOR_DATA *d)
 	d->valid = false;
 	d->next = descriptor_free;
 	descriptor_free = d;
-}
-
-/* stuff for recycling gen_data */
-GEN_DATA *new_gen_data(void)
-{
-	static GEN_DATA gen_zero;
-	GEN_DATA *gen;
-
-	if (gen_data_free == nullptr)
-	{
-		gen = new GEN_DATA;
-	}
-	else
-	{
-		gen = gen_data_free;
-		gen_data_free = gen_data_free->next;
-	}
-
-	*gen = gen_zero;
-
-	gen->valid = true;
-	return gen;
-}
-
-void free_gen_data(GEN_DATA *gen)
-{
-	if (!(gen != nullptr && gen->valid))
-		return;
-
-	gen->valid = false;
-	gen->next = gen_data_free;
-	gen_data_free = gen;
 }
 
 /* Trophy list elements own their victname string (rule-of-5). */
@@ -637,6 +604,7 @@ void free_char(CHAR_DATA *ch)
 	free_pstring(ch->prefix);
 
 	ch->pcdata.reset();
+	ch->gen_data.reset();
 
 	ch->next = char_free;
 	char_free = ch;

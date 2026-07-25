@@ -62,9 +62,6 @@ extern CHAR_DATA *char_free;
 /* descriptor recycling */
 DESCRIPTOR_DATA *new_descriptor(void);
 void free_descriptor(DESCRIPTOR_DATA *d);
-/* char gen data recycling */
-GEN_DATA *new_gen_data(void);
-void free_gen_data(GEN_DATA * gen);
 IPROG_DATA *new_iprog(void);
 /* race_data recycling (never gonna happen!) */
 RACE_DATA *new_race_data(void);
