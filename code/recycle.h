@@ -65,9 +65,6 @@ void free_descriptor(DESCRIPTOR_DATA *d);
 /* char gen data recycling */
 GEN_DATA *new_gen_data(void);
 void free_gen_data(GEN_DATA * gen);
-/* trophy recycling */
-TROPHY_DATA *new_trophy_data(char *victname);
-void free_trophy(TROPHY_DATA *trophy);
 /* speech recycling */
 SPEECH_DATA *new_speech_data(void);
 void free_speech(SPEECH_DATA *speech);

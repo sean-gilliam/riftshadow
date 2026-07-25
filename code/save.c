@@ -243,7 +243,6 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 	int i, j;
 	OBJ_DATA *obj;
 	OBJ_DATA *belt;
-	TROPHY_DATA *placeholder;
 
 	fprintf(fp, "#%s\n", is_npc(ch) ? "MOB" : "PLAYER");
 	fprintf(fp, "Name %s~\n", ch->true_name);
@@ -597,8 +596,8 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 			paf->owner ? paf->owner->name : "none", paf->name ? paf->name : "none");
 	}
 
-	if (ch->pcdata->trophy
-		&& ch->pcdata->trophy->victname
+	if (!ch->pcdata->trophy.empty()
+		&& ch->pcdata->trophy.front().victname
 		&& ch->cabal == CABAL_HORDE
 		&& (belt = get_eq_char(ch, WEAR_WAIST)) != nullptr
 		&& belt->pIndexData->vnum == OBJ_VNUM_TROPHY_BELT
@@ -607,23 +606,22 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 		fprintf(fp, "Trophies ");
 		fprintf(fp, "%d ", belt->value[4]);
 
-		placeholder = ch->pcdata->trophy;
+		auto it = ch->pcdata->trophy.begin();
 
 		for (j = 1; j <= belt->value[4]; j++)
 		{
-			if (!ch->pcdata->trophy)
+			if (it == ch->pcdata->trophy.end())
 				break;
 
-			fprintf(fp, "%s%s", ch->pcdata->trophy->victname, " ");
+			fprintf(fp, "%s%s", it->victname, " ");
 
-			if (!ch->pcdata->trophy->next)
+			if (std::next(it) == ch->pcdata->trophy.end())
 				break;
 
-			ch->pcdata->trophy = ch->pcdata->trophy->next;
+			++it;
 		}
 
 		fprintf(fp, "XYZ\n\r");
-		ch->pcdata->trophy = placeholder;
 	}
 
 	if (ch->pcdata->logon_time)
@@ -1158,7 +1156,6 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 	int lastlogoff = current_time;
 	int percent;
 	int i, scalps;
-	TROPHY_DATA *placeholder;
 
 	RS.Logger.Info("Loading {}.", ch->name);
 
@@ -1778,21 +1775,23 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 				if (!str_cmp(word, "Trophies"))
 				{
 					scalps = fread_number(fp);
-					ch->pcdata->trophy = new_trophy_data(fread_word(fp));
-					placeholder = ch->pcdata->trophy;
+					ch->pcdata->trophy.clear();
+					ch->pcdata->trophy.emplace_back(fread_word(fp));
 
 					for (i = 2; i <= scalps; i++)
 					{
-						ch->pcdata->trophy = ch->pcdata->trophy->next = new_trophy_data(fread_word(fp));
+						const char *victname = fread_word(fp);
 
-						if (!str_cmp(ch->pcdata->trophy->victname, "XYZ"))
-						{
-							free_pstring(ch->pcdata->trophy->victname);
+						// "XYZ" is the terminator the save side writes; consume
+						// it but don't add it as a trophy. (The old code created
+						// the node then freed its victname, leaving a dangling
+						// string on the last node.)
+						if (!str_cmp(victname, "XYZ"))
 							break;
-						}
+
+						ch->pcdata->trophy.emplace_back(victname);
 					}
 
-					ch->pcdata->trophy = placeholder;
 					fMatch = true;
 					break;
 				}

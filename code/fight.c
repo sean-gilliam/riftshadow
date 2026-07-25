@@ -8961,7 +8961,6 @@ void trophy_corpse(CHAR_DATA *ch, CHAR_DATA *victim)
 {
 	OBJ_DATA *corpse, *belt, *newbelt;
 	OBJ_AFFECT_DATA oaf;
-	TROPHY_DATA *placeholder;
 	int i, scalps;
 
 	for (corpse = ch->in_room->contents; corpse; corpse = corpse->next_content)
@@ -8987,7 +8986,7 @@ void trophy_corpse(CHAR_DATA *ch, CHAR_DATA *victim)
 	act("$n smoothly slices $N's scalp from $S head and attaches it to $s belt!", ch, 0, victim, TO_NOTVICT);
 	check_improve(ch, gsn_trophy, true, 1);
 
-	if (!ch->pcdata->trophy)
+	if (ch->pcdata->trophy.empty())
 		belt->value[4] = 0;
 
 	/* Update the hit/dam mods on the belt. */
@@ -9021,26 +9020,30 @@ void trophy_corpse(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	if (newbelt->value[4] == 0)
 	{
-
-		ch->pcdata->trophy = new_trophy_data(victim->true_name);
+		ch->pcdata->trophy.clear();
+		ch->pcdata->trophy.emplace_back(victim->true_name);
 	}
 	else
 	{
-		placeholder = ch->pcdata->trophy;
+		auto it = ch->pcdata->trophy.begin();
 
 		for (i = 1; i < newbelt->value[4]; i++)
 		{
-			if (!ch->pcdata->trophy)
+			if (it == ch->pcdata->trophy.end())
 				break;
 
-			if (!ch->pcdata->trophy->next)
+			if (std::next(it) == ch->pcdata->trophy.end())
 				break;
 
-			ch->pcdata->trophy = ch->pcdata->trophy->next;
+			++it;
 		}
 
-		ch->pcdata->trophy = ch->pcdata->trophy->next = new_trophy_data(victim->true_name);
-		ch->pcdata->trophy = placeholder;
+		// Append after `it`, dropping anything past it -- mirrors the old
+		// `it->next = new`, which orphaned the cursor's old tail.
+		if (it != ch->pcdata->trophy.end())
+			ch->pcdata->trophy.erase(std::next(it), ch->pcdata->trophy.end());
+
+		ch->pcdata->trophy.emplace_back(victim->true_name);
 	}
 
 	newbelt->value[4]++;

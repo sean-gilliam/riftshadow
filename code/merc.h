@@ -1273,6 +1273,8 @@ struct aprog_data
 	char *myell_name;
 };
 
+#include "entity/trophy_data.h"
+
 #include "entity/pc_data.h"
 
 //
@@ -1328,12 +1330,6 @@ struct trap_data
 //
 // Solution to Horde trophy ugliness
 //
-
-struct trophy_data
-{
-	char *victname;
-	TROPHY_DATA *next;
-};
 
 struct pathfind_data
 {

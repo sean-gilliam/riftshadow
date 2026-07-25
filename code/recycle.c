@@ -139,34 +139,53 @@ void free_gen_data(GEN_DATA *gen)
 	gen_data_free = gen;
 }
 
-/* Stuff for recycling trophy lists */
-TROPHY_DATA *new_trophy_data(char *victname)
+/* Trophy list elements own their victname string (rule-of-5). */
+trophy_data::trophy_data(const char *name)
+	: victname(name ? palloc_string(name) : nullptr)
 {
-	TROPHY_DATA *trophy = new TROPHY_DATA;
-
-	trophy->victname = palloc_string(victname);
-	trophy->next = nullptr;
-
-	return trophy;
 }
 
-void free_trophy(TROPHY_DATA *trophy)
+trophy_data::~trophy_data()
 {
-	if (!trophy)
+	free_pstring(victname);
+}
+
+trophy_data::trophy_data(const trophy_data &other)
+	: victname(other.victname ? palloc_string(other.victname) : nullptr)
+{
+}
+
+trophy_data &trophy_data::operator=(const trophy_data &other)
+{
+	if (this != &other)
 	{
-		RS.Logger.Warn("ERROR: Null trophy freed!");
-		return;
+		char *new_victname = other.victname ? palloc_string(other.victname) : nullptr;
+
+		free_pstring(victname);
+
+		victname = new_victname;
 	}
 
-	if (trophy->next == nullptr)
+	return *this;
+}
+
+trophy_data::trophy_data(trophy_data &&other) noexcept
+	: victname(other.victname)
+{
+	other.victname = nullptr;
+}
+
+trophy_data &trophy_data::operator=(trophy_data &&other) noexcept
+{
+	if (this != &other)
 	{
-		delete trophy;
+		free_pstring(victname);
+
+		victname = other.victname;
+		other.victname = nullptr;
 	}
-	else
-	{
-		free_trophy(trophy->next);
-		delete trophy;
-	}
+
+	return *this;
 }
 
 /* mob speech memory management */
@@ -842,6 +861,8 @@ void free_pcdata(PC_DATA *pcdata)
 		if (pcdata->recentkills[i] != nullptr)
 			free_pstring(pcdata->recentkills[i]);
 	}
+
+	pcdata->trophy.clear();
 
 	/*
 	for (alias = 0; alias < MAX_ALIAS; alias++)

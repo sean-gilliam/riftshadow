@@ -780,10 +780,8 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 		&& victim->cabal == CABAL_HORDE
 		&& belt != nullptr
 		&& belt->pIndexData->vnum == OBJ_VNUM_TROPHY_BELT
-		&& victim->pcdata->trophy && belt->value[4] >= 1)
+		&& !victim->pcdata->trophy.empty() && belt->value[4] >= 1)
 	{
-		auto placeholder = victim->pcdata->trophy;
-
 		act("\n\r$p catches your eye, meriting closer examination.", ch, belt, 0, TO_CHAR);
 
 		if (!belt->extra_descr.empty())
@@ -796,12 +794,14 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 			buf3[i] = '\0';
 		}
 
+		auto it = victim->pcdata->trophy.begin();
+
 		for (auto counter = 1; counter <= belt->value[4]; counter++)
 		{
 			sprintf(buf2, "%s%s%c scalp of %s",
 				counter > 1 ? ", " : "",
 				counter % 4 == 0 ? "\n\r" : "",
-				counter > 1 ? 'a' : 'A', victim->pcdata->trophy->victname);
+				counter > 1 ? 'a' : 'A', it->victname);
 
 			strcat(buf3, buf2);
 
@@ -813,10 +813,10 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 			if (counter >= belt->value[4])
 				break;
 
-			if (!victim->pcdata->trophy->next)
+			if (std::next(it) == victim->pcdata->trophy.end())
 				break;
 
-			victim->pcdata->trophy = victim->pcdata->trophy->next;
+			++it;
 		}
 
 		strcat(buf3, ".\n\r");
@@ -824,7 +824,6 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 		send_to_char(buf3, ch);
 
 		buf3[0] = '\0';
-		victim->pcdata->trophy = placeholder;
 	}
 
 	if (victim != ch
