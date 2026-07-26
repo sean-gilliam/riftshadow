@@ -2,11 +2,13 @@
 #define ENTITY_PC_DATA_H
 
 #include <time.h>
+#include <list>
 
 #include "fwd.h"
 #include "limits.h"
 #include "../enums.h"		// SECT_MAX
 #include "../prof.h"		// CProficiencies is embedded by value
+#include "trophy_data.h"	// TROPHY_DATA held by value in pcdata->trophy
 
 //
 // Data which only PC's have.
@@ -94,7 +96,7 @@ struct pc_data
 	short style;
 	long styles[MAX_BITVECTOR];
 	long ele_sphere[MAX_BITVECTOR];
-	TROPHY_DATA *trophy;
+	std::list<TROPHY_DATA> trophy;
 	char *command[2];
 	
 	//
@@ -137,6 +139,8 @@ struct pc_data
 	//
 
 	CProficiencies	profs;
+
+	~pc_data();		// frees the owned strings + buffer (body in recycle.c)
 };
 
 #endif /* ENTITY_PC_DATA_H */

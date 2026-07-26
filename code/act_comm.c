@@ -98,9 +98,9 @@ void do_delete(CHAR_DATA *ch, char *argument)
 			wiznet("$N turns $Mself into line noise.", ch, nullptr, 0, 0, 0);
 			ch->pause = 0;
 
-			while (ch->affected)
+			while (!ch->affected.empty())
 			{
-				affect_remove(ch, ch->affected);
+				affect_remove(ch, &ch->affected.front());
 			}
 
 			stop_fighting(ch, true);
@@ -229,14 +229,16 @@ void do_replay(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!ch->pcdata->buffer->string || ch->pcdata->buffer->string[0] == '\0')
+	const char *replay = ch->pcdata->buffer->str();
+
+	if (!replay || replay[0] == '\0')
 	{
 		send_to_char("You have no tells to replay.\n\r", ch);
 		return;
 	}
 
-	page_to_char(buf_string(ch->pcdata->buffer), ch);
-	clear_buf(ch->pcdata->buffer);
+	page_to_char(ch->pcdata->buffer->str(), ch);
+	ch->pcdata->buffer->clear();
 }
 
 void do_cb(CHAR_DATA *ch, char *argument)
@@ -1223,7 +1225,7 @@ void do_tell(CHAR_DATA *ch, char *argument)
 		act("$N seems to have lost consciousness...try again later.", ch, nullptr, victim, TO_CHAR);
 		sprintf(buf, "%s tells you '%s'\n\r", pers(ch, victim), argument);
 		buf[0] = UPPER(buf[0]);
-		add_buf(victim->pcdata->buffer, buf);
+		victim->pcdata->buffer->add(buf);
 		return;
 	}
 
@@ -1309,7 +1311,7 @@ void do_reply(CHAR_DATA *ch, char *argument)
 		act("$N seems to have lost consciousness...try again later.", ch, nullptr, victim, TO_CHAR);
 		sprintf(buf, "%s tells you '%s'\n\r", pers(ch, victim), argument);
 		buf[0] = UPPER(buf[0]);
-		add_buf(victim->pcdata->buffer, buf);
+		victim->pcdata->buffer->add(buf);
 		return;
 	}
 
@@ -1865,11 +1867,14 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 
 		if (is_affected(wch, gsn_empathy))
 		{
-			auto laf = wch->affected;
-			for (; laf != nullptr; laf = laf->next)
+			AFFECT_DATA *laf = nullptr;
+			for (auto &laf_elem : wch->affected)
 			{
-				if (laf->type == gsn_empathy)
+				if (laf_elem.type == gsn_empathy)
+				{
+					laf = &laf_elem;
 					break;
+				}
 			}
 
 			if (laf->owner == ch)
@@ -2500,13 +2505,10 @@ void do_gtell(CHAR_DATA *ch, char *argument)
 
 SPEECH_DATA *find_speech(MOB_INDEX_DATA *mob, char *name)
 {
-	if (!mob->speech)
-		return nullptr;
-
-	for (auto speech = mob->speech; speech; speech = speech->next)
+	for (auto &speech : mob->speech)
 	{
-		if (!str_cmp(speech->name, name))
-			return speech;
+		if (!str_cmp(speech.name, name))
+			return &speech;
 	}
 
 	return nullptr;
@@ -2514,10 +2516,10 @@ SPEECH_DATA *find_speech(MOB_INDEX_DATA *mob, char *name)
 
 void execute_speech(CHAR_DATA *ch, CHAR_DATA *mob, SPEECH_DATA *speech)
 {
-	if (!speech || !speech->first_line || !mob || !mob->in_room)
+	if (!speech || speech->first_line.empty() || !mob || !mob->in_room)
 		return;
 
-	if (speech->first_line != speech->current_line)
+	if (speech->current_line != speech->first_line.begin())
 		return;
 
 	speech_handler(ch, mob, speech);
@@ -2525,16 +2527,16 @@ void execute_speech(CHAR_DATA *ch, CHAR_DATA *mob, SPEECH_DATA *speech)
 
 void speech_handler(CHAR_DATA *ch, CHAR_DATA *mob, SPEECH_DATA *speech)
 {
-	if (!speech || !speech->first_line || !mob || !mob->in_room)
+	if (!speech || speech->first_line.empty() || !mob || !mob->in_room)
 		return;
 
 	if (mob->position < POS_RESTING)
 		return;
 
 	auto line = speech->current_line;
-	if (line == nullptr)
+	if (line == speech->first_line.end())
 	{
-		speech->current_line = speech->first_line;
+		speech->current_line = speech->first_line.begin();
 		return;
 	}
 
@@ -2604,13 +2606,13 @@ void speech_handler(CHAR_DATA *ch, CHAR_DATA *mob, SPEECH_DATA *speech)
 		return;
 	}
 
-	if (!line->next)
+	if (std::next(line) == speech->first_line.end())
 	{
-		speech->current_line = speech->first_line;
+		speech->current_line = speech->first_line.begin();
 		return;
 	}
 
-	speech->current_line = line->next;
+	speech->current_line = std::next(line);
 
 	if (speech->current_line->delay <= 0)
 	{

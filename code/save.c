@@ -238,12 +238,10 @@ void fread_charmie(CHAR_DATA *ch, FILE *fp)
 
 void fwrite_char(CHAR_DATA *ch, FILE *fp)
 {
-	AFFECT_DATA *paf;
 	int sn, gn, pos;
 	int i, j;
 	OBJ_DATA *obj;
 	OBJ_DATA *belt;
-	TROPHY_DATA *placeholder;
 
 	fprintf(fp, "#%s\n", is_npc(ch) ? "MOB" : "PLAYER");
 	fprintf(fp, "Name %s~\n", ch->true_name);
@@ -575,30 +573,30 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 		}
 	}
 
-	for (paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type < 0 || paf->type >= MAX_SKILL)
+		if (paf.type < 0 || paf.type >= MAX_SKILL)
 			continue;
 
-		if (paf->type == gsn_word_of_command || paf->type == gsn_disguise || paf->type == gsn_indomitable_spirit)
+		if (paf.type == gsn_word_of_command || paf.type == gsn_disguise || paf.type == gsn_indomitable_spirit)
 			continue;
 
-		paf->aftype = isAftSpell(paf->aftype);
+		paf.aftype = isAftSpell(paf.aftype);
 
 		fprintf(fp, "Affc '%s' %3d %3d %3d %3d %3d %s %3d %s '%s'\n",
-			skill_table[paf->type].name,
-			paf->where,
-			paf->level,
-			paf->duration,
-			paf->modifier,
-			paf->location,
-			print_flags(paf->bitvector),
-			paf->aftype,
-			paf->owner ? paf->owner->name : "none", paf->name ? paf->name : "none");
+			skill_table[paf.type].name,
+			paf.where,
+			paf.level,
+			paf.duration,
+			paf.modifier,
+			paf.location,
+			print_flags(paf.bitvector),
+			paf.aftype,
+			paf.owner ? paf.owner->name : "none", paf.name ? paf.name : "none");
 	}
 
-	if (ch->pcdata->trophy
-		&& ch->pcdata->trophy->victname
+	if (!ch->pcdata->trophy.empty()
+		&& ch->pcdata->trophy.front().victname
 		&& ch->cabal == CABAL_HORDE
 		&& (belt = get_eq_char(ch, WEAR_WAIST)) != nullptr
 		&& belt->pIndexData->vnum == OBJ_VNUM_TROPHY_BELT
@@ -607,23 +605,22 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 		fprintf(fp, "Trophies ");
 		fprintf(fp, "%d ", belt->value[4]);
 
-		placeholder = ch->pcdata->trophy;
+		auto it = ch->pcdata->trophy.begin();
 
 		for (j = 1; j <= belt->value[4]; j++)
 		{
-			if (!ch->pcdata->trophy)
+			if (it == ch->pcdata->trophy.end())
 				break;
 
-			fprintf(fp, "%s%s", ch->pcdata->trophy->victname, " ");
+			fprintf(fp, "%s%s", it->victname, " ");
 
-			if (!ch->pcdata->trophy->next)
+			if (std::next(it) == ch->pcdata->trophy.end())
 				break;
 
-			ch->pcdata->trophy = ch->pcdata->trophy->next;
+			++it;
 		}
 
 		fprintf(fp, "XYZ\n\r");
-		ch->pcdata->trophy = placeholder;
 	}
 
 	if (ch->pcdata->logon_time)
@@ -757,10 +754,6 @@ void fwrite_pet(CHAR_DATA *pet, FILE *fp)
  */
 void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 {
-	EXTRA_DESCR_DATA *ed = nullptr;
-	OBJ_AFFECT_DATA *paf;
-	OBJ_APPLY_DATA *oad;
-
 	/*
 	 * Slick recursion to write lists backwards,
 	 *   so loading them will load in forwards order.
@@ -861,43 +854,52 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 			break;
 	}
 
-	for (paf = obj->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : obj->affected)
 	{
-		if (paf->type < 0 || paf->type >= MAX_SKILL)
+		if (paf.type < 0 || paf.type >= MAX_SKILL)
 			continue;
 
-		paf->aftype = isAftSpell(paf->aftype);
+		paf.aftype = isAftSpell(paf.aftype);
 
 		fprintf(fp, "Affc '%s' %3d %3d %3d %3d %3d %s %d %s\n",
-			skill_table[paf->type].name,
-			paf->where,
-			paf->level,
-			paf->duration,
-			paf->modifier,
-			paf->location,
-			print_flags(paf->bitvector),
-			paf->aftype,
-			paf->owner ? paf->owner->name : "none");
+			skill_table[paf.type].name,
+			paf.where,
+			paf.level,
+			paf.duration,
+			paf.modifier,
+			paf.location,
+			print_flags(paf.bitvector),
+			paf.aftype,
+			paf.owner ? paf.owner->name : "none");
 	}
 
-	OBJ_APPLY_DATA *ioad;
-
-	for (oad = obj->apply; oad; oad = oad->next)
+	// Save only applies the object has beyond its prototype. The list was a
+	// shared pointer before, so identity told them apart; now obj->apply holds
+	// copies, so we compare by value (index applies have type 0; enchant applies
+	// carry a gsn type, so a private apply never collides with an inherited one).
+	for (const auto &oad : obj->apply)
 	{
-		for (ioad = obj->pIndexData->apply; ioad; ioad = ioad->next)
+		bool inherited = false;
+
+		for (const auto &ioad : obj->pIndexData->apply)
 		{
-			if (ioad == oad)
+			if (ioad.location == oad.location && ioad.modifier == oad.modifier && ioad.type == oad.type)
+			{
+				inherited = true;
 				break;
+			}
 		}
 
-		if (!ioad)
-			fprintf(fp, "AddApp %d %d %d\n", oad->location, oad->modifier, oad->type);
+		if (!inherited)
+			fprintf(fp, "AddApp %d %d %d\n", oad.location, oad.modifier, oad.type);
 	}
 
-	if ((ed = obj->extra_descr) != nullptr)
+	if (!obj->extra_descr.empty())
 	{
-		if ((!obj->pIndexData->extra_descr) || (str_cmp(ed->keyword, obj->pIndexData->extra_descr->keyword)))
-			fprintf(fp, "ExDe %s~ %s~\n", ed->keyword, ed->description);
+		const EXTRA_DESCR_DATA &ed = obj->extra_descr.front();
+
+		if (obj->pIndexData->extra_descr.empty() || str_cmp(ed.keyword, obj->pIndexData->extra_descr.front().keyword))
+			fprintf(fp, "ExDe %s~ %s~\n", ed.keyword, ed.description);
 	}
 
 	fprintf(fp, "End\n\n");
@@ -1151,7 +1153,6 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 	int lastlogoff = current_time;
 	int percent;
 	int i, scalps;
-	TROPHY_DATA *placeholder;
 
 	RS.Logger.Info("Loading {}.", ch->name);
 
@@ -1234,49 +1235,47 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 
 				if (!str_cmp(word, "Affc"))
 				{
-					AFFECT_DATA *paf;
+					AFFECT_DATA paf;
 					CHAR_DATA *wch;
 					char *owner;
 					char *afname;
 					int sn;
 
-					paf = new_affect();
-					init_affect(paf);
+					init_affect(&paf);
 					sn = skill_lookup(fread_word(fp));
 
 					if (sn < 0)
 						RS.Logger.Warn("Fread_char: unknown skill.");
 					else
-						paf->type = sn;
+						paf.type = sn;
 
-					paf->where = fread_number(fp);
-					paf->level = fread_number(fp);
-					paf->duration = fread_number(fp);
-					paf->modifier = fread_number(fp);
-					paf->location = fread_number(fp);
-					fread_flag_new(paf->bitvector, fp);
-					paf->aftype = fread_number(fp);
+					paf.where = fread_number(fp);
+					paf.level = fread_number(fp);
+					paf.duration = fread_number(fp);
+					paf.modifier = fread_number(fp);
+					paf.location = fread_number(fp);
+					fread_flag_new(paf.bitvector, fp);
+					paf.aftype = fread_number(fp);
 
 					owner = fread_word(fp);
 					for (wch = char_list; wch; wch = wch->next)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf->owner = wch;
+							paf.owner = wch;
 							break;
 						}
 					}
 
 					if (!str_cmp(ch->name, owner))
-						paf->owner = ch;
+						paf.owner = ch;
 
 					afname = fread_word(fp);
 
 					if (str_cmp(afname, "none"))
-						paf->name = palloc_string(afname);
+						paf.name = palloc_string(afname);
 
-					paf->next = ch->affected;
-					ch->affected = paf;
+					ch->affected.push_front(paf);
 					fMatch = true;
 					break;
 				}
@@ -1771,21 +1770,23 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 				if (!str_cmp(word, "Trophies"))
 				{
 					scalps = fread_number(fp);
-					ch->pcdata->trophy = new_trophy_data(fread_word(fp));
-					placeholder = ch->pcdata->trophy;
+					ch->pcdata->trophy.clear();
+					ch->pcdata->trophy.emplace_back(fread_word(fp));
 
 					for (i = 2; i <= scalps; i++)
 					{
-						ch->pcdata->trophy = ch->pcdata->trophy->next = new_trophy_data(fread_word(fp));
+						const char *victname = fread_word(fp);
 
-						if (!str_cmp(ch->pcdata->trophy->victname, "XYZ"))
-						{
-							free_pstring(ch->pcdata->trophy->victname);
+						// "XYZ" is the terminator the save side writes; consume
+						// it but don't add it as a trophy. (The old code created
+						// the node then freed its victname, leaving a dangling
+						// string on the last node.)
+						if (!str_cmp(victname, "XYZ"))
 							break;
-						}
+
+						ch->pcdata->trophy.emplace_back(victname);
 					}
 
-					ch->pcdata->trophy = placeholder;
 					fMatch = true;
 					break;
 				}
@@ -1887,38 +1888,37 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 					CHAR_DATA *wch = nullptr;
 					char *owner;
 					char *afname;
-					AFFECT_DATA *paf;
+					AFFECT_DATA paf;
 					int sn;
 
-					paf = new_affect();
-					init_affect(paf);
+					init_affect(&paf);
 					sn = skill_lookup(fread_word(fp));
 
 					if (sn < 0)
 						RS.Logger.Warn("Fread_char: unknown skill.");
 					else
-						paf->type = sn;
+						paf.type = sn;
 
-					paf->where = fread_number(fp);
-					paf->level = fread_number(fp);
-					paf->duration = fread_number(fp);
-					paf->modifier = fread_number(fp);
-					paf->location = fread_number(fp);
+					paf.where = fread_number(fp);
+					paf.level = fread_number(fp);
+					paf.duration = fread_number(fp);
+					paf.modifier = fread_number(fp);
+					paf.location = fread_number(fp);
 
-					fread_flag_new(paf->bitvector, fp);
+					fread_flag_new(paf.bitvector, fp);
 
-					paf->aftype = fread_number(fp);
+					paf.aftype = fread_number(fp);
 
 					owner = fread_word(fp);
 
 					if (strcmp(owner, "none")) // safe default
-						paf->owner = ch;
+						paf.owner = ch;
 
 					for (wch = char_list; wch; wch = wch->next)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf->owner = wch;
+							paf.owner = wch;
 							break;
 						}
 					}
@@ -1926,10 +1926,9 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 					afname = fread_word(fp);
 
 					if (str_cmp(afname, "none"))
-						paf->name = palloc_string(afname);
+						paf.name = palloc_string(afname);
 
-					paf->next = pet->affected;
-					pet->affected = paf;
+					pet->affected.push_front(paf);
 					fMatch = true;
 					break;
 				}
@@ -2108,26 +2107,25 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 				{
 					CHAR_DATA *wch;
 					char *owner;
-					OBJ_AFFECT_DATA *paf;
+					OBJ_AFFECT_DATA paf;
 					int sn;
 
-					paf = new_affect_obj();
-					init_affect_obj(paf);
+					init_affect_obj(&paf);
 					sn = skill_lookup(fread_word(fp));
 
 					if (sn < 0)
 						RS.Logger.Warn("Fread_obj: unknown skill.");
 					else
-						paf->type = sn;
+						paf.type = sn;
 
-					paf->where = fread_number(fp);
-					paf->level = fread_number(fp);
-					paf->duration = fread_number(fp);
-					paf->modifier = fread_number(fp);
-					paf->location = fread_number(fp);
+					paf.where = fread_number(fp);
+					paf.level = fread_number(fp);
+					paf.duration = fread_number(fp);
+					paf.modifier = fread_number(fp);
+					paf.location = fread_number(fp);
 
-					fread_flag_new(paf->bitvector, fp);
-					paf->aftype = fread_number(fp);
+					fread_flag_new(paf.bitvector, fp);
+					paf.aftype = fread_number(fp);
 
 					owner = fread_word(fp);
 
@@ -2135,28 +2133,26 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf->owner = wch;
+							paf.owner = wch;
 							break;
 						}
 					}
 
 					if (!str_cmp(ch->name, owner))
-						paf->owner = ch;
+						paf.owner = ch;
 
-					paf->next = obj->affected;
-					obj->affected = paf;
+					obj->affected.push_front(paf);
 					fMatch = true;
 					break;
 				}
 
 				if (!str_cmp(word, "AddApp"))
 				{
-					OBJ_APPLY_DATA *oad = new_apply_data();
-					oad->location = fread_number(fp);
-					oad->modifier = fread_number(fp);
-					oad->type = fread_number(fp);
-					oad->next = obj->apply;
-					obj->apply = oad;
+					OBJ_APPLY_DATA oad;
+					oad.location = fread_number(fp);
+					oad.modifier = fread_number(fp);
+					oad.type = fread_number(fp);
+					obj->apply.push_front(oad);
 					fMatch = true;
 					break;
 				}
@@ -2181,20 +2177,16 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 
 				if (!str_cmp(word, "ExtraDescr") || !str_cmp(word, "ExDe"))
 				{
-					EXTRA_DESCR_DATA *ed = new_extra_descr();
+					EXTRA_DESCR_DATA ed;
 
-					ed->keyword = fread_string(fp);
+					ed.keyword = fread_string(fp);
 
-					/* Don't repeat extra descriptions... */
-					if ((obj->extra_descr != nullptr) && !str_cmp(ed->keyword, obj->extra_descr->keyword))
+					/* Don't repeat extra descriptions; a duplicate of the head descr is
+					   dropped when ed goes out of scope (its dtor frees the keyword). */
+					if (obj->extra_descr.empty() || str_cmp(ed.keyword, obj->extra_descr.front().keyword))
 					{
-						free_extra_descr(ed);
-					}
-					else
-					{
-						ed->description = fread_string(fp);
-						ed->next = obj->extra_descr;
-						obj->extra_descr = ed;
+						ed.description = fread_string(fp);
+						obj->extra_descr.insert(obj->extra_descr.begin(), std::move(ed));
 					}
 
 					fMatch = true;

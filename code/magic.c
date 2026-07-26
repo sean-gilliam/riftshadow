@@ -317,7 +317,6 @@ bool saves_dispel(int dis_level, int spell_level, int duration)
 
 bool check_dispel(int dis_level, CHAR_DATA *victim, int sn)
 {
-	AFFECT_DATA *af;
 
 	if (is_affected(victim, gsn_indom))
 	{
@@ -327,11 +326,11 @@ bool check_dispel(int dis_level, CHAR_DATA *victim, int sn)
 
 	if (is_affected(victim, sn))
 	{
-		for (af = victim->affected; af != nullptr; af = af->next)
+		for (auto &af : victim->affected)
 		{
-			if (af->type == sn)
+			if (af.type == sn)
 			{
-				if (!saves_dispel(dis_level, af->level, af->duration) && !IS_SET(af->bitvector, AFF_PERMANENT))
+				if (!saves_dispel(dis_level, af.level, af.duration) && !IS_SET(af.bitvector, AFF_PERMANENT))
 				{
 					affect_strip(victim, sn);
 
@@ -357,7 +356,6 @@ bool check_dispel(int dis_level, CHAR_DATA *victim, int sn)
 
 bool check_dispel_cancellation(int dis_level, CHAR_DATA *victim, CHAR_DATA *ch, int sn, bool commune, bool cancel)
 {
-	AFFECT_DATA *af;
 	char buf[MAX_STRING_LENGTH];
 
 	if (is_affected(victim, gsn_indom))
@@ -368,13 +366,13 @@ bool check_dispel_cancellation(int dis_level, CHAR_DATA *victim, CHAR_DATA *ch, 
 
 	if (is_affected(victim, sn))
 	{
-		for (af = victim->affected; af != nullptr; af = af->next)
+		for (auto &af : victim->affected)
 		{
-			if (af->type == sn)
+			if (af.type == sn)
 			{
-				if (af->aftype == AFT_SPELL)
+				if (af.aftype == AFT_SPELL)
 				{
-					if (!saves_dispel(dis_level, af->level, af->duration) && !IS_SET(af->bitvector, AFF_PERMANENT))
+					if (!saves_dispel(dis_level, af.level, af.duration) && !IS_SET(af.bitvector, AFF_PERMANENT))
 					{
 						sprintf(buf, "The magic of your %s spell unravels.\n\r", skill_table[sn].name);
 						affect_strip(victim, sn);
@@ -407,9 +405,9 @@ bool check_dispel_cancellation(int dis_level, CHAR_DATA *victim, CHAR_DATA *ch, 
 						}
 					}
 				}
-				else if (af->aftype == AFT_COMMUNE && commune && cancel)
+				else if (af.aftype == AFT_COMMUNE && commune && cancel)
 				{
-					if (!saves_dispel(dis_level, af->level, af->duration) && !IS_SET(af->bitvector, AFF_PERMANENT))
+					if (!saves_dispel(dis_level, af.level, af.duration) && !IS_SET(af.bitvector, AFF_PERMANENT))
 					{
 						sprintf(buf, "The power of your %s supplication unravels.\n\r", skill_table[sn].name);
 						affect_strip(victim, sn);
@@ -1511,13 +1509,15 @@ void spell_cancellation(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 			send_to_char("You failed.\n\r", ch);
 		}
 
-		for (af = victim->affected; af != nullptr; af = af->next)
+		std::vector<int> cancel_types;
+		for (auto &af : victim->affected)
+			if (skill_table[af.type].dispel & CAN_CANCEL)
+				cancel_types.push_back(af.type);
+
+		for (int cancel_type : cancel_types)
 		{
-			if (skill_table[af->type].dispel & CAN_CANCEL)
-			{
-				check_dispel_cancellation(level, victim, ch, af->type, commune, true);
-				found = true;
-			}
+			check_dispel_cancellation(level, victim, ch, cancel_type, commune, true);
+			found = true;
 		}
 	}
 	else
@@ -1527,10 +1527,14 @@ void spell_cancellation(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (spell < 1)
 			return;
 
-		for (af = victim->affected; af != nullptr; af = af->next)
+		af = nullptr;
+		for (auto &af_elem : victim->affected)
 		{
-			if (af->type == spell)
+			if (af_elem.type == spell)
+			{
+				af = &af_elem;
 				break;
+			}
 		}
 
 		if (!af || !af->type || !(skill_table[af->type].dispel & CAN_CANCEL))
@@ -2168,7 +2172,6 @@ void spell_curse(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	CHAR_DATA *victim;
 	OBJ_DATA *obj;
 	AFFECT_DATA af;
-	OBJ_AFFECT_DATA oaf;
 
 	/* deal with the object case first
 	if (target == TARGET_OBJ)
@@ -2673,13 +2676,15 @@ void spell_dispel_magic(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	if (arg2[0] == '\0')
 	{
-		for (af = victim->affected; af != nullptr; af = af->next)
+		std::vector<int> dispel_types;
+		for (auto &af : victim->affected)
+			if (skill_table[af.type].dispel & CAN_DISPEL)
+				dispel_types.push_back(af.type);
+
+		for (int dispel_type : dispel_types)
 		{
-			if (skill_table[af->type].dispel & CAN_DISPEL)
-			{
-				check_dispel_cancellation(level, victim, ch, af->type, commune, false);
-				found = true;
-			}
+			check_dispel_cancellation(level, victim, ch, dispel_type, commune, false);
+			found = true;
 		}
 	}
 	else
@@ -2689,10 +2694,14 @@ void spell_dispel_magic(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (spell < 1)
 			return;
 
-		for (af = victim->affected; af != nullptr; af = af->next)
+		af = nullptr;
+		for (auto &af_elem : victim->affected)
 		{
-			if (af->type == spell)
+			if (af_elem.type == spell)
+			{
+				af = &af_elem;
 				break;
+			}
 		}
 
 		if (!af || !af->type || !(skill_table[af->type].dispel & CAN_DISPEL))
@@ -3379,9 +3388,9 @@ void spell_identify(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 			break;
 	}
 
-	for (app = obj->apply; app; app = app->next)
+	for (const auto &app : obj->apply)
 	{
-		sprintf(buf, "Affects %s by %d.\n\r", affect_loc_name(app->location), app->modifier);
+		sprintf(buf, "Affects %s by %d.\n\r", affect_loc_name(app.location), app.modifier);
 		send_to_char(buf, ch);
 	}
 }
@@ -3495,7 +3504,7 @@ void spell_lightning_bolt(int sn, int level, CHAR_DATA *ch, void *vo, int target
 void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	char buf[MAX_INPUT_LENGTH];
-	BUFFER *buffer;
+	BUFFER buffer;
 	OBJ_DATA *obj;
 	OBJ_DATA *in_obj;
 	bool found;
@@ -3504,8 +3513,6 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	found = false;
 	number = 0;
 	max_found = is_immortal(ch) ? 200 : 2 * level;
-
-	buffer = new_buf();
 
 	for (obj = object_list; obj != nullptr; obj = obj->next)
 	{
@@ -3554,7 +3561,7 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 		buf[0] = UPPER(buf[0]);
 
-		add_buf(buffer, buf);
+		buffer.add(buf);
 
 		if (number >= max_found)
 			break;
@@ -3563,9 +3570,8 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	if (!found)
 		send_to_char("Nothing like that in heaven or earth.\n\r", ch);
 	else
-		page_to_char(buf_string(buffer), ch);
+		page_to_char(buffer.str(), ch);
 
-	free_buf(buffer);
 }
 
 void spell_magic_missile(int sn, int level, CHAR_DATA *ch, void *vo, int target)
@@ -6592,7 +6598,7 @@ void spell_deafen(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void spell_talismanic_aura(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
-	AFFECT_DATA af, *paf;
+	AFFECT_DATA af;
 	float reduction;
 
 	if (ch->talismanic > 2)
@@ -6601,9 +6607,9 @@ void spell_talismanic_aura(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 		return;
 	}
 
-	for (paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type == gsn_talismanic)
+		if (paf.type == gsn_talismanic)
 			break;
 	}
 

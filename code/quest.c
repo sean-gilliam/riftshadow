@@ -185,13 +185,14 @@ void store_quest_val(CHAR_DATA *ch, char *valname, short value)
 
 void setbit_quest_val(CHAR_DATA *ch, char *valname, long value)
 {
-	AFFECT_DATA *paf;
+	AFFECT_DATA *paf = nullptr;
 
-	for (paf = ch->affected; paf; paf = paf->next)
+	for (auto &paf_elem : ch->affected)
 	{
-		if (paf->type == gsn_timer && paf->name && !str_cmp(paf->name, valname))
+		if (paf_elem.type == gsn_timer && paf_elem.name && !str_cmp(paf_elem.name, valname))
 		{
-			SET_BIT_OLD(paf->level, value);
+			SET_BIT_OLD(paf_elem.level, value);
+			paf = &paf_elem;
 			break;
 		}
 	}
@@ -202,12 +203,10 @@ void setbit_quest_val(CHAR_DATA *ch, char *valname, long value)
 
 int get_quest_val(CHAR_DATA *ch, char *valname)
 {
-	AFFECT_DATA *paf;
-
-	for (paf = ch->affected; paf; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type == gsn_timer && paf->name && !str_cmp(paf->name, valname))
-			return paf->level;
+		if (paf.type == gsn_timer && paf.name && !str_cmp(paf.name, valname))
+			return paf.level;
 	}
 
 	return -1;
@@ -215,14 +214,14 @@ int get_quest_val(CHAR_DATA *ch, char *valname)
 
 void delete_quest_val(CHAR_DATA *ch, char *valname)
 {
-	AFFECT_DATA *paf, *paf_next = nullptr;
-
-	for (paf = ch->affected; paf; paf = paf_next)
+	for (auto it = ch->affected.begin(); it != ch->affected.end(); )
 	{
-		paf_next = paf->next;
+		auto next = std::next(it);
 
-		if (paf->type == gsn_timer && paf->name && !str_cmp(paf->name, valname))
-			affect_remove(ch, paf);
+		if (it->type == gsn_timer && it->name && !str_cmp(it->name, valname))
+			affect_remove(ch, &*it);
+
+		it = next;
 	}
 }
 
@@ -1128,7 +1127,6 @@ BEGIN_SPEC(mspec_academy_smith)
 	END_EVENT
 
 	EVENT_MGIVE
-		OBJ_AFFECT_DATA *paf;
 		if (!can_do_quest(ch, SMITH_QUEST))
 			return 0;
 		if (STAGE(ch) == 2)

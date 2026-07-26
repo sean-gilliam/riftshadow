@@ -1245,14 +1245,13 @@ void do_bleed(CHAR_DATA *ch, char *argument)
 
 int check_posture(CHAR_DATA *ch)
 {
-	AFFECT_DATA *paf;
 	int modifier = POSTURE_NONE;
 
-	for (paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type == gsn_posture)
+		if (paf.type == gsn_posture)
 		{
-			modifier = paf->modifier;
+			modifier = paf.modifier;
 			break;
 		}
 	}
@@ -3328,13 +3327,13 @@ void check_batter(CHAR_DATA *ch)
 
 bool check_entwine(CHAR_DATA *ch, int type)
 {
-	for (AFFECT_DATA *af = ch->affected; af != nullptr; af = af->next)
+	for (auto &af : ch->affected)
 	{
-		if (type == 0 && af->type == gsn_entwine && af->modifier == 0)
+		if (type == 0 && af.type == gsn_entwine && af.modifier == 0)
 			return true;
-		else if (type == 1 && af->type == gsn_entwine && af->modifier == 1)
+		else if (type == 1 && af.type == gsn_entwine && af.modifier == 1)
 			return true;
-		else if (type == 2 && af->type == gsn_entwine && af->location == APPLY_DEX)
+		else if (type == 2 && af.type == gsn_entwine && af.location == APPLY_DEX)
 			return true;
 	}
 
@@ -3544,24 +3543,38 @@ void do_uncoil(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (af = ch->affected; af != nullptr; af = af->next)
+	af = nullptr;
+	for (auto &af_elem : ch->affected)
 	{
-		if (type == 0 && af->type == gsn_entwine && af->modifier == 0)
+		if (type == 0 && af_elem.type == gsn_entwine && af_elem.modifier == 0)
+		{
+			af = &af_elem;
 			break;
-		else if (type == 1 && af->type == gsn_entwine && af->modifier == 1)
+		}
+		else if (type == 1 && af_elem.type == gsn_entwine && af_elem.modifier == 1)
+		{
+			af = &af_elem;
 			break;
-		else if (type == 2 && af->type == gsn_entwine && af->location == APPLY_DEX)
+		}
+		else if (type == 2 && af_elem.type == gsn_entwine && af_elem.location == APPLY_DEX)
+		{
+			af = &af_elem;
 			break;
+		}
 	}
 
 	guy = af->owner;
 
 	if (guy != nullptr)
 	{
-		for (af2 = guy->affected; af2 != nullptr; af2 = af2->next)
+		af2 = nullptr;
+		for (auto &af2_elem : guy->affected)
 		{
-			if (af2->type == gsn_entwine && af2->owner == ch)
+			if (af2_elem.type == gsn_entwine && af2_elem.owner == ch)
+			{
+				af2 = &af2_elem;
 				break;
+			}
 		}
 	}
 
@@ -3646,18 +3659,26 @@ void do_pull(CHAR_DATA *ch, char *argument)
 
 	if (check_entwine(ch, 0))
 	{
-		for (af = ch->affected; af != nullptr; af = af->next)
+		af = nullptr;
+		for (auto &af_elem : ch->affected)
 		{
-			if (af->type == gsn_entwine && af->modifier == 0)
+			if (af_elem.type == gsn_entwine && af_elem.modifier == 0)
+			{
+				af = &af_elem;
 				break;
+			}
 		}
 
 		guy = af->owner;
 
-		for (af2 = guy->affected; af2 != nullptr; af2 = af2->next)
+		af2 = nullptr;
+		for (auto &af2_elem : guy->affected)
 		{
-			if (af2->type == gsn_entwine && af2->owner == ch)
+			if (af2_elem.type == gsn_entwine && af2_elem.owner == ch)
+			{
+				af2 = &af2_elem;
 				break;
+			}
 		}
 
 		WAIT_STATE(ch, PULSE_VIOLENCE * 2);
@@ -4969,26 +4990,26 @@ bool check_leadership_save(CHAR_DATA *ch, int skill)
 
 void check_leadership_affect(CHAR_DATA *ch)
 {
-	AFFECT_DATA *af, *af_next;
-
-	for (af = ch->affected; af != nullptr; af = af_next)
+	for (auto it = ch->affected.begin(); it != ch->affected.end(); )
 	{
-		af_next = af->next;
-		if (af->type == gsn_leadership)
-			affect_remove(ch, af);
+		auto next = std::next(it);
+
+		if (it->type == gsn_leadership)
+			affect_remove(ch, &*it);
+
+		it = next;
 	}
 }
 
 int check_outflank(CHAR_DATA *ch)
 {
-	AFFECT_DATA *paf;
 	int modifier = -1;
 
-	for (paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type == gsn_outflank)
+		if (paf.type == gsn_outflank)
 		{
-			modifier = paf->modifier;
+			modifier = paf.modifier;
 			break;
 		}
 	}

@@ -15,7 +15,7 @@
 
 struct	affect_data;		typedef struct	affect_data			AFFECT_DATA;
 struct	area_data;			typedef struct	area_data			AREA_DATA;
-struct	buf_type;			typedef struct	buf_type			BUFFER;
+class	buf_type;			typedef class	buf_type			BUFFER;
 class	char_data;			typedef class	char_data			CHAR_DATA;
 struct	descriptor_data;	typedef struct	descriptor_data		DESCRIPTOR_DATA;
 struct	exit_data;			typedef struct	exit_data			EXIT_DATA;
@@ -46,7 +46,6 @@ struct	room_affect_data;	typedef struct	room_affect_data	ROOM_AFFECT_DATA;
 struct	area_affect_data;	typedef struct	area_affect_data	AREA_AFFECT_DATA;
 struct	obj_affect_data;	typedef struct	obj_affect_data		OBJ_AFFECT_DATA;
 struct	obj_apply_data;		typedef struct	obj_apply_data		OBJ_APPLY_DATA;
-struct	queue_data;			typedef struct	queue_data			QUEUE_DATA;
 struct	rune_data;			typedef struct	rune_data			RUNE_DATA;
 struct	trophy_data;		typedef struct	trophy_data			TROPHY_DATA;
 struct	track_data;			typedef struct	track_data			TRACK_DATA;

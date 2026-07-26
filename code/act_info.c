@@ -187,13 +187,7 @@ char *format_obj_to_char(OBJ_DATA *obj, CHAR_DATA *ch, bool fShort)
 
 	if (is_affected_obj(obj, gsn_stash) && is_immortal(ch))
 	{
-		auto oaf = obj->affected;
-		for (; oaf != nullptr; oaf = oaf->next)
-		{
-			if (oaf->type == gsn_stash)
-				break;
-		}
-
+		OBJ_AFFECT_DATA *oaf = affect_find_obj(obj->affected, gsn_stash);
 		sprintf(buf, "(Stashed by %s) ", oaf->owner->name);
 	}
 
@@ -239,7 +233,7 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 
 	ch->lines = 0;
 
-	auto output = new_buf();
+	BUFFER output;
 	auto prgpstrShow = (char **)talloc_struct((count * sizeof(char *)));
 	auto prgnShow = (int *)talloc_struct((count * sizeof(int)));
 	auto nShow = 0;
@@ -300,15 +294,15 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 			{
 				char buf[MAX_STRING_LENGTH];
 				sprintf(buf, "(%2d) ", prgnShow[iShow]);
-				add_buf(output, buf);
+				output.add(buf);
 			}
 			else
 			{
-				add_buf(output, "     ");
+				output.add("     ");
 			}
 		}
-		add_buf(output, prgpstrShow[iShow]);
-		add_buf(output, "\n\r");
+		output.add(prgpstrShow[iShow]);
+		output.add("\n\r");
 	}
 
 	if (fShowNothing && nShow == 0)
@@ -319,12 +313,11 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 		send_to_char("Nothing.\n\r", ch);
 	}
 
-	page_to_char(buf_string(output), ch);
+	page_to_char(output.str(), ch);
 
 	/*
 	 * Clean up.
 	 */
-	free_buf(output);
 	ch->lines = line;
 }
 
@@ -385,9 +378,9 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 	if (is_affected_by(ch, AFF_DETECT_MAGIC))
 	{
 		auto spellaffs = 0;
-		for (auto af = victim->affected; af; af = af->next)
+		for (auto &af : victim->affected)
 		{
-			if (af->aftype == AFT_SPELL)
+			if (af.aftype == AFT_SPELL)
 				spellaffs++;
 		}
 
@@ -695,9 +688,9 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 	{
 		auto counter = 0;
 
-		for (auto paf = victim->affected; paf; paf = paf->next)
+		for (auto &paf : victim->affected)
 		{
-			if (paf->type == gsn_rotating_ward)
+			if (paf.type == gsn_rotating_ward)
 				counter++;
 		}
 
@@ -781,12 +774,12 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 		&& victim->cabal == CABAL_HORDE
 		&& belt != nullptr
 		&& belt->pIndexData->vnum == OBJ_VNUM_TROPHY_BELT
-		&& victim->pcdata->trophy && belt->value[4] >= 1)
+		&& !victim->pcdata->trophy.empty() && belt->value[4] >= 1)
 	{
-		auto placeholder = victim->pcdata->trophy;
-
 		act("\n\r$p catches your eye, meriting closer examination.", ch, belt, 0, TO_CHAR);
-		send_to_char(belt->extra_descr->description, ch);
+
+		if (!belt->extra_descr.empty())
+			send_to_char(belt->extra_descr.front().description, ch);
 		send_to_char("\n\rAttached to the belt are:\n\r", ch);
 
 		for (auto i = 0; i < MAX_STRING_LENGTH; i++)
@@ -795,12 +788,14 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 			buf3[i] = '\0';
 		}
 
+		auto it = victim->pcdata->trophy.begin();
+
 		for (auto counter = 1; counter <= belt->value[4]; counter++)
 		{
 			sprintf(buf2, "%s%s%c scalp of %s",
 				counter > 1 ? ", " : "",
 				counter % 4 == 0 ? "\n\r" : "",
-				counter > 1 ? 'a' : 'A', victim->pcdata->trophy->victname);
+				counter > 1 ? 'a' : 'A', it->victname);
 
 			strcat(buf3, buf2);
 
@@ -812,10 +807,10 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 			if (counter >= belt->value[4])
 				break;
 
-			if (!victim->pcdata->trophy->next)
+			if (std::next(it) == victim->pcdata->trophy.end())
 				break;
 
-			victim->pcdata->trophy = victim->pcdata->trophy->next;
+			++it;
 		}
 
 		strcat(buf3, ".\n\r");
@@ -823,7 +818,6 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 		send_to_char(buf3, ch);
 
 		buf3[0] = '\0';
-		victim->pcdata->trophy = placeholder;
 	}
 
 	if (victim != ch
@@ -1005,14 +999,9 @@ bool check_blind(CHAR_DATA *ch)
 
 	if (is_affected_area(ch->in_room->area, gsn_whiteout) && is_outside(ch))
 	{
-		auto paf = ch->in_room->area->affected;
-		for (; paf != nullptr; paf = paf->next)
-		{
-			if (paf->type == gsn_whiteout)
-				break;
-		}
+		auto paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
-		if (paf->owner != ch)
+		if (paf && paf->owner != ch)
 		{
 			send_to_char("You can't see a thing through the snow!\n\r", ch);
 			return false;
@@ -1862,10 +1851,10 @@ void do_look(CHAR_DATA *ch, char *argument)
 
 		if (is_affected_room(ch->in_room, gsn_riptide))
 		{
-			for (auto raf = ch->in_room->affected; raf != nullptr; raf = raf->next)
+			for (auto &raf : ch->in_room->affected)
 			{
-				if (raf->type == gsn_riptide && raf->owner == ch && raf->location == APPLY_ROOM_NONE &&
-					raf->modifier == 1)
+				if (raf.type == gsn_riptide && raf.owner == ch && raf.location == APPLY_ROOM_NONE &&
+					raf.modifier == 1)
 				{
 					sprintf(buf, "%sThe calm surface of the water belies the deadly riptide churning beneath!%s\n\r",
 						get_char_color(ch, "cyan"),
@@ -1874,8 +1863,8 @@ void do_look(CHAR_DATA *ch, char *argument)
 					send_to_char(buf, ch);
 					break;
 				}
-				else if (raf->type == gsn_riptide && raf->owner == ch && raf->location == APPLY_ROOM_NONE &&
-						 raf->modifier == 2)
+				else if (raf.type == gsn_riptide && raf.owner == ch && raf.location == APPLY_ROOM_NONE &&
+						 raf.modifier == 2)
 				{
 					sprintf(buf, "%sThe waters swirl menacingly, ready to receive the riptide's prey.%s\n\r",
 						get_char_color(ch, "cyan"),
@@ -1893,13 +1882,10 @@ void do_look(CHAR_DATA *ch, char *argument)
 
 			for (i = 0; i < MAX_TRACKS; i++)
 			{
-				if (!ch->in_room->tracks[i])
-					break;
-
-				if (ch->in_room->tracks[i]->prey != af->owner)
+				if (ch->in_room->tracks[i].prey != af->owner)
 					continue;
 
-				direction = (char *)flag_name_lookup(ch->in_room->tracks[i]->direction, direction_table);
+				direction = (char *)flag_name_lookup(ch->in_room->tracks[i].direction, direction_table);
 
 				sprintf(buf, "%sThrough the veil of your rage, you sense %s's tracks leading %s.%s\n\r",
 					get_char_color(ch, "lightred"),
@@ -1915,22 +1901,19 @@ void do_look(CHAR_DATA *ch, char *argument)
 		{
 			for (i = 0; i <= 2; i++)
 			{
-				if (!ch->in_room->tracks[i])
+				if (!ch->in_room->tracks[i].prey)
 					continue;
 
-				if (!ch->in_room->tracks[i]->prey)
+				if (ch->in_room->tracks[i].flying)
 					continue;
 
-				if (ch->in_room->tracks[i]->flying)
-					continue;
-
-				direction = flag_name_lookup(ch->in_room->tracks[i]->direction, direction_table);
+				direction = flag_name_lookup(ch->in_room->tracks[i].direction, direction_table);
 
 				sprintf(buf, "%sYou see %s footprints leading %s through the snow.%s\n\r",
 					get_char_color(ch, "white"),
-					(ch->in_room->tracks[i]->prey->race == 4)
+					(ch->in_room->tracks[i].prey->race == 4)
 						? "elven"
-						: pc_race_table[ch->in_room->tracks[i]->prey->race].race_time,
+						: pc_race_table[ch->in_room->tracks[i].prey->race].race_time,
 					direction,
 					END_COLOR(ch));
 					
@@ -2718,7 +2701,7 @@ void do_score(CHAR_DATA *ch, char *argument)
 
 void do_affects(CHAR_DATA *ch, char *argument)
 {
-	if (ch->affected == nullptr || !(ch->affected->aftype != AFT_INVIS || ch->affected->next != nullptr))
+	if (ch->affected.empty() || !(ch->affected.front().aftype != AFT_INVIS || ch->affected.size() > 1))
 	{
 		send_to_char("You are not affected by anything.\n\r", ch);
 		return;
@@ -2728,9 +2711,9 @@ void do_affects(CHAR_DATA *ch, char *argument)
 
 	AFFECT_DATA *paf_last = nullptr;
 	char buf[MAX_STRING_LENGTH];
-	for (auto paf = ch->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->aftype == AFT_INVIS)
+		if (paf.aftype == AFT_INVIS)
 			continue;
 
 		for (auto i = 0; i < MAX_STRING_LENGTH; i++)
@@ -2739,7 +2722,7 @@ void do_affects(CHAR_DATA *ch, char *argument)
 		}
 
 		if (paf_last != nullptr
-			&& (paf->type == paf_last->type && ((paf->name == nullptr && paf_last->name == nullptr) || !str_cmp(paf->name, paf_last->name))))
+			&& (paf.type == paf_last->type && ((paf.name == nullptr && paf_last->name == nullptr) || !str_cmp(paf.name, paf_last->name))))
 		{
 			if (ch->level >= 20)
 				sprintf(buf, "                          ");
@@ -2748,37 +2731,37 @@ void do_affects(CHAR_DATA *ch, char *argument)
 		}
 		else
 		{
-			if (paf->aftype == AFT_SKILL)
-				sprintf(buf, "Skill  : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_POWER)
-				sprintf(buf, "Power  : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_MALADY)
-				sprintf(buf, "Malady : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_COMMUNE)
-				sprintf(buf, "Commune: %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_RUNE)
-				sprintf(buf, "Rune   : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype == AFT_TIMER)
-				sprintf(buf, "Timer  : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
-			else if (paf->aftype != AFT_INVIS)
-				sprintf(buf, "Spell  : %-17s", paf->name ? paf->name : skill_table[paf->type].name);
+			if (paf.aftype == AFT_SKILL)
+				sprintf(buf, "Skill  : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_POWER)
+				sprintf(buf, "Power  : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_MALADY)
+				sprintf(buf, "Malady : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_COMMUNE)
+				sprintf(buf, "Commune: %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_RUNE)
+				sprintf(buf, "Rune   : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype == AFT_TIMER)
+				sprintf(buf, "Timer  : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
+			else if (paf.aftype != AFT_INVIS)
+				sprintf(buf, "Spell  : %-17s", paf.name ? paf.name : skill_table[paf.type].name);
 		}
 
 		send_to_char(buf, ch);
 
 		if (ch->level >= 20)
 		{
-			auto showdur = paf->duration + 1;
+			auto showdur = paf.duration + 1;
 
 			auto buffer = fmt::format("| modifies {}{}{} ",
-					(paf->mod_name > -1) ? mod_names[paf->mod_name].name : affect_loc_name(paf->location),
-					(paf->mod_name > -1) ? "" : " by ",
-					(paf->mod_name > -1) ? "" : std::to_string(paf->modifier)); //TODO: change the rest of the sprintf calls to format
+					(paf.mod_name > -1) ? mod_names[paf.mod_name].name : affect_loc_name(paf.location),
+					(paf.mod_name > -1) ? "" : " by ",
+					(paf.mod_name > -1) ? "" : std::to_string(paf.modifier)); //TODO: change the rest of the sprintf calls to format
 
-			if (paf->aftype != AFT_INVIS)
+			if (paf.aftype != AFT_INVIS)
 				send_to_char(buffer.c_str(), ch);
 
-			if (paf->duration == -1)
+			if (paf.duration == -1)
 			{
 				buffer = "permanently";
 			}
@@ -2790,14 +2773,14 @@ void do_affects(CHAR_DATA *ch, char *argument)
 					(showdur == 1 || showdur == 2) ? "" : "s");
 			}
 
-			if (paf->aftype != AFT_INVIS)
+			if (paf.aftype != AFT_INVIS)
 				send_to_char(buffer.c_str(), ch);
 		}
 
-		if (paf->aftype != AFT_INVIS)
+		if (paf.aftype != AFT_INVIS)
 			send_to_char("\n\r", ch);
 
-		paf_last = paf;
+		paf_last = &paf;
 	}
 }
 
@@ -2894,7 +2877,7 @@ void do_oldhelp(CHAR_DATA *ch, char *argument)
 		strcat(argall, argone);
 	}
 
-	auto output = new_buf();
+	BUFFER output;
 	for (auto pHelp = help_first; pHelp != nullptr; pHelp = pHelp->next)
 	{
 		auto level = (pHelp->level < 0) ? -1 * pHelp->level - 1 : pHelp->level;
@@ -2909,21 +2892,21 @@ void do_oldhelp(CHAR_DATA *ch, char *argument)
 		{
 			/* add separator if found */
 			if (found)
-				add_buf(output, "\n\r============================================================\n\r\n\r");
+				output.add("\n\r============================================================\n\r\n\r");
 
 			if (pHelp->level >= 0 && str_cmp(argall, "imotd"))
 			{
-				add_buf(output, pHelp->keyword);
-				add_buf(output, "\n\r");
+				output.add(pHelp->keyword);
+				output.add("\n\r");
 			}
 
 			/*
 			 * Strip leading '.' to allow initial blanks.
 			 */
 			if (pHelp->text[0] == '.')
-				add_buf(output, pHelp->text + 1);
+				output.add(pHelp->text + 1);
 			else
-				add_buf(output, pHelp->text);
+				output.add(pHelp->text);
 
 			found = true;
 
@@ -2936,9 +2919,8 @@ void do_oldhelp(CHAR_DATA *ch, char *argument)
 	if (!found)
 		send_to_char("No help on that word.\n\r", ch);
 	else
-		page_to_char(buf_string(output), ch);
+		page_to_char(output.str(), ch);
 
-	free_buf(output);
 }
 
 /* whois command */
@@ -2955,7 +2937,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 
 	std::string buffer;
 
-	auto output = new_buf();
+	BUFFER output;
 	auto found = false;
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
@@ -3052,7 +3034,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 					wch->true_name,
 					is_npc(wch) ? "" : wch->pcdata->title,
 					is_npc(wch) ? "" : wch->pcdata->extitle ? wch->pcdata->extitle : "");
-				add_buf(output, buffer.data());
+				output.add(buffer.data());
 			}
 			else if (get_trust(wch) >= 52 && !is_immortal(ch))
 			{
@@ -3074,7 +3056,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 					is_npc(wch) ? "" : wch->pcdata->title,
 					is_npc(wch) ? "" : (wch->pcdata->extitle) ? wch->pcdata->extitle : ""); //TODO: change the rest of the sprintf calls to format
 
-				add_buf(output, buffer.data());
+				output.add(buffer.data());
 			}
 			else
 			{
@@ -3103,7 +3085,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 					wch->name,
 					is_npc(wch) ? "" : wch->pcdata->title,
 					is_npc(wch) ? "" : (wch->pcdata->extitle) ? wch->pcdata->extitle : "");
-				add_buf(output, buffer.data());
+				output.add(buffer.data());
 			}
 		}
 	}
@@ -3114,8 +3096,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	page_to_char(buf_string(output), ch);
-	free_buf(output);
+	page_to_char(output.str(), ch);
 }
 
 /*
@@ -3304,7 +3285,7 @@ void do_who(CHAR_DATA *ch, char *argument)
 	buf[0] = '\0';
 
 	auto nMatch = 0;
-	auto output = new_buf();
+	BUFFER output;
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
 		/*
@@ -3438,7 +3419,7 @@ void do_who(CHAR_DATA *ch, char *argument)
 				wch->true_name,
 				is_npc(wch) ? "" : wch->pcdata->title,
 				is_npc(wch) ? "" : wch->pcdata->extitle ? wch->pcdata->extitle : "");
-			add_buf(output, buffer.data());
+			output.add(buffer.data());
 		}
 		else if (get_trust(wch) >= 52 && !is_immortal(ch))
 		{
@@ -3463,7 +3444,7 @@ void do_who(CHAR_DATA *ch, char *argument)
 				wch->true_name,
 				is_npc(wch) ? "" : wch->pcdata->title,
 				is_npc(wch) ? "" : (wch->pcdata->extitle) ? wch->pcdata->extitle : ""); //TODO: change the rest of the sprintf calls to format
-			add_buf(output, buffer.data());
+			output.add(buffer.data());
 		}
 		else
 		{
@@ -3495,14 +3476,13 @@ void do_who(CHAR_DATA *ch, char *argument)
 				wch->true_name,
 				is_npc(wch) ? "" : wch->pcdata->title,
 				is_npc(wch) ? "" : wch->pcdata->extitle ? wch->pcdata->extitle : "");
-			add_buf(output, buffer.data());
+			output.add(buffer.data());
 		}
 	}
 
 	sprintf(buf2, "\n\rPlayers found: %d\n\r", nMatch);
-	add_buf(output, buf2);
-	page_to_char(buf_string(output), ch);
-	free_buf(output);
+	output.add(buf2);
+	page_to_char(output.str(), ch);
 }
 
 void do_count(CHAR_DATA *ch, char *argument)
@@ -4104,19 +4084,18 @@ void do_description(CHAR_DATA *ch, char *argument)
 	else if (!str_cmp(arg1, "+"))
 	{
 		smash_tilde(argument);
-		auto buffer = new_buf();
+		BUFFER buffer;
 
 		if (ch->description)
-			add_buf(buffer, ch->description);
+			buffer.add(ch->description);
 
-		add_buf(buffer, argument);
-		add_buf(buffer, "\n\r");
+		buffer.add(argument);
+		buffer.add("\n\r");
 
 		if (ch->description)
 			free_pstring(ch->description);
 
-		ch->description = palloc_string(buf_string(buffer));
-		free_buf(buffer);
+		ch->description = palloc_string(buffer.str());
 
 		send_to_char("Line added.\n\r", ch);
 		return;
@@ -5119,9 +5098,9 @@ void do_lore(CHAR_DATA *ch, char *argument) /* Lore by Detlef */
 				break;
 		}
 
-		for (auto app = obj->apply; app; app = app->next)
+		for (const auto &app : obj->apply)
 		{
-			sprintf(buf, "It affects your %s by %d.\n\r", affect_loc_name(app->location), app->modifier);
+			sprintf(buf, "It affects your %s by %d.\n\r", affect_loc_name(app.location), app.modifier);
 			send_to_char(buf, ch);
 		}
 
@@ -5375,10 +5354,9 @@ void do_role(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			auto output = new_buf();
-			add_buf(output, victim->pcdata->role);
-			page_to_char(buf_string(output), ch);
-			free_buf(output);
+			BUFFER output;
+			output.add(victim->pcdata->role);
+			page_to_char(output.str(), ch);
 			return;
 		}
 
@@ -5521,10 +5499,9 @@ void show_temp_role(CHAR_DATA *ch)
 	}
 	else
 	{
-		auto output = new_buf();
-		add_buf(output, ch->pcdata->temp_role);
-		page_to_char(buf_string(output), ch);
-		free_buf(output);
+		BUFFER output;
+		output.add(ch->pcdata->temp_role);
+		page_to_char(output.str(), ch);
 	}
 }
 
@@ -5538,9 +5515,8 @@ void show_role(CHAR_DATA *ch)
 	}
 	else
 	{
-		auto output = new_buf();
-		add_buf(output, ch->pcdata->role);
-		page_to_char(buf_string(output), ch);
-		free_buf(output);
+		BUFFER output;
+		output.add(ch->pcdata->role);
+		page_to_char(output.str(), ch);
 	}
 }

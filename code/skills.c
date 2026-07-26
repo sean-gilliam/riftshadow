@@ -120,7 +120,7 @@ void do_gain(CHAR_DATA *ch, char *argument)
 
 void do_spells(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char arg[MAX_INPUT_LENGTH];
 	char spell_list[LEVEL_HERO + 1][MAX_STRING_LENGTH];
 	char spell_columns[LEVEL_HERO + 1];
@@ -243,22 +243,19 @@ void do_spells(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	buffer = new_buf();
-
 	for (level = 0; level < LEVEL_HERO + 1; level++)
 	{
 		if (spell_list[level][0] != '\0')
-			add_buf(buffer, spell_list[level]);
+			buffer.add(spell_list[level]);
 	}
 
-	add_buf(buffer, "\n\r");
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	buffer.add("\n\r");
+	page_to_char(buffer.str(), ch);
 }
 
 void do_skills(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char arg[MAX_INPUT_LENGTH];
 	char skill_list[LEVEL_HERO + 1][MAX_STRING_LENGTH];
 	char skill_columns[LEVEL_HERO + 1];
@@ -437,17 +434,14 @@ void do_skills(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	buffer = new_buf();
-
 	for (level = 0; level < LEVEL_HERO + 1; level++)
 	{
 		if (skill_list[level][0] != '\0')
-			add_buf(buffer, skill_list[level]);
+			buffer.add(skill_list[level]);
 	}
 
-	add_buf(buffer, "\n\r");
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	buffer.add("\n\r");
+	page_to_char(buffer.str(), ch);
 }
 
 /* shows skills, groups and costs (only if not bought) */

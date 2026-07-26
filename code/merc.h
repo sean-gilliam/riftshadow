@@ -243,13 +243,21 @@ int remove();
 #define NOTE_UNSTARTED				0
 #define NOTE_IN_PROGRESS			1
 
-struct buf_type
+// A crash-proof, growable scratch string. Owns its storage: the destructor
+// releases it, so a stack `BUFFER` needs no manual free (formerly new_buf/free_buf).
+class buf_type
 {
-	BUFFER *next;
-	bool valid;
-	short state;	// error state of the buffer
-	short size;		// size in k
-	char *string;	// buffer's string
+public:
+	~buf_type();
+
+	bool add(const char *text);		// append text; was add_buf
+	void clear();					// reset to empty; was clear_buf
+	const char *str() const;		// current contents; was buf_string
+
+private:
+	short state = 0;				// BUFFER_SAFE; error state of the buffer
+	short size = 0;					// size in k
+	char *string = nullptr;			// buffer's string
 };
 
 
@@ -258,15 +266,7 @@ struct buf_type
 #define RS_EPOCH					972370801
 
 
-struct time_info_data
-{
-	bool half;
-	int hour;
-	int day;
-	int month;
-	int season;
-	int year;
-};
+#include "entity/time_info_data.h"
 
 
 //
@@ -286,12 +286,6 @@ struct improg_type
 	char *owner;
 };
 
-#define MAX_ARG						6
-
-#define FUN_GENERIC					0
-#define FUN_ACT						1
-
-typedef void FUNC 	  (void*, void*, void*, void*, void*, void*);
 typedef bool RUNE_FUN (void*, void*, void*, void*);
 typedef void RUNE_END (RUNE_DATA *rune);
 
@@ -310,16 +304,6 @@ struct rune_data
 	RUNE_DATA *next;
 	RUNE_DATA *next_content;
 	RUNE_END *end_fun;
-};
-
-struct queue_data
-{
-	int timer;
-	int funtype;
-	FUNC *function;
-	void *arg[MAX_ARG];
-	int act_to;
-	QUEUE_DATA *next;
 };
 
 struct descriptor_data
@@ -1135,6 +1119,10 @@ struct kill_data
 
 
 
+#include "entity/line_data.h"
+
+#include "entity/speech_data.h"
+
 #include "entity/mob_index_data.h"
 
 //
@@ -1142,27 +1130,6 @@ struct kill_data
 //
 
 
-struct speech_data
-{
-	MOB_INDEX_DATA *mob;
-	SPEECH_DATA *next;
-	SPEECH_DATA *prev;
-	char *name;
-	LINE_DATA *first_line;
-	LINE_DATA *current_line;
-};
-
-struct line_data
-{
-	SPEECH_DATA *speech;
-	LINE_DATA *next;
-	LINE_DATA *prev;
-	int number;
-	int delay;
-	short type;
-	char *text;
-};
-	
 //
 // Color codes
 //
@@ -1171,19 +1138,6 @@ struct line_data
 #define ANSI_BOLD					"\x01B[1m"
 #define ANSI_BLINK					"\x01B[5m"
 #define ANSI_REVERSE				"\x01B[7m"
-
-//
-// memory for mobs
-//
-
-struct mem_data
-{
-	MEM_DATA *next;
-	bool valid;
-	int id; 
-	int reaction;
-	time_t when;
-};
 
 
 struct mprog_data
@@ -1286,20 +1240,11 @@ struct aprog_data
 	char *myell_name;
 };
 
+#include "entity/trophy_data.h"
+
 #include "entity/pc_data.h"
 
-//
-// Data for generating characters -- only used during generation
-//
-
-struct gen_data
-{
-	GEN_DATA *next;
-	bool valid;
-	bool skill_chosen[MAX_SKILL];
-	bool group_chosen[MAX_GROUP];
-	int points_chosen;
-};
+#include "entity/gen_data.h"
 
 #include "entity/extra_descr.h"
 
@@ -1318,6 +1263,8 @@ struct gen_data
 
 #include "entity/area_data.h"
 
+
+#include "entity/track_data.h"
 
 #include "entity/room_index_data.h"
 
@@ -1339,27 +1286,6 @@ struct trap_data
 //
 // Solution to Horde trophy ugliness
 //
-
-struct trophy_data
-{
-	char *victname;
-	TROPHY_DATA *next;
-};
-
-//
-// Data stored in rooms to facilitate PC and mob tracking
-//
-
-struct track_data
-{
-	CHAR_DATA *prey;					// Who passed through.
-	TIME_INFO_DATA time;				// When they passed through.
-	short direction;					// Which way they went.
-	bool flying;						// Are they?
-	bool sneaking;						// Are they?
-	int legs;							// How many?
-	bool bleeding;						// Are they?
-};
 
 struct pathfind_data
 {
@@ -1407,7 +1333,6 @@ struct pathfind_data
 
 //TODO: Find out where these are implemented
 extern const struct class_type class_table[MAX_CLASS];
-extern QUEUE_DATA *global_queue;
 
 #define MULT_EXP					5
 

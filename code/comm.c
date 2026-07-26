@@ -751,16 +751,18 @@ void read_from_buffer(DESCRIPTOR_DATA *d)
 
 const char *get_battle_condition(CHAR_DATA *victim, int percent)
 {
-	AFFECT_DATA *b_af = nullptr;
 
 	if (is_affected(victim, gsn_bluff))
 	{
 		AFFECT_DATA *b_af = nullptr;
 
-		for (b_af = victim->affected; b_af != nullptr; b_af = b_af->next)
+		for (auto &b_af_elem : victim->affected)
 		{
-			if (b_af->type == gsn_bluff)
+			if (b_af_elem.type == gsn_bluff)
+			{
+				b_af = &b_af_elem;
 				break;
+			}
 		}
 
 		percent *= (b_af->modifier * 3);

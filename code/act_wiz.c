@@ -1726,17 +1726,18 @@ void do_rstat(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "Description:\n\r%s", location->description);
 	send_to_char(buf, ch);
 
-	if (location->extra_descr != nullptr)
+	if (!location->extra_descr.empty())
 	{
-		EXTRA_DESCR_DATA *ed;
-
 		send_to_char("Extra description keywords: '", ch);
 
-		for (ed = location->extra_descr; ed; ed = ed->next)
+		bool first = true;
+		for (const auto &ed : location->extra_descr)
 		{
-			send_to_char(ed->keyword, ch);
-			if (ed->next != nullptr)
+			if (!first)
 				send_to_char(" ", ch);
+
+			send_to_char(ed.keyword, ch);
+			first = false;
 		}
 
 		send_to_char("'.\n\r", ch);
@@ -1797,22 +1798,22 @@ void do_rstat(CHAR_DATA *ch, char *argument)
 	send_to_char("Characters who have passed through:\n\r", ch);
 	for (i = 0; i < MAX_TRACKS; i++)
 	{
-		if (location->tracks[i] && location->tracks[i]->prey)
+		if (location->tracks[i].prey)
 		{
-			time = (time_info.hour >= location->tracks[i]->time.hour)
-					   ? (time_info.hour - location->tracks[i]->time.hour)
-					   : (24 + time_info.hour - location->tracks[i]->time.hour) +
-								 (time_info.day >= location->tracks[i]->time.day)
-							 ? 24 * (time_info.day - location->tracks[i]->time.day)
-							 : 24 * (30 + time_info.day - location->tracks[i]->time.day) +
-									   (time_info.month >= location->tracks[i]->time.month)
-								   ? 24 * 30 * (time_info.month - location->tracks[i]->time.month)
-								   : 24 * 30 * (12 + time_info.month - location->tracks[i]->time.month) +
-										 24 * 30 * 12 * (time_info.year - location->tracks[i]->time.year);
+			time = (time_info.hour >= location->tracks[i].time.hour)
+					   ? (time_info.hour - location->tracks[i].time.hour)
+					   : (24 + time_info.hour - location->tracks[i].time.hour) +
+								 (time_info.day >= location->tracks[i].time.day)
+							 ? 24 * (time_info.day - location->tracks[i].time.day)
+							 : 24 * (30 + time_info.day - location->tracks[i].time.day) +
+									   (time_info.month >= location->tracks[i].time.month)
+								   ? 24 * 30 * (time_info.month - location->tracks[i].time.month)
+								   : 24 * 30 * (12 + time_info.month - location->tracks[i].time.month) +
+										 24 * 30 * 12 * (time_info.year - location->tracks[i].time.year);
 
-			direction = flag_name_lookup(location->tracks[i]->direction, direction_table);
+			direction = flag_name_lookup(location->tracks[i].direction, direction_table);
 
-			sprintf(buf, "%s exited to the %s %d hours ago.\n\r", location->tracks[i]->prey->name, direction, time);
+			sprintf(buf, "%s exited to the %s %d hours ago.\n\r", location->tracks[i].prey->name, direction, time);
 			send_to_char(buf, ch);
 
 			counter++;
@@ -1828,9 +1829,6 @@ void do_rstat(CHAR_DATA *ch, char *argument)
 void do_ostat(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_STRING_LENGTH], arg[MAX_INPUT_LENGTH], buf2[MSL];
-	OBJ_AFFECT_DATA *paf;
-	OBJ_APPLY_DATA *app;
-	AFFECT_DATA *paf2;
 	OBJ_DATA *obj;
 
 	one_argument(argument, arg);
@@ -2073,26 +2071,25 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 		send_to_char(buf, ch);
 	}
 
-	if (obj->extra_descr != nullptr || obj->pIndexData->extra_descr != nullptr)
+	if (!obj->extra_descr.empty() || !obj->pIndexData->extra_descr.empty())
 	{
-		EXTRA_DESCR_DATA *ed, *ed2;
 		bool duplicate = false; /* Don't duplicate extradescs. */
 
 		send_to_char("Extra description keywords: '", ch);
 
-		for (ed = obj->extra_descr; ed != nullptr; ed = ed->next)
+		for (auto ed = obj->extra_descr.begin(); ed != obj->extra_descr.end(); ++ed)
 		{
 			send_to_char(ed->keyword, ch);
 
-			if (ed->next != nullptr)
+			if (std::next(ed) != obj->extra_descr.end())
 				send_to_char(" ", ch);
 		}
 
-		for (ed = obj->pIndexData->extra_descr; ed != nullptr; ed = ed->next)
+		for (auto ed = obj->pIndexData->extra_descr.begin(); ed != obj->pIndexData->extra_descr.end(); ++ed)
 		{
-			for (ed2 = obj->extra_descr; ed2; ed2 = ed2->next)
+			for (const auto &ed2 : obj->extra_descr)
 			{
-				if (!str_cmp(ed->keyword, ed2->keyword))
+				if (!str_cmp(ed->keyword, ed2.keyword))
 					duplicate = true;
 			}
 
@@ -2101,7 +2098,7 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 
 			send_to_char(ed->keyword, ch);
 
-			if (ed->next != nullptr)
+			if (std::next(ed) != obj->pIndexData->extra_descr.end())
 				send_to_char(" ", ch);
 		}
 
@@ -2258,9 +2255,9 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 		send_to_char(buf, ch);
 	}
 
-	for (app = obj->apply; app; app = app->next)
+	for (const auto &app : obj->apply)
 	{
-		sprintf(buf, "Modifies %s by %d.\n\r", affect_loc_name(app->location), app->modifier);
+		sprintf(buf, "Modifies %s by %d.\n\r", affect_loc_name(app.location), app.modifier);
 		send_to_char(buf, ch);
 	}
 
@@ -2288,44 +2285,44 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 		send_to_char(buf, ch);
 	}
 
-	for (paf2 = obj->charaffs; paf2; paf2 = paf2->next)
+	for (auto &paf2 : obj->charaffs)
 	{
-		if (paf2->bitvector)
+		if (paf2.bitvector)
 		{
-			sprintf(buf, "Imbues wearer with %s.\n\r", affect_bit_name(paf2->bitvector));
+			sprintf(buf, "Imbues wearer with %s.\n\r", affect_bit_name(paf2.bitvector));
 			send_to_char(buf, ch);
 		}
 	}
 
-	for (paf = obj->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : obj->affected)
 	{
-		if (paf->aftype == AFT_SKILL)
+		if (paf.aftype == AFT_SKILL)
 			sprintf(buf2, "Skill");
-		else if (paf->aftype == AFT_POWER)
+		else if (paf.aftype == AFT_POWER)
 			sprintf(buf2, "Power");
-		else if (paf->aftype == AFT_COMMUNE)
+		else if (paf.aftype == AFT_COMMUNE)
 			sprintf(buf2, "Commune");
-		else if (paf->aftype == AFT_RUNE)
+		else if (paf.aftype == AFT_RUNE)
 			sprintf(buf2, "Rune");
 		else
 			sprintf(buf2, "Spell");
 
 		auto buffer = fmt::sprintf(buf, "%s: '%s' modifies %s by %d for %d%s hours with %s-bits %s, owner %s, level %d.\n\r",
 			buf2,
-			skill_table[(int)paf->type].name,
-			(paf->where == TO_OBJ_AFFECTS)
-				? str_cmp(oaffect_loc_name(paf->location), "none")
-					? oaffect_loc_name(paf->location)
-					: (paf->where == TO_OBJ_APPLY)
-						? affect_loc_name(paf->location)
-						: apply_locations[paf->location].name
+			skill_table[(int)paf.type].name,
+			(paf.where == TO_OBJ_AFFECTS)
+				? str_cmp(oaffect_loc_name(paf.location), "none")
+					? oaffect_loc_name(paf.location)
+					: (paf.where == TO_OBJ_APPLY)
+						? affect_loc_name(paf.location)
+						: apply_locations[paf.location].name
 				: "none",
-			paf->modifier,
-			(paf->duration == -1) ? -1 : (paf->duration / 2) + 1,
-			(paf->duration == 0) ? "" : (paf->duration == -1) ? "" : ".5",
-			(paf->where == TO_OBJ_AFFECTS) ? "aff" : (paf->where == TO_OBJ_APPLY) ? "apply" : "?",
-			oaffect_bit_name(paf->bitvector),
-			(paf->owner) ? paf->owner->name : "none", paf->level);
+			paf.modifier,
+			(paf.duration == -1) ? -1 : (paf.duration / 2) + 1,
+			(paf.duration == 0) ? "" : (paf.duration == -1) ? "" : ".5",
+			(paf.where == TO_OBJ_AFFECTS) ? "aff" : (paf.where == TO_OBJ_APPLY) ? "apply" : "?",
+			oaffect_bit_name(paf.bitvector),
+			(paf.owner) ? paf.owner->name : "none", paf.level);
 		send_to_char(buffer.c_str(), ch);
 	}
 }
@@ -2335,7 +2332,6 @@ void do_astat(CHAR_DATA *ch, char *argument)
 	char buf[MSL];
 	int count = 0;
 	AREA_DATA *area, *pArea;
-	AREA_AFFECT_DATA *paf;
 
 	area = ch->in_room->area;
 
@@ -2469,31 +2465,31 @@ void do_astat(CHAR_DATA *ch, char *argument)
 	else
 		send_to_char(".\n\r", ch);
 
-	if (area->affected)
+	if (!area->affected.empty())
 	{
 		send_to_char("The area is affected by:\n\r", ch);
 
-		for (paf = area->affected; paf; paf = paf->next)
+		for (auto &paf : area->affected)
 		{
-			if (paf->aftype == AFT_SKILL)
-				sprintf(buf, "Skill: '%s' ", skill_table[paf->type].name);
-			else if (paf->aftype == AFT_POWER)
-				sprintf(buf, "Power: '%s' ", skill_table[paf->type].name);
-			else if (paf->aftype == AFT_COMMUNE)
-				sprintf(buf, "Commune: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_SKILL)
+				sprintf(buf, "Skill: '%s' ", skill_table[paf.type].name);
+			else if (paf.aftype == AFT_POWER)
+				sprintf(buf, "Power: '%s' ", skill_table[paf.type].name);
+			else if (paf.aftype == AFT_COMMUNE)
+				sprintf(buf, "Commune: '%s' ", skill_table[paf.type].name);
 			else
-				sprintf(buf, "Spell: '%s' ", skill_table[paf->type].name);
+				sprintf(buf, "Spell: '%s' ", skill_table[paf.type].name);
 
 			send_to_char(buf, ch);
 
 			sprintf(buf, "modifies %s by %d for %d hours with %s-bits %s, owner %s, level %d.\n\r",
-				aaffect_loc_name(paf->location),
-				paf->modifier,
-				(paf->duration == -1) ? paf->duration : paf->duration / 2,
+				aaffect_loc_name(paf.location),
+				paf.modifier,
+				(paf.duration == -1) ? paf.duration : paf.duration / 2,
 				"flag",
 				"nullptr",
-				paf->owner != nullptr ? paf->owner->name : "none",
-				paf->level);
+				paf.owner != nullptr ? paf.owner->name : "none",
+				paf.level);
 			send_to_char(buf, ch);
 		}
 	}
@@ -2510,7 +2506,6 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	char buf2[MAX_STRING_LENGTH];
 	char cred[MSL], tbuf[MSL];
 	char arg[MAX_INPUT_LENGTH];
-	AFFECT_DATA *paf;
 	CHAR_DATA *victim;
 	ROOM_INDEX_DATA *barred;
 	int i, x;
@@ -3030,43 +3025,43 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		send_to_char(buf, ch);
 	}
 
-	for (paf = victim->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : victim->affected)
 	{
-		if (paf->aftype == AFT_SPELL)
+		if (paf.aftype == AFT_SPELL)
 			sprintf(buf2, "Spell");
-		else if (paf->aftype == AFT_SKILL)
+		else if (paf.aftype == AFT_SKILL)
 			sprintf(buf2, "Skill");
-		else if (paf->aftype == AFT_POWER)
+		else if (paf.aftype == AFT_POWER)
 			sprintf(buf2, "Power");
-		else if (paf->aftype == AFT_MALADY)
+		else if (paf.aftype == AFT_MALADY)
 			sprintf(buf2, "Malady");
-		else if (paf->aftype == AFT_COMMUNE)
+		else if (paf.aftype == AFT_COMMUNE)
 			sprintf(buf2, "Commune");
-		else if (paf->aftype == AFT_INVIS)
+		else if (paf.aftype == AFT_INVIS)
 			sprintf(buf2, "Hidden Affect");
-		else if (paf->aftype == AFT_RUNE)
+		else if (paf.aftype == AFT_RUNE)
 			sprintf(buf2, "Rune");
-		else if (paf->aftype == AFT_TIMER)
+		else if (paf.aftype == AFT_TIMER)
 			sprintf(buf2, "Timer");
 		else
 			sprintf(buf2, "Spell");
 
 		buffer = fmt::sprintf("%s: '%s' %s%s%smodifies %s by %d for %d%s hours with %s-bits %s, owner %s, level %d.\n\r",
 			buf2,
-			skill_table[(int)paf->type].name,
-			paf->name ? "(" : "", paf->name ? paf->name : "",
-			paf->name ? ") " : "",
-			str_cmp(affect_loc_name(paf->location), "none")
-				? affect_loc_name(paf->location)
-				: apply_locations[paf->location].name,
-			paf->modifier,
-			(paf->duration == -1) ? -1 : (paf->duration / 2) + 1,
-			(paf->duration % 2 == 0) ? "" : (paf->duration == -1) ? "" : ".5",
-			paf->where == TO_IMMUNE ? "imm" : paf->where == TO_RESIST ? "res" : paf->where == TO_VULN ? "vuln" : "aff",
-			paf->where == TO_IMMUNE || paf->where == TO_RESIST || paf->where == TO_VULN
-				? imm_bit_name(paf->bitvector)
-				: affect_bit_name(paf->bitvector),
-			paf->owner != nullptr ? paf->owner->true_name : "none", paf->level);
+			skill_table[(int)paf.type].name,
+			paf.name ? "(" : "", paf.name ? paf.name : "",
+			paf.name ? ") " : "",
+			str_cmp(affect_loc_name(paf.location), "none")
+				? affect_loc_name(paf.location)
+				: apply_locations[paf.location].name,
+			paf.modifier,
+			(paf.duration == -1) ? -1 : (paf.duration / 2) + 1,
+			(paf.duration % 2 == 0) ? "" : (paf.duration == -1) ? "" : ".5",
+			paf.where == TO_IMMUNE ? "imm" : paf.where == TO_RESIST ? "res" : paf.where == TO_VULN ? "vuln" : "aff",
+			paf.where == TO_IMMUNE || paf.where == TO_RESIST || paf.where == TO_VULN
+				? imm_bit_name(paf.bitvector)
+				: affect_bit_name(paf.bitvector),
+			paf.owner != nullptr ? paf.owner->true_name : "none", paf.level);
 		send_to_char(buffer.c_str(), ch);
 	}
 
@@ -3225,7 +3220,7 @@ void do_ofind(CHAR_DATA *ch, char *argument)
 void do_owhere(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_INPUT_LENGTH];
-	BUFFER *buffer;
+	BUFFER buffer;
 	OBJ_DATA *obj;
 	OBJ_DATA *in_obj;
 	bool found;
@@ -3234,8 +3229,6 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 	found = false;
 	number = 0;
 	max_found = 200;
-
-	buffer = new_buf();
 
 	if (argument[0] == '\0')
 	{
@@ -3277,7 +3270,7 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 		found = true;
 
 		buf[0] = UPPER(buf[0]);
-		add_buf(buffer, buf);
+		buffer.add(buf);
 
 		if (number >= max_found)
 			break;
@@ -3286,15 +3279,13 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 	if (!found)
 		send_to_char("Nothing like that in heaven or earth.\n\r", ch);
 	else
-		page_to_char(buf_string(buffer), ch);
-
-	free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 }
 
 void do_mwhere(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_STRING_LENGTH];
-	BUFFER *buffer;
+	BUFFER buffer;
 	CHAR_DATA *victim;
 	bool found;
 	int count = 0;
@@ -3305,7 +3296,6 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 
 		/* show characters logged */
 
-		buffer = new_buf();
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
 			if (d->character != nullptr
@@ -3335,17 +3325,15 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 						victim->in_room->vnum);
 				}
 
-				add_buf(buffer, buf);
+				buffer.add(buf);
 			}
 		}
 
-		page_to_char(buf_string(buffer), ch);
-		free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 		return;
 	}
 
 	found = false;
-	buffer = new_buf();
 
 	for (victim = char_list; victim != nullptr; victim = victim->next)
 	{
@@ -3360,16 +3348,14 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 				is_npc(victim) ? victim->short_descr : victim->name,
 				victim->in_room->vnum,
 				get_room_name(victim->in_room));
-			add_buf(buffer, buf);
+			buffer.add(buf);
 		}
 	}
 
 	if (!found)
 		act("You didn't find any $T.", ch, nullptr, argument, TO_CHAR);
 	else
-		page_to_char(buf_string(buffer), ch);
-
-	free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 }
 
 void do_reboo(CHAR_DATA *ch, char *argument)
@@ -3713,7 +3699,10 @@ void do_switch(CHAR_DATA *ch, char *argument)
 	ch->desc->character = victim;
 	ch->desc->original = ch;
 	victim->desc = ch->desc;
-	victim->pcdata = ch->pcdata;
+	// The possessed mob borrows the immortal's pcdata (it's an NPC, so its own
+	// pcdata is null). Ownership stays with the original body; do_return calls
+	// release() so this borrow is never freed through the mob.
+	victim->pcdata.reset(ch->pcdata.get());
 	ch->desc = nullptr;
 	/* change communications to match */
 	/*
@@ -3752,7 +3741,7 @@ void do_return(CHAR_DATA *ch, char *argument)
 
 	wiznet(buf, ch->desc->original, 0, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
 
-	ch->pcdata = nullptr;
+	ch->pcdata.release();		// relinquish the borrowed pcdata WITHOUT freeing it
 	ch->desc->character = ch->desc->original;
 	ch->desc->original = nullptr;
 	ch->desc->character->desc = ch->desc;
@@ -5609,8 +5598,6 @@ void do_string(CHAR_DATA *ch, char *argument)
 
 		if (!str_prefix(arg2, "ed") || !str_prefix(arg2, "extended"))
 		{
-			EXTRA_DESCR_DATA *ed;
-
 			argument = one_argument(argument, arg3);
 
 			if (argument == nullptr)
@@ -5621,12 +5608,11 @@ void do_string(CHAR_DATA *ch, char *argument)
 
 			strcat(argument, "\n\r");
 
-			ed = new_extra_descr();
+			EXTRA_DESCR_DATA ed;
 
-			ed->keyword = palloc_string(arg3);
-			ed->description = palloc_string(argument);
-			ed->next = obj->extra_descr;
-			obj->extra_descr = ed;
+			ed.keyword = palloc_string(arg3);
+			ed.description = palloc_string(argument);
+			obj->extra_descr.push_front(std::move(ed));
 			return;
 		}
 	}
@@ -6303,7 +6289,6 @@ void do_prefix(CHAR_DATA *ch, char *argument)
 void do_astrip(CHAR_DATA *ch, char *argument)
 {
 	CHAR_DATA *victim;
-	AFFECT_DATA *af, *af_next;
 	char arg[MAX_STRING_LENGTH];
 
 	one_argument(argument, arg);
@@ -6319,14 +6304,14 @@ void do_astrip(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (af = victim->affected; af != nullptr; af = af_next)
+	for (auto it = victim->affected.begin(); it != victim->affected.end(); )
 	{
-		af_next = af->next;
+		auto next = std::next(it);
 
-		if (IS_SET(af->bitvector, AFF_PERMANENT))
-			continue;
+		if (!IS_SET(it->bitvector, AFF_PERMANENT))
+			affect_remove(victim, &*it);
 
-		affect_remove(victim, af);
+		it = next;
 	}
 
 	if (victim != ch)
@@ -6540,8 +6525,7 @@ void do_max_limits(CHAR_DATA *ch, char *argument)
 void do_addapply(CHAR_DATA *ch, char *argument)
 {
 	OBJ_DATA *obj;
-	AFFECT_DATA *paf, *paf_next, af;
-	OBJ_APPLY_DATA *app, *app_next;
+	AFFECT_DATA af;
 	char arg1[MAX_INPUT_LENGTH];
 	char arg2[MAX_INPUT_LENGTH];
 	char arg3[MAX_INPUT_LENGTH];
@@ -6575,20 +6559,9 @@ void do_addapply(CHAR_DATA *ch, char *argument)
 
 	if (!str_prefix(arg2, "clear"))
 	{
-		for (paf = obj->charaffs; paf; paf = paf_next)
-		{
-			paf_next = paf->next;
-			free_affect(paf);
-		}
+		obj->charaffs.clear();
 
-		obj->charaffs = nullptr;
-
-		for (app = obj->apply; app; app = app_next)
-		{
-			app_next = app->next;
-		}
-
-		obj->apply = nullptr;
+		obj->apply.clear();
 
 		act("All affects removed from $p.", ch, obj, 0, TO_CHAR);
 		return;
@@ -6631,22 +6604,18 @@ void do_addapply(CHAR_DATA *ch, char *argument)
 
 	if (location != APPLY_SPELL_AFFECT)
 	{
-		app = new_apply_data();
-		app->location = location;
-
-		if (is_number(arg3))
-		{
-			modifier = atoi(arg3);
-		}
-		else
+		if (!is_number(arg3))
 		{
 			send_to_char("Applies require a numerical value.\n\r", ch);
 			return;
 		}
 
-		app->modifier = modifier;
-		app->next = obj->apply;
-		obj->apply = app;
+		modifier = atoi(arg3);
+
+		OBJ_APPLY_DATA app;
+		app.location = location;
+		app.modifier = modifier;
+		obj->apply.push_front(app);
 	}
 	else
 	{
@@ -7018,9 +6987,8 @@ void add_history(CHAR_DATA *ch, CHAR_DATA *victim, char *string)
 
 void show_temp_history(CHAR_DATA *ch, CHAR_DATA *victim)
 {
-	BUFFER *output;
+	BUFFER output;
 
-	output = new_buf();
 	send_to_char(victim->name, ch);
 	send_to_char("'s temporary history buffer:\n\r", ch);
 
@@ -7030,17 +6998,14 @@ void show_temp_history(CHAR_DATA *ch, CHAR_DATA *victim)
 	}
 	else
 	{
-		add_buf(output, victim->pcdata->temp_history_buffer);
-		page_to_char(buf_string(output), ch);
-		free_buf(output);
+		output.add(victim->pcdata->temp_history_buffer);
+		page_to_char(output.str(), ch);
 	}
 }
 
 void show_history(CHAR_DATA *ch, CHAR_DATA *victim)
 {
-	BUFFER *output;
-
-	output = new_buf();
+	BUFFER output;
 
 	send_to_char(victim->name, ch);
 	send_to_char("'s player history:\n\r", ch);
@@ -7051,9 +7016,8 @@ void show_history(CHAR_DATA *ch, CHAR_DATA *victim)
 	}
 	else
 	{
-		add_buf(output, victim->pcdata->history_buffer);
-		page_to_char(buf_string(output), ch);
-		free_buf(output);
+		output.add(victim->pcdata->history_buffer);
+		page_to_char(output.str(), ch);
 	}
 }
 
@@ -7169,44 +7133,43 @@ void do_empower(CHAR_DATA *ch, char *argument)
 
 void do_raffects(CHAR_DATA *ch, char *argument)
 {
-	ROOM_AFFECT_DATA *paf;
 	RUNE_DATA *rune;
 	char buf[MAX_STRING_LENGTH];
 	bool found = false;
 	int i = 0;
 
-	if (ch->in_room->affected != nullptr)
+	if (!ch->in_room->affected.empty())
 	{
 		found = true;
 		send_to_char("The room is affected by:\n\r", ch);
 
-		for (paf = ch->in_room->affected; paf != nullptr; paf = paf->next)
+		for (auto &paf : ch->in_room->affected)
 		{
-			if (paf->aftype == AFT_SPELL)
-				sprintf(buf, "Spell: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_SPELL)
+				sprintf(buf, "Spell: '%s' ", skill_table[paf.type].name);
 
-			if (paf->aftype == AFT_SKILL)
-				sprintf(buf, "Skill: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_SKILL)
+				sprintf(buf, "Skill: '%s' ", skill_table[paf.type].name);
 
-			if (paf->aftype == AFT_POWER)
-				sprintf(buf, "Power: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_POWER)
+				sprintf(buf, "Power: '%s' ", skill_table[paf.type].name);
 
-			if (paf->aftype == AFT_COMMUNE)
-				sprintf(buf, "Commune: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype == AFT_COMMUNE)
+				sprintf(buf, "Commune: '%s' ", skill_table[paf.type].name);
 
-			if (paf->aftype != AFT_SPELL && paf->aftype != AFT_SKILL && paf->aftype != AFT_POWER &&
-				paf->aftype != AFT_MALADY && paf->aftype != AFT_COMMUNE)
-				sprintf(buf, "Spell: '%s' ", skill_table[paf->type].name);
+			if (paf.aftype != AFT_SPELL && paf.aftype != AFT_SKILL && paf.aftype != AFT_POWER &&
+				paf.aftype != AFT_MALADY && paf.aftype != AFT_COMMUNE)
+				sprintf(buf, "Spell: '%s' ", skill_table[paf.type].name);
 			send_to_char(buf, ch);
 
 			sprintf(buf, "modifies %s by %d for %d hours with %s-bits %s, owner %s, level %d.\n\r",
-				raffect_loc_name(paf->location),
-				paf->modifier,
-				paf->duration / 2,
-				paf->where == TO_ROOM_FLAGS ? "flag" : paf->where == TO_ROOM_CONST ? "const" : "aff",
+				raffect_loc_name(paf.location),
+				paf.modifier,
+				paf.duration / 2,
+				paf.where == TO_ROOM_FLAGS ? "flag" : paf.where == TO_ROOM_CONST ? "const" : "aff",
 				"nullptr",
-				paf->owner != nullptr ? paf->owner->name : "none",
-				paf->level);
+				paf.owner != nullptr ? paf.owner->name : "none",
+				paf.level);
 			send_to_char(buf, ch);
 		}
 	}
@@ -7247,7 +7210,6 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 
 void do_rastrip(CHAR_DATA *ch, char *argument)
 {
-	ROOM_AFFECT_DATA *af, *af_next;
 	ROOM_INDEX_DATA *location = nullptr;
 
 	if (argument[0] == '\0')
@@ -7259,10 +7221,11 @@ void do_rastrip(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (af = location->affected; af != nullptr; af = af_next)
+	for (auto it = location->affected.begin(); it != location->affected.end(); )
 	{
-		af_next = af->next;
-		affect_remove_room(location, af);
+		auto next = std::next(it);
+		affect_remove_room(location, &*it);
+		it = next;
 	}
 
 	act("All affects stripped from '$t'.", ch, location->name, 0, TO_CHAR);
@@ -7270,13 +7233,13 @@ void do_rastrip(CHAR_DATA *ch, char *argument)
 
 void do_aastrip(CHAR_DATA *ch, char *argument)
 {
-	AREA_AFFECT_DATA *af, *af_next;
 	AREA_DATA *area = ch->in_room->area;
 
-	for (af = area->affected; af; af = af_next)
+	for (auto it = area->affected.begin(); it != area->affected.end(); )
 	{
-		af_next = af->next;
-		affect_remove_area(area, af);
+		auto next = std::next(it);
+		affect_remove_area(area, &*it);
+		it = next;
 	}
 
 	act("All affects stripped from '$t'.", ch, area->name, 0, TO_CHAR);
@@ -7285,7 +7248,6 @@ void do_aastrip(CHAR_DATA *ch, char *argument)
 void do_oastrip(CHAR_DATA *ch, char *argument)
 {
 	OBJ_DATA *obj;
-	OBJ_AFFECT_DATA *af, *af_next;
 	char arg[MSL];
 
 	one_argument(argument, arg);
@@ -7306,14 +7268,14 @@ void do_oastrip(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (af = obj->affected; af != nullptr; af = af_next)
+	for (auto it = obj->affected.begin(); it != obj->affected.end(); )
 	{
-		af_next = af->next;
+		auto next = std::next(it);
 
-		if (IS_SET(af->bitvector, AFF_PERMANENT))
-			continue;
+		if (!IS_SET(it->bitvector, AFF_PERMANENT))
+			affect_remove_obj(obj, &*it, true);
 
-		affect_remove_obj(obj, af, true);
+		it = next;
 	}
 
 	act("All affects stripped from $p.", ch, obj, 0, TO_CHAR);
@@ -7455,9 +7417,7 @@ void do_gsnlist(CHAR_DATA *ch, char *argument)
 {
 	int sn, col = 0;
 	char buf[MSL];
-	BUFFER *output;
-
-	output = new_buf();
+	BUFFER output;
 
 	for (sn = 0; sn < MAX_SKILL; sn++)
 	{
@@ -7465,14 +7425,13 @@ void do_gsnlist(CHAR_DATA *ch, char *argument)
 			continue;
 
 		sprintf(buf, "%-18s %3d  ", skill_table[sn].name, sn);
-		add_buf(output, buf);
+		output.add(buf);
 
 		if (++col % 3 == 0)
-			add_buf(output, "\n\r");
+			output.add("\n\r");
 	}
 
-	page_to_char(buf_string(output), ch);
-	free_buf(output);
+	page_to_char(output.str(), ch);
 }
 
 void do_ccl(CHAR_DATA *ch, char *argument)

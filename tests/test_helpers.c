@@ -4,7 +4,7 @@
 void TestHelperSetupPlayerBuffer(CHAR_DATA *player, char *name = "player1", char *room_name = "room1")
 {
 	player->name = name;
-	player->pcdata = new pc_data();
+	player->pcdata = std::make_unique<pc_data>();
 	player->desc = new descriptor_data();
 	player->desc->outbuf = new char[2];
 	player->desc->outtop = 0;
@@ -39,8 +39,7 @@ void TestHelperCleanupPlayerObject(CHAR_DATA *player)
 		delete player->pIndexData;
 	}
 
-	if (player->pcdata != nullptr)
-		delete player->pcdata;
+	player->pcdata.reset();
 
 	if (player->in_room != nullptr)
 		delete player->in_room;

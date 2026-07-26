@@ -1,8 +1,12 @@
 #ifndef ENTITY_OBJ_DATA_H
 #define ENTITY_OBJ_DATA_H
 
+#include <list>
+
 #include "fwd.h"
 #include "limits.h"
+#include "extra_descr.h"
+#include "affect_data.h"		// OBJ_APPLY_DATA held by value
 
 //
 // One object.
@@ -16,10 +20,10 @@ struct obj_data
 	OBJ_DATA *in_obj;
 	OBJ_DATA *on;
 	CHAR_DATA *carried_by;
-	EXTRA_DESCR_DATA *extra_descr;
-	OBJ_APPLY_DATA *apply;
-	OBJ_AFFECT_DATA *affected;
-	AFFECT_DATA *charaffs;
+	std::list<EXTRA_DESCR_DATA> extra_descr;
+	std::list<OBJ_APPLY_DATA> apply;
+	std::list<OBJ_AFFECT_DATA> affected;
+	std::list<AFFECT_DATA> charaffs;
 	OBJ_INDEX_DATA *pIndexData;
 	ROOM_INDEX_DATA *in_room;
 	RUNE_DATA *rune;

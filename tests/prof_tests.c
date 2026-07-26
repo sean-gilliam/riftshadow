@@ -1255,7 +1255,7 @@ SCENARIO("testing interpreting proficiency commands", "[InterpCommand]")
 		{
 			auto player = new char_data();
 			player->name = "player1";
-			player->pcdata = new pc_data();
+			player->pcdata = std::make_unique<pc_data>();
 
 			player->Profs()->SetChar(player);
 
@@ -1276,7 +1276,7 @@ SCENARIO("testing interpreting proficiency commands", "[InterpCommand]")
 		{
 			auto player = new char_data();
 			player->name = "player1";
-			player->pcdata = new pc_data();
+			player->pcdata = std::make_unique<pc_data>();
 
 			player->Profs()->SetChar(player);
 
@@ -1294,7 +1294,7 @@ SCENARIO("testing interpreting proficiency commands", "[InterpCommand]")
 		{
 			auto player = new char_data();
 			player->name = "player1";
-			player->pcdata = new pc_data();
+			player->pcdata = std::make_unique<pc_data>();
 			player->in_room = new room_index_data();
 			player->in_room->sector_type = SECT_WATER;
 

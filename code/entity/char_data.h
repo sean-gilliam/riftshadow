@@ -2,6 +2,8 @@
 #define ENTITY_CHAR_DATA_H
 
 #include <time.h>
+#include <list>
+#include <memory>
 
 #include "fwd.h"
 #include "limits.h"
@@ -9,6 +11,9 @@
 #include "../characterClasses/class.h"	// CClass, used by the inline accessors
 #include "mob_index_data.h"				// Class() falls back through pIndexData
 #include "pc_data.h"					// Profs() reaches into pcdata
+#include "gen_data.h"					// GEN_DATA held by unique_ptr in ch->gen_data
+#include "mem_data.h"					// MEM_DATA held by value in ch->memory
+#include "affect_data.h"				// AFFECT_DATA held by value in ch->affected
 
 //
 // One character (PC or NPC).
@@ -33,19 +38,19 @@ public:
 	char * last_fight_name;
 	CHAR_DATA *hunting;
 	CHAR_DATA *defending;
-	MEM_DATA *memory;
+	std::list<MEM_DATA> memory;
 	GAME_FUN *game_fun;
 	MOB_INDEX_DATA *pIndexData;
 	DESCRIPTOR_DATA *desc;
-	AFFECT_DATA *affected;
+	std::list<AFFECT_DATA> affected;
 	NOTE_DATA *pnote;
 	OBJ_DATA *carrying;
 	OBJ_DATA *on;
 	ROOM_INDEX_DATA *in_room;
 	ROOM_INDEX_DATA *was_in_room;
 	AREA_DATA *zone;
-	PC_DATA *pcdata;
-	GEN_DATA *gen_data;
+	std::unique_ptr<PC_DATA> pcdata;
+	std::unique_ptr<GEN_DATA> gen_data;
 	PATHFIND_DATA *path;	// For smart pathfinding/tracking.  Mob only.
 	PATHFIND_DATA *best;	// Stores best direction thus far.  Mob only.
 	bool valid;

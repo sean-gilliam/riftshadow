@@ -716,7 +716,7 @@ void load_area(FILE *fp)
 	zero_vector(pArea->area_flags);
 	SET_BIT(pArea->area_flags, AREA_LOADING); /* OLC */
 	pArea->vnum = top_area;					  /* OLC */
-	pArea->affected = nullptr;
+	pArea->affected.clear();
 	pArea->name = fread_string(fp);
 	pArea->credits = fread_string(fp);
 	pArea->low_range = fread_number(fp);
@@ -1336,7 +1336,6 @@ void find_adjacents(void)
 void area_update(void)
 {
 	AREA_DATA *pArea;
-	AREA_AFFECT_DATA *paf, *paf_next;
 	char buf[MAX_STRING_LENGTH];
 
 	for (pArea = area_first; pArea != nullptr; pArea = pArea->next)
@@ -1344,22 +1343,24 @@ void area_update(void)
 		if (IS_SET(pArea->progtypes, APROG_TICK))
 			(pArea->aprogs->tick_prog)(pArea);
 
-		for (paf = pArea->affected; paf; paf = paf_next)
+		for (auto it = pArea->affected.begin(); it != pArea->affected.end(); )
 		{
-			paf_next = paf->next;
+			auto next = std::next(it);
 
-			if (paf->duration > 0)
+			if (it->duration > 0)
 			{
-				if (paf->tick_fun)
-					(*paf->tick_fun)(pArea, paf);
+				if (it->tick_fun)
+					(*it->tick_fun)(pArea, &*it);
 
-				paf->duration--;
+				it->duration--;
 			}
-			else if (paf->duration < 0);
+			else if (it->duration < 0);
 			else
 			{
-				affect_remove_area(pArea, paf);
+				affect_remove_area(pArea, &*it);
 			}
+
+			it = next;
 		}
 
 		if (pArea->nplayer == 0)
@@ -2091,7 +2092,6 @@ CHAR_DATA *create_mobile(MOB_INDEX_DATA *pMobIndex)
 void clone_mobile(CHAR_DATA *parent, CHAR_DATA *clone)
 {
 	int i;
-	AFFECT_DATA *paf;
 
 	if (parent == nullptr || clone == nullptr || !is_npc(parent))
 		return;
@@ -2170,10 +2170,8 @@ void clone_mobile(CHAR_DATA *parent, CHAR_DATA *clone)
 	}
 
 	/* now add the affects */
-	for (paf = parent->affected; paf != nullptr; paf = paf->next)
-	{
-		affect_to_char(clone, paf);
-	}
+	for (auto &paf : parent->affected)
+		affect_to_char(clone, &paf);
 }
 
 /*
@@ -2181,8 +2179,6 @@ void clone_mobile(CHAR_DATA *parent, CHAR_DATA *clone)
  */
 OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 {
-	AFFECT_DATA *paf;
-	EXTRA_DESCR_DATA *ed;
 	OBJ_DATA *obj;
 	int i;
 
@@ -2217,8 +2213,8 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 
 	copy_vector(obj->extra_flags, pObjIndex->extra_flags);
 
-	obj->apply = pObjIndex->apply;
-	obj->charaffs = pObjIndex->charaffs;
+	obj->apply = pObjIndex->apply;		// deep-copies the prototype's applies (was a shared pointer)
+	obj->charaffs = pObjIndex->charaffs;	// deep-copies the prototype's charaffs (was a shared pointer)
 
 	copy_vector(obj->wear_flags, pObjIndex->wear_flags);
 	copy_vector(obj->imm_flags, pObjIndex->imm_flags);
@@ -2236,14 +2232,8 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 	/* Morg - Valgrind Fix */
 	obj->contains = nullptr;
 
-	if (pObjIndex->extra_descr)
-	{
-		ed = new_extra_descr();
-		ed->description = palloc_string(pObjIndex->extra_descr->description);
-		ed->keyword = palloc_string(pObjIndex->extra_descr->keyword);
-		ed->next = obj->extra_descr;
-		obj->extra_descr = ed;
-	}
+	if (!pObjIndex->extra_descr.empty())
+		obj->extra_descr.push_back(pObjIndex->extra_descr.front());
 
 	if (level == -1 || pObjIndex->new_format)
 		obj->cost = pObjIndex->cost;
@@ -2343,20 +2333,20 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 			break;
 	}
 
-	for (paf = pObjIndex->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : pObjIndex->affected)
 	{
-		if (paf->location == APPLY_SPELL_AFFECT)
+		if (paf.location == APPLY_SPELL_AFFECT)
 		{
 			OBJ_AFFECT_DATA oaf;
 
 			init_affect_obj(&oaf);
-			oaf.where = paf->where;
-			oaf.type = paf->type;
-			oaf.level = paf->level;
-			oaf.duration = paf->duration;
-			oaf.location = paf->location;
-			oaf.modifier = paf->modifier;
-			copy_vector(oaf.bitvector, paf->bitvector);
+			oaf.where = paf.where;
+			oaf.type = paf.type;
+			oaf.level = paf.level;
+			oaf.duration = paf.duration;
+			oaf.location = paf.location;
+			oaf.modifier = paf.modifier;
+			copy_vector(oaf.bitvector, paf.bitvector);
 			affect_to_obj(obj, &oaf);
 		}
 	}
@@ -2373,8 +2363,6 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 {
 	int i;
-	OBJ_AFFECT_DATA *paf;
-	EXTRA_DESCR_DATA *ed, *ed_new;
 
 	if (parent == nullptr || clone == nullptr)
 		return;
@@ -2387,7 +2375,7 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 
 	copy_vector(clone->extra_flags, parent->extra_flags);
 
-	clone->apply = parent->apply;
+	clone->apply = parent->apply;		// deep-copies the applies (was a shared pointer)
 
 	copy_vector(clone->wear_flags, parent->wear_flags);
 	copy_vector(clone->imm_flags, parent->imm_flags);
@@ -2412,20 +2400,12 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 
 	/* affects */
 
-	for (paf = parent->affected; paf != nullptr; paf = paf->next)
-	{
-		affect_to_obj(clone, paf);
-	}
+	for (auto &paf : parent->affected)
+		affect_to_obj(clone, &paf);
 
-	/* extended desc */
-	for (ed = parent->extra_descr; ed != nullptr; ed = ed->next)
-	{
-		ed_new = new_extra_descr();
-		ed_new->keyword = palloc_string(ed->keyword);
-		ed_new->description = palloc_string(ed->description);
-		ed_new->next = clone->extra_descr;
-		clone->extra_descr = ed_new;
-	}
+	/* extended desc — prepend each (reverses order), matching the old intrusive list */
+	for (const auto &ed : parent->extra_descr)
+		clone->extra_descr.insert(clone->extra_descr.begin(), ed);
 }
 
 /*
@@ -2433,10 +2413,9 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
  */
 void clear_char(CHAR_DATA *ch)
 {
-	static CHAR_DATA ch_zero;
 	int i;
 
-	*ch = ch_zero;
+	*ch = CHAR_DATA();
 	ch->name = &str_empty[0];
 	ch->short_descr = &str_empty[0];
 	ch->long_descr = &str_empty[0];
@@ -2472,12 +2451,12 @@ void clear_char(CHAR_DATA *ch)
 /*
  * Get an extra description from a list.
  */
-char *get_extra_descr(const char *name, EXTRA_DESCR_DATA *ed)
+char *get_extra_descr(const char *name, const std::list<EXTRA_DESCR_DATA> &eds)
 {
-	for (; ed != nullptr; ed = ed->next)
+	for (const auto &ed : eds)
 	{
-		if (is_name((char *)name, ed->keyword))
-			return ed->description;
+		if (is_name((char *)name, ed.keyword))
+			return ed.description;
 	}
 
 	return nullptr;
@@ -3210,14 +3189,11 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	int count, count2, num_pcs, aff_count;
 	CHAR_DATA *fch;
 	MOB_INDEX_DATA *pMobIndex;
-	PC_DATA *pc;
 	OBJ_DATA *obj;
 	OBJ_INDEX_DATA *pObjIndex;
 	ROOM_INDEX_DATA *room;
 	EXIT_DATA *exit;
 	DESCRIPTOR_DATA *d;
-	AFFECT_DATA *af;
-	OBJ_AFFECT_DATA *oaf;
 	FILE *fp;
 	int vnum, nMatch = 0;
 
@@ -3248,10 +3224,7 @@ void do_dump(CHAR_DATA *ch, char *argument)
 		if (fch->pcdata != nullptr)
 			num_pcs++;
 
-		for (af = fch->affected; af != nullptr; af = af->next)
-		{
-			aff_count++;
-		}
+		aff_count += fch->affected.size();
 	}
 
 	for (fch = char_free; fch != nullptr; fch = fch->next)
@@ -3261,15 +3234,10 @@ void do_dump(CHAR_DATA *ch, char *argument)
 
 	fprintf(fp, "Mobs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(*fch)), count2, count2 * (sizeof(*fch)));
 
-	/* pcdata */
+	/* pcdata — no free list any more (pcdata is owned by unique_ptr) */
 	count = 0;
 
-	for (pc = pcdata_free; pc != nullptr; pc = pc->next)
-	{
-		count++;
-	}
-
-	fprintf(fp, "Pcdata	%4d (%8lu bytes), %2d free (%lu bytes)\n", num_pcs, num_pcs * (sizeof(*pc)), count, count * (sizeof(*pc)));
+	fprintf(fp, "Pcdata	%4d (%8lu bytes), %2d free (%lu bytes)\n", num_pcs, num_pcs * (sizeof(PC_DATA)), count, count * (sizeof(PC_DATA)));
 
 	/* descriptors */
 	count = 0;
@@ -3294,10 +3262,7 @@ void do_dump(CHAR_DATA *ch, char *argument)
 
 		if (pObjIndex != nullptr)
 		{
-			for (af = pObjIndex->affected; af != nullptr; af = af->next)
-			{
-				aff_count++;
-			}
+			aff_count += pObjIndex->affected.size();
 
 			nMatch++;
 		}
@@ -3313,10 +3278,7 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	{
 		count++;
 
-		for (oaf = obj->affected; oaf != nullptr; oaf = oaf->next)
-		{
-			aff_count++;
-		}
+		aff_count += obj->affected.size();
 	}
 
 	for (obj = obj_free; obj != nullptr; obj = obj->next)
@@ -3326,14 +3288,10 @@ void do_dump(CHAR_DATA *ch, char *argument)
 
 	fprintf(fp, "Objs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(*obj)), count2, count2 * (sizeof(*obj)));
 
-	/* affects */
+	/* affects — no free list any more (affects are owned by value) */
 	count = 0;
-	for (af = affect_free; af != nullptr; af = af->next)
-	{
-		count++;
-	}
 
-	fprintf(fp, "Affects	%4d (%8lu bytes), %2d free (%lu bytes)\n", aff_count, aff_count * (sizeof(*af)), count, count * (sizeof(*af)));
+	fprintf(fp, "Affects	%4d (%8lu bytes), %2d free (%lu bytes)\n", aff_count, aff_count * (sizeof(AFFECT_DATA)), count, count * (sizeof(AFFECT_DATA)));
 
 	/* rooms */
 	fprintf(fp, "Rooms	%4d (%8lu bytes)\n", top_room, top_room * (sizeof(*room)));
@@ -3985,7 +3943,6 @@ void load_rooms(FILE *fp)
 {
 	ROOM_INDEX_DATA *pRoomIndex;
 	char error_v[MAX_STRING_LENGTH];
-	int i;
 
 	if (area_last == nullptr)
 		bugout("Load_resets: no #AREA seen yet.");
@@ -4028,18 +3985,13 @@ void load_rooms(FILE *fp)
 		pRoomIndex->move_progs= false;
 		pRoomIndex->people = nullptr;
 		pRoomIndex->contents = nullptr;
-		pRoomIndex->extra_descr = nullptr;
+		pRoomIndex->extra_descr.clear();
 		pRoomIndex->alt_description = nullptr;
 		pRoomIndex->alt_description_cond = 0;
 		pRoomIndex->alt_name = nullptr;
 		pRoomIndex->trap = nullptr;
-		pRoomIndex->affected = nullptr;
+		pRoomIndex->affected.clear();
 		zero_vector(pRoomIndex->room_flags);
-
-		for (i = 0; i < MAX_TRACKS; i++)
-		{
-			pRoomIndex->tracks[i] = new_track_data();
-		}
 
 		pRoomIndex->area = area_last;
 		pRoomIndex->vnum = vnum;
@@ -4126,13 +4078,11 @@ void load_rooms(FILE *fp)
 			}
 			else if (letter == 'E')
 			{
-				EXTRA_DESCR_DATA *ed;
+				EXTRA_DESCR_DATA ed;
 
-				ed = new EXTRA_DESCR_DATA;
-				ed->keyword = fread_string(fp);
-				ed->description = fread_string(fp);
-				ed->next = pRoomIndex->extra_descr;
-				pRoomIndex->extra_descr = ed;
+				ed.keyword = fread_string(fp);
+				ed.description = fread_string(fp);
+				pRoomIndex->extra_descr.insert(pRoomIndex->extra_descr.begin(), std::move(ed));
 				top_ed++;
 			}
 			else if (letter == 'T')

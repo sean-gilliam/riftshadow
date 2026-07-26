@@ -82,8 +82,7 @@ AREA_DATA *new_area(void)
 
 	if (!area_free)
 	{
-		pArea = new AREA_DATA;
-		CLEAR_MEM(pArea, sizeof(AREA_DATA))
+		pArea = new AREA_DATA();
 		top_area++;
 	}
 	else
@@ -125,6 +124,8 @@ void free_area(AREA_DATA *pArea)
 	free_pstring(pArea->name);
 	free_pstring(pArea->file_name);
 	free_pstring(pArea->builders);
+
+	pArea->affected.clear();
 
 	pArea->next = area_free->next;
 	area_free = pArea;
@@ -204,12 +205,13 @@ void free_extra_descr(EXTRA_DESCR_DATA *pExtra)
 ROOM_INDEX_DATA *new_room_index(void)
 {
 	ROOM_INDEX_DATA *pRoom;
-	int door, i;
+	int door;
 
 	if (!room_index_free)
 	{
-		pRoom = new ROOM_INDEX_DATA;
-		CLEAR_MEM(pRoom, sizeof(ROOM_INDEX_DATA))
+		// value-init zeroes the scalar members AND constructs the std::list member;
+		// CLEAR_MEM (byte-zero) would corrupt the list's internal state.
+		pRoom = new ROOM_INDEX_DATA();
 		top_room++;
 	}
 	else
@@ -223,7 +225,7 @@ ROOM_INDEX_DATA *new_room_index(void)
 	pRoom->aff_next = nullptr;
 	pRoom->people = nullptr;
 	pRoom->contents = nullptr;
-	pRoom->extra_descr = nullptr;
+	pRoom->extra_descr.clear();
 	pRoom->area = nullptr;
 	pRoom->alt_description = nullptr;
 	pRoom->alt_name = nullptr;
@@ -232,11 +234,6 @@ ROOM_INDEX_DATA *new_room_index(void)
 	for (door = 0; door < MAX_DIR; door++)
 	{
 		pRoom->exit[door] = nullptr;
-	}
-
-	for (i = 0; i < MAX_TRACKS; i++)
-	{
-		pRoom->tracks[i] = new_track_data();
 	}
 
 	pRoom->path = nullptr;
@@ -252,7 +249,7 @@ ROOM_INDEX_DATA *new_room_index(void)
 	pRoom->mana_rate = 100;
 	pRoom->cabal = 0;
 	pRoom->guild = 0;
-	pRoom->affected = nullptr;
+	pRoom->affected.clear();
 
 	zero_vector(pRoom->affected_by);
 
@@ -328,9 +325,9 @@ OBJ_INDEX_DATA *new_obj_index(void)
 
 	if (!obj_index_free)
 	{
-		pObj = new OBJ_INDEX_DATA;
-
-		CLEAR_MEM(pObj, sizeof(OBJ_INDEX_DATA))
+		// value-init zeroes the scalar members AND constructs the std::list members;
+		// CLEAR_MEM (byte-zero) would corrupt the lists' internal state.
+		pObj = new OBJ_INDEX_DATA();
 
 		top_obj_index++;
 	}
@@ -341,8 +338,8 @@ OBJ_INDEX_DATA *new_obj_index(void)
 	}
 
 	pObj->next = nullptr;
-	pObj->extra_descr = nullptr;
-	pObj->affected = nullptr;
+	pObj->extra_descr.clear();
+	pObj->affected.clear();
 	pObj->area = nullptr;
 	pObj->name = palloc_string("no name");
 	pObj->level = 1;
@@ -372,9 +369,9 @@ OBJ_INDEX_DATA *new_obj_index(void)
 	pObj->cabal = 0;
 	pObj->notes = nullptr;
 	pObj->wear_loc_name = nullptr;
-	pObj->charaffs = nullptr;
-	pObj->extra_descr = nullptr;
-	pObj->apply = nullptr;
+	pObj->charaffs.clear();
+	pObj->extra_descr.clear();
+	pObj->apply.clear();
 
 	for (value = 0; value < 5; value++) /* 5 - ROM */
 	{
@@ -395,22 +392,13 @@ OBJ_INDEX_DATA *new_obj_index(void)
 
 void free_obj_index(OBJ_INDEX_DATA *pObj)
 {
-	EXTRA_DESCR_DATA *pExtra;
-	AFFECT_DATA *pAf;
-
 	free_pstring(pObj->name);
 	free_pstring(pObj->short_descr);
 	free_pstring(pObj->description);
 
-	for (pAf = pObj->affected; pAf; pAf = pAf->next)
-	{
-		free_affect(pAf);
-	}
-
-	for (pExtra = pObj->extra_descr; pExtra; pExtra = pExtra->next)
-	{
-		free_extra_descr(pExtra);
-	}
+	pObj->affected.clear();
+	pObj->charaffs.clear();
+	pObj->extra_descr.clear();
 
 	pObj->next = obj_index_free;
 	obj_index_free = pObj;
@@ -423,8 +411,7 @@ MOB_INDEX_DATA *new_mob_index(void)
 
 	if (!mob_index_free)
 	{
-		pMob = new MOB_INDEX_DATA;
-		CLEAR_MEM(pMob, sizeof(MOB_INDEX_DATA))
+		pMob = new MOB_INDEX_DATA();
 		top_mob_index++;
 	}
 	else
@@ -499,7 +486,7 @@ MOB_INDEX_DATA *new_mob_index(void)
 		pMob->cast_spell[i] = nullptr;
 	}
 
-	pMob->speech = nullptr; // DIE MORGLUM DIE
+	pMob->speech.clear(); // DIE MORGLUM DIE
 	pMob->cabal = 0;
 	pMob->attack_yell = nullptr;
 	pMob->notes = nullptr;
@@ -525,6 +512,8 @@ void free_mob_index(MOB_INDEX_DATA *pMob)
 	free_pstring(pMob->description);
 
 	free_shop(pMob->pShop);
+
+	pMob->speech.clear();
 
 	pMob->next = mob_index_free;
 	mob_index_free = pMob;

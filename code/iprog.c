@@ -1408,7 +1408,7 @@ bool death_prog_trophy_belt(OBJ_DATA *belt, CHAR_DATA *ch)
 	obj_to_char(newbelt, ch);
 	equip_char(ch, newbelt, WEAR_WAIST, false);
 
-	free_trophy(ch->pcdata->trophy);
+	ch->pcdata->trophy.clear();
 
 	newbelt->value[4] = 0;
 	return false;

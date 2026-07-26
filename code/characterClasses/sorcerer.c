@@ -713,11 +713,7 @@ void un_ultradiffusion(CHAR_DATA *ch, char *argument)
 	if (!is_affected(ch, gsn_ultradiffusion))
 		return;
 
-	for (paf = ch->affected; paf != nullptr; paf = paf->next)
-	{
-		if (paf->type == gsn_ultradiffusion)
-			break;
-	}
+	paf = affect_find(ch->affected, gsn_ultradiffusion);
 
 	if (paf->duration == 0)
 	{
@@ -730,7 +726,7 @@ void un_ultradiffusion(CHAR_DATA *ch, char *argument)
 
 void ultradiffusion_end(CHAR_DATA *ch, AFFECT_DATA *af)
 {
-	AFFECT_DATA paf, *rpaf;
+	AFFECT_DATA paf;
 	int modifier = 0;
 
 	if (af->duration == -1)
@@ -748,10 +744,10 @@ void ultradiffusion_end(CHAR_DATA *ch, AFFECT_DATA *af)
 		act("$n attempts to recollect the molecules of $s body as $e becomes visible.", ch, nullptr, nullptr, TO_ROOM);
 	}
 
-	for (rpaf = ch->affected; rpaf; rpaf = rpaf->next)
+	for (auto &rpaf : ch->affected)
 	{
-		if (rpaf->type == gsn_ultradiffusion && rpaf->end_fun)
-			rpaf->end_fun = nullptr;
+		if (rpaf.type == gsn_ultradiffusion && rpaf.end_fun)
+			rpaf.end_fun = nullptr;
 	}
 
 	switch (af->duration)
@@ -1319,10 +1315,10 @@ void spell_diuretic(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	if (af)
 	{
-		for (af = victim->affected; af != nullptr; af = af->next)
+		for (auto &af : victim->affected)
 		{
-			if (af->type == gsn_bleeding && af->level < 150)
-				af->level = (int)((float)af->level * 1.33);
+			if (af.type == gsn_bleeding && af.level < 150)
+				af.level = (int)((float)af.level * 1.33);
 		}
 
 		send_to_char("The flow of blood from your wounds intensifies.\n\r", victim);
@@ -2316,11 +2312,7 @@ void spell_flood(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 		if (is_affected_room(ch->in_room, sn))
 		{
-			for (oaf = ch->in_room->affected; oaf != nullptr; oaf = oaf->next)
-			{
-				if (oaf->type == sn)
-					break;
-			}
+			oaf = affect_find_room(ch->in_room->affected, sn);
 
 			duration = std::max(oaf->duration - 1, 0);
 		}
@@ -2535,14 +2527,14 @@ void spell_riptide(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	{
 		if (is_affected_room(room, sn))
 		{
-			for (raf = room->affected; raf != nullptr; raf = raf->next)
+			for (auto &raf : room->affected)
 			{
-				if (raf->type == sn && raf->owner == ch && raf->location == APPLY_ROOM_NONE && raf->modifier == 1)
+				if (raf.type == sn && raf.owner == ch && raf.location == APPLY_ROOM_NONE && raf.modifier == 1)
 				{
 					first_room = room;
-					fraf = raf;
+					fraf = &raf;
 				}
-				else if (raf->type == sn && raf->owner == ch && raf->location == APPLY_ROOM_NONE && raf->modifier == 2)
+				else if (raf.type == sn && raf.owner == ch && raf.location == APPLY_ROOM_NONE && raf.modifier == 2)
 				{
 					second_room = room;
 				}
@@ -3711,7 +3703,7 @@ void spell_freezemetal(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 void spell_frostbite(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	CHAR_DATA *victim = (CHAR_DATA *)vo;
-	AFFECT_DATA af, *paf;
+	AFFECT_DATA af;
 
 	if (saves_spell(level, victim, DAM_COLD))
 	{
@@ -3731,10 +3723,14 @@ void spell_frostbite(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		act_new("Your arm goes limp as $n draws heat from it.", ch, 0, victim, TO_VICT, POS_SLEEPING);
 		act("$N's arm goes limp as $n draws heat from it.", ch, 0, victim, TO_NOTVICT);
 
-		for (paf = victim->affected; paf != nullptr; paf = paf->next)
+		for (auto it = victim->affected.begin(); it != victim->affected.end(); )
 		{
-			if (paf->type == sn && paf->location == APPLY_STR)
-				affect_remove(victim, paf);
+			auto next = std::next(it);
+
+			if (it->type == sn && it->location == APPLY_STR)
+				affect_remove(victim, &*it);
+
+			it = next;
 		}
 
 		init_affect(&af);
@@ -3776,10 +3772,14 @@ void spell_frostbite(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		act_new("Your leg goes limp as $n draws heat from it.", ch, 0, victim, TO_VICT, POS_SLEEPING);
 		act("$N's leg goes limp as $n draws heat from it.", ch, 0, victim, TO_NOTVICT);
 
-		for (paf = victim->affected; paf != nullptr; paf = paf->next)
+		for (auto it = victim->affected.begin(); it != victim->affected.end(); )
 		{
-			if (paf->type == sn && paf->location == APPLY_DEX)
-				affect_remove(victim, paf);
+			auto next = std::next(it);
+
+			if (it->type == sn && it->location == APPLY_DEX)
+				affect_remove(victim, &*it);
+
+			it = next;
 		}
 
 		init_affect(&af);
@@ -5447,7 +5447,6 @@ void spell_pure_air(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	CHAR_DATA *vch;
 	bool cleansed;
-	AFFECT_DATA *laf;
 	ROOM_AFFECT_DATA *raf;
 
 	if (ch->in_room->sector_type && ch->in_room->sector_type == SECT_UNDERWATER)
@@ -5468,20 +5467,32 @@ void spell_pure_air(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	{
 		cleansed = false;
 
-		for (laf = ch->affected; laf != nullptr; laf = laf->next)
+		// Snapshot the caster's purifiable types before stripping: when vch is
+		// the caster, affect_strip erases from the same list being read.
+		std::vector<int> purify_char_types;
+		for (auto &laf : ch->affected)
 		{
-			if (skill_table[laf->type].dispel & CAN_PURIFY)
-			{
-				affect_strip(vch, laf->type);
-				cleansed = true;
-			}
+			if (skill_table[laf.type].dispel & CAN_PURIFY)
+				purify_char_types.push_back(laf.type);
 		}
 
-		for (raf = ch->in_room->affected; raf != nullptr; raf = raf->next)
+		for (auto purify_char_type : purify_char_types)
 		{
-			if (skill_table[raf->type].dispel & CAN_PURIFY)
-				affect_strip_room(ch->in_room, raf->type);
+			affect_strip(vch, purify_char_type);
+			cleansed = true;
 		}
+
+		// Snapshot the types to purify before stripping: affect_strip_room
+		// erases matching elements, which would invalidate a live iterator.
+		std::vector<int> purify_types;
+		for (auto &raf : ch->in_room->affected)
+		{
+			if (skill_table[raf.type].dispel & CAN_PURIFY)
+				purify_types.push_back(raf.type);
+		}
+
+		for (auto purify_type : purify_types)
+			affect_strip_room(ch->in_room, purify_type);
 
 		if (cleansed)
 			act("The air around $n is purified.", vch, 0, 0, TO_ROOM);
@@ -6161,47 +6172,49 @@ void spell_fortify_weapon(int sn, int level, CHAR_DATA *ch, void *vo, int target
 
 	if (hitbonus)
 	{
-		for (hitapp = weapon->apply; hitapp; hitapp = hitapp->next)
+		for (auto &a : weapon->apply)
 		{
-			if (hitapp->location == APPLY_HITROLL && hitapp->type == sn)
+			if (a.location == APPLY_HITROLL && a.type == sn)
 			{
 				hitfound = true;
-				oldhit = hitapp->modifier;
+				oldhit = a.modifier;
+				hitapp = &a;
 				break;
 			}
 		}
 
 		if (!hitfound)
 		{
-			hitapp = new_apply_data();
+			// std::list keeps this element pointer valid across the dambonus
+			// prepend below, where hitapp->modifier is still dereferenced.
+			weapon->apply.push_front(OBJ_APPLY_DATA{});
+			hitapp = &weapon->apply.front();
 			hitapp->type = sn;
 			hitapp->location = APPLY_HITROLL;
 			hitapp->modifier = 0;
-			hitapp->next = weapon->apply;
-			weapon->apply = hitapp;
 		}
 	}
 
 	if (dambonus)
 	{
-		for (damapp = weapon->apply; damapp; damapp = damapp->next)
+		for (auto &a : weapon->apply)
 		{
-			if (damapp->location == APPLY_DAMROLL && damapp->type == sn)
+			if (a.location == APPLY_DAMROLL && a.type == sn)
 			{
 				damfound = true;
-				olddam = damapp->modifier;
+				olddam = a.modifier;
+				damapp = &a;
 				break;
 			}
 		}
 
 		if (!damfound)
 		{
-			damapp = new_apply_data();
+			weapon->apply.push_front(OBJ_APPLY_DATA{});
+			damapp = &weapon->apply.front();
 			damapp->type = sn;
 			damapp->location = APPLY_DAMROLL;
 			damapp->modifier = 0;
-			damapp->next = weapon->apply;
-			weapon->apply = damapp;
 		}
 	}
 
@@ -7854,7 +7867,7 @@ void spell_detonation(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 void spell_rotating_ward(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	OBJ_AFFECT_DATA *oaf;
-	AFFECT_DATA *paf, af;
+	AFFECT_DATA af;
 	OBJ_DATA *obj;
 	int charges;
 	bool affected = false;
@@ -7880,9 +7893,9 @@ void spell_rotating_ward(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	if (is_affected(ch, gsn_rotating_ward))
 	{
-		for (paf = ch->affected; paf; paf = paf->next)
+		for (auto &paf : ch->affected)
 		{
-			if (paf->type == gsn_rotating_ward)
+			if (paf.type == gsn_rotating_ward)
 				count++;
 		}
 

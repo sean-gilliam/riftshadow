@@ -435,7 +435,7 @@ void do_offer(CHAR_DATA *ch, char *argument)
 
 void do_sitetrack(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char buf[MSL], arg1[MSL], arg2[MSL], query[MSL];
 	int results = 0;
 
@@ -447,27 +447,25 @@ void do_sitetrack(CHAR_DATA *ch, char *argument)
 	if (!strcmp(argument, ""))
 	{
 		auto comments = SiteCommentRepository(RS.DbRift);
-		buffer = new_buf();
 
-		add_buf(buffer, "ID #     Site                       Denials    Comments\n\r");
+		buffer.add("ID #     Site                       Denials    Comments\n\r");
 
 		for (const auto &site : sites.FindAll())
 		{
 			sprintf(buf, "%4d     %-26s %-10d %d\n\r",
 				site.site_id, site.site_name.c_str(), site.denials,
 				comments.CountBySite(site.site_id));
-			add_buf(buffer, buf);
+			buffer.add(buf);
 		}
 
-		add_buf(buffer, "Use sitetrack <id> to view more details.\n\r");
-		add_buf(buffer, "Use sitetrack comment <id> to enter a comment on the given site.\n\r");
-		add_buf(buffer, "Use sitetrack add <site IP, i.e. aol.com>.  Use numeric IP ONLY if it's unresolvable.\n\r");
+		buffer.add("Use sitetrack <id> to view more details.\n\r");
+		buffer.add("Use sitetrack comment <id> to enter a comment on the given site.\n\r");
+		buffer.add("Use sitetrack add <site IP, i.e. aol.com>.  Use numeric IP ONLY if it's unresolvable.\n\r");
 
 		if (get_trust(ch) >= 58)
-			add_buf(buffer, "Use sitetrack delcomment <comment id> to delete a comment, and sitetrack delsite <site id> to delete a site.\n\r");
+			buffer.add("Use sitetrack delcomment <comment id> to delete a comment, and sitetrack delsite <site id> to delete a site.\n\r");
 
-		page_to_char(buf_string(buffer), ch);
-		free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 		return;
 	}
 
@@ -534,7 +532,6 @@ void do_sitetrack(CHAR_DATA *ch, char *argument)
 		}
 
 		const auto &site = found.front();
-		buffer = new_buf();
 
 		sprintf(buf, "Viewing %s (id %d).\n\r", site.site_name.c_str(), site.site_id);
 		send_to_char(buf, ch);
@@ -553,15 +550,15 @@ void do_sitetrack(CHAR_DATA *ch, char *argument)
 			sprintf(buf, "Added by %s on %s (CID #%d):\n\r%s",
 				comment.comment_name.c_str(), comment.comment_date.c_str(),
 				comment.comment_id, comment.comment.c_str());
-			add_buf(buffer, buf);
+			buffer.add(buf);
 		}
 
 		if (buf[0] == '\r')
-			add_buf(buffer, "(No comments)\n\r");
+			buffer.add("(No comments)\n\r");
 
 		if (get_trust(ch) >= 56)
 		{
-			add_buf(buffer, "Players from site:\n\r");
+			buffer.add("Players from site:\n\r");
 
 			auto logins = LoginRepository(RS.DbRift);
 			auto siteNames = logins.FindDistinctNamesBySite(site.site_name);
@@ -583,11 +580,10 @@ void do_sitetrack(CHAR_DATA *ch, char *argument)
 			if (!results)
 				sprintf(buf, "(No players)\n\r");
 
-			add_buf(buffer, buf);
+			buffer.add(buf);
 		}
 
-		page_to_char(buf_string(buffer), ch);
-		free_buf(buffer);
+		page_to_char(buffer.str(), ch);
 	}
 }
 
@@ -990,7 +986,7 @@ void do_pktrack(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	BUFFER *buffer = new_buf();
+	BUFFER buffer;
 	for (auto &pklog : results)
 	{
 		sprintf(buf, "%3d) %s(%s) killed %s(%s) at %s on %s\n\r",
@@ -1002,11 +998,10 @@ void do_pktrack(CHAR_DATA *ch, char *argument)
 			pklog.room.c_str(),
 			pklog.date.c_str());
 
-		add_buf(buffer, buf);
+		buffer.add(buf);
 	}
 
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	page_to_char(buffer.str(), ch);
 }
 
 bool trusts(CHAR_DATA *ch, CHAR_DATA *victim)
@@ -1258,11 +1253,7 @@ void WAIT_STATE(CHAR_DATA *ch, int npulse)
 
 	if (ch->in_room && is_affected_room(ch->in_room, gsn_gravity_well))
 	{
-		for (raf = ch->in_room->affected; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_gravity_well)
-				break;
-		}
+		raf = affect_find_room(ch->in_room->affected, gsn_gravity_well);
 
 		if (ch == raf->owner)
 			wait += PULSE_VIOLENCE;
@@ -1608,10 +1599,8 @@ void do_rchanges(CHAR_DATA *ch, char *argument)
 	char writestring[MAX_STRING_LENGTH];
 	FILE *fpChar;
 	long size = 0;
-	BUFFER *output;
+	BUFFER output;
 	int numMatches=0, numEntries = 25;
-
-	output = new_buf();
 
 	one_argument(argument,arg1);
 	if(is_number(arg1))
@@ -1667,11 +1656,10 @@ void do_rchanges(CHAR_DATA *ch, char *argument)
 		if(size>=MAX_BUF || (numMatches-loop)==numEntries)
 				break;
 
-		add_buf(output,nlist);
+		output.add(nlist);
 	}
 
-	page_to_char(buf_string(output),ch);
-	free_buf(output);
+	page_to_char(output.str(),ch);
 	fclose(fpChar);
 */
 }
@@ -1804,7 +1792,7 @@ char *flags_to_string(CHAR_DATA *ch, const struct flag_type *showflags, int flag
 
 void do_ltrack(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char arg1[MSL], arg2[MSL], buf[MSL];
 	int type = -1, show = -1, i = 0;
 
@@ -1847,8 +1835,6 @@ void do_ltrack(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	buffer = new_buf();
-
 	for (const auto &login : results)
 	{
 		i++;
@@ -1867,11 +1853,10 @@ void do_ltrack(CHAR_DATA *ch, char *argument)
 			rowType == 2 ? " played, " : "",
 			login.obj,
 			login.lobj);
-		add_buf(buffer, buf);
+		buffer.add(buf);
 	}
 
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	page_to_char(buffer.str(), ch);
 	return;
 }
 
@@ -1881,7 +1866,6 @@ void do_assess_old(CHAR_DATA *ch, char *argument)
 	char arg[MAX_INPUT_LENGTH];
 	CHAR_DATA *victim;
 	char buf[MAX_STRING_LENGTH];
-	AFFECT_DATA *paf;
 
 	one_argument(argument, arg);
 
@@ -1926,7 +1910,7 @@ void do_assess_old(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->affected == nullptr)
+	if (victim->affected.empty())
 	{
 		send_to_char("You are unable to find any signs of affliction.\n\r", ch);
 		check_improve(ch, skill_lookup("assess"), true, 1);
@@ -1937,35 +1921,35 @@ void do_assess_old(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (paf = victim->affected; paf != nullptr; paf = paf->next)
+	for (auto &paf : victim->affected)
 	{
 		buf[0] = '\0';
 
 		if (skill < 91);
-			sprintf(buf, "%s seems to be affected by %s.\n\r", is_npc(victim) ? victim->short_descr : victim->name, skill_table[paf->type].name);
+			sprintf(buf, "%s seems to be affected by %s.\n\r", is_npc(victim) ? victim->short_descr : victim->name, skill_table[paf.type].name);
 
 		if (skill >= 91);
 		{
 			fuzzy = number_range(0, 2);
 			// Let's fuz up the duration a bit if it's not permanent.
-			if (paf->duration > -1)
+			if (paf.duration > -1)
 			{
 				if (number_range(0, 1) == 0)
-					showdur = paf->duration + fuzzy;
+					showdur = paf.duration + fuzzy;
 				else
-					showdur = paf->duration - fuzzy;
+					showdur = paf.duration - fuzzy;
 
 				sprintf(buf, "%s seems to be affected by %s for about %d hours.\n\r",
 					is_npc(victim) ? victim->short_descr : victim->name,
-					skill_table[paf->type].name,
+					skill_table[paf.type].name,
 					showdur);
 			}
 
-			if (paf->duration == -1)
+			if (paf.duration == -1)
 			{
 				sprintf(buf, "%s seems to be affected by %s permanently.\n\r",
 					is_npc(victim) ? victim->short_descr : victim->name,
-					skill_table[paf->type].name);
+					skill_table[paf.type].name);
 			}
 		}
 
@@ -1981,7 +1965,7 @@ void do_assess_old(CHAR_DATA *ch, char *argument)
 
 void do_supps(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char arg[MAX_INPUT_LENGTH];
 	char spell_list[LEVEL_HERO + 1][MAX_STRING_LENGTH];
 	char spell_columns[LEVEL_HERO + 1];
@@ -2105,17 +2089,14 @@ void do_supps(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	buffer = new_buf();
-
 	for (level = 0; level < LEVEL_HERO + 1; level++)
 	{
 		if (spell_list[level][0] != '\0')
-			add_buf(buffer, spell_list[level]);
+			buffer.add(spell_list[level]);
 	}
 
-	add_buf(buffer, "\n\r");
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	buffer.add("\n\r");
+	page_to_char(buffer.str(), ch);
 }
 
 void do_commune(CHAR_DATA *ch, char *argument)
@@ -2187,10 +2168,14 @@ void do_commune(CHAR_DATA *ch, char *argument)
 
 	if (is_affected(ch, gsn_severed))
 	{
-		for (paf = ch->affected; paf != nullptr; paf = paf->next)
+		paf = nullptr;
+		for (auto &paf_elem : ch->affected)
 		{
-			if (paf->type == gsn_severed)
+			if (paf_elem.type == gsn_severed)
+			{
+				paf = &paf_elem;
 				break;
+			}
 		}
 
 		if (paf)

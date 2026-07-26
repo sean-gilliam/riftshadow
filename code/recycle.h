@@ -34,15 +34,14 @@
 #ifndef RECYCLE_H
 #define RECYCLE_H
 
+#include <memory>
+
 #include "entity/fwd.h"
 
 /* externals for counting purposes */
 extern DESCRIPTOR_DATA *descriptor_free;
-extern EXTRA_DESCR_DATA	*extra_descr_free;
-extern AFFECT_DATA *affect_free;
 extern OBJ_DATA *obj_free;
 extern CHAR_DATA *char_free;
-extern PC_DATA *pcdata_free;
 
 
 /* stuff for providing a crash-proof buffer */
@@ -63,71 +62,35 @@ extern PC_DATA *pcdata_free;
 /* descriptor recycling */
 DESCRIPTOR_DATA *new_descriptor(void);
 void free_descriptor(DESCRIPTOR_DATA *d);
-/* char gen data recycling */
-GEN_DATA *new_gen_data(void);
-void free_gen_data(GEN_DATA * gen);
-/* trophy recycling */
-TROPHY_DATA *new_trophy_data(char *victname);
-void free_trophy(TROPHY_DATA *trophy);
-/* speech recycling */
-SPEECH_DATA *new_speech_data(void);
-void free_speech(SPEECH_DATA *speech);
-void free_line(LINE_DATA *line);
-LINE_DATA *new_line_data(void);
 IPROG_DATA *new_iprog(void);
 /* race_data recycling (never gonna happen!) */
 RACE_DATA *new_race_data(void);
 void free_race_data(RACE_DATA *race_specs);
-/* tracks recycling */
-TRACK_DATA *new_track_data(void);
-void free_track(TRACK_DATA *tracks);
 /* pathfind recycling */
 PATHFIND_DATA *new_path_data(void);
 void free_path(PATHFIND_DATA *path);
-/* extra descr recycling */
-EXTRA_DESCR_DATA *new_extra_descr(void);
-void free_extra_descr(EXTRA_DESCR_DATA *ed);
-/* apply recycling */
-OBJ_APPLY_DATA *new_apply_data(void);
-void free_apply(OBJ_APPLY_DATA *apply);
-/* stuff for recycling affects */
-AFFECT_DATA *new_affect(void);
+/* extra descr — value type owned by parents in std::list; see entity/extra_descr.h */
+/* affect — value type owned by parents in std::list; see entity/affect_data.h */
+/* apply — value type owned by parents in std::list; see entity/affect_data.h */
 TRAP_DATA *new_trap(void);
 void free_trap(TRAP_DATA *trap);
 RUNE_DATA *new_rune(void);
 void free_rune(RUNE_DATA *rune);
-QUEUE_DATA *new_queue(void);
-void free_queue(QUEUE_DATA *queue);
-void free_affect(AFFECT_DATA *af);
-ROOM_AFFECT_DATA *new_affect_room(void);
-void free_affect_room(ROOM_AFFECT_DATA *af);
-OBJ_AFFECT_DATA *new_affect_obj(void);
-void free_affect_obj(OBJ_AFFECT_DATA *af);
-AREA_AFFECT_DATA *new_affect_area(void);
-void free_affect_area(AREA_AFFECT_DATA *af);
 /* object recycling */
 OBJ_DATA *new_obj(void);
 void free_obj(OBJ_DATA *obj);
 /* character recycling */
 CHAR_DATA *new_char(void);
 void free_char(CHAR_DATA *ch);
-PC_DATA *new_pcdata(void);
+std::unique_ptr<PC_DATA> new_pcdata(void);
 OLD_CHAR *new_oldchar(void);
 void free_oldchar(OLD_CHAR *old);
-void free_pcdata(PC_DATA *pcdata);
-/* mob id and memory procedures */
+/* mob id procedures */
 long get_pc_id(void);
 long get_mob_id(void);
-MEM_DATA *new_mem_data(void);
-void free_pstruct_data(MEM_DATA *memory);
 /* local procedure for finding the next acceptable size */
 /* -1 indicates out-of-boundary error */
 int get_size(int val);
-/* buffer procedures */
-BUFFER *new_buf(void);
-void free_buf(BUFFER *buffer);
-bool add_buf(BUFFER *buffer, char *string);
-void clear_buf(BUFFER *buffer);
-char *buf_string(BUFFER *buffer);
+/* buffer procedures — see buf_type in merc.h (add/clear/str are members now) */
 
 #endif /* RECYCLE_H */

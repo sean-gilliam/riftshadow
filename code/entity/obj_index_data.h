@@ -1,9 +1,13 @@
 #ifndef ENTITY_OBJ_INDEX_DATA_H
 #define ENTITY_OBJ_INDEX_DATA_H
 
+#include <list>
+
 #include "fwd.h"
 #include "limits.h"
 #include "spec_func.h"
+#include "extra_descr.h"
+#include "affect_data.h"		// OBJ_APPLY_DATA held by value
 
 //
 // Prototype for an object.
@@ -12,10 +16,10 @@
 struct obj_index_data
 {
 	OBJ_INDEX_DATA *next;
-	EXTRA_DESCR_DATA *extra_descr;
-	AFFECT_DATA *affected;
-	AFFECT_DATA *charaffs;
-	OBJ_APPLY_DATA *apply;
+	std::list<EXTRA_DESCR_DATA> extra_descr;
+	std::list<AFFECT_DATA> affected;
+	std::list<AFFECT_DATA> charaffs;
+	std::list<OBJ_APPLY_DATA> apply;
 	AREA_DATA *area;
 	bool new_format;
 	char *name;

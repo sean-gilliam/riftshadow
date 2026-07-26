@@ -8,97 +8,114 @@
 // An affect.
 //
 
+// A character affect. Owns its `name` string (palloc_string / free_pstring) →
+// rule-of-5 (bodies in recycle.c). Parents hold these by value in a
+// std::list<AFFECT_DATA> (ch->affected, obj->charaffs, and the two Tier-0
+// prototype lists obj_index->affected / obj_index->charaffs). `owner` is a
+// non-owning CHAR_DATA back-reference and stays a raw pointer (scrubbed on
+// extract_char). std::list, not vector: callers cache an element pointer
+// returned by affect_find across later list mutations.
 struct affect_data
 {
-	AFFECT_DATA *next;
-	CHAR_DATA *owner;
-	char *name;
-	bool valid;
-	short where;
-	short type;
-	short level;
-	short duration;
-	short location;
-	short modifier;
-	short mod_name;
-	long bitvector[MAX_BITVECTOR];
-	int aftype;
-	AFF_FUN *tick_fun;		// goes off every tick that char is affected
-	AFF_FUN *pulse_fun;
-	AFF_FUN *end_fun;		// when the affect wears off this is called
-	short init_duration;
-	AFF_FUN *beat_fun;		// goes off every beat
+	CHAR_DATA *owner = nullptr;
+	char *name = nullptr;
+	short where = 0;
+	short type = 0;
+	short level = 0;
+	short duration = 0;
+	short location = 0;
+	short modifier = 0;
+	short mod_name = 0;
+	long bitvector[MAX_BITVECTOR] = {};
+	int aftype = 0;
+	AFF_FUN *tick_fun = nullptr;	// goes off every tick that char is affected
+	AFF_FUN *pulse_fun = nullptr;
+	AFF_FUN *end_fun = nullptr;		// when the affect wears off this is called
+	short init_duration = 0;
+	AFF_FUN *beat_fun = nullptr;	// goes off every beat
+
+	affect_data() = default;
+	~affect_data();
+
+	affect_data(const affect_data &other);
+	affect_data &operator=(const affect_data &other);
+	affect_data(affect_data &&other) noexcept;
+	affect_data &operator=(affect_data &&other) noexcept;
 };
 
 //
 // A room affect.
 //
 
+// A room affect. Plain value type; a room owns these by value in a
+// std::list<ROOM_AFFECT_DATA> (room->affected). `owner` is a non-owning
+// CHAR_DATA back-reference and stays a raw pointer.
 struct room_affect_data
 {
-	ROOM_AFFECT_DATA *next;
-	CHAR_DATA *owner;
-	bool valid;
-	short where;
-	short type;
-	short level;
-	short duration;
-	short location;
-	short modifier;
-	long bitvector[MAX_BITVECTOR];
-	int aftype;
-	RAFF_FUN *pulse_fun;
-	RAFF_FUN *tick_fun;	// goes off every tick
-	RAFF_FUN *end_fun;	// when the affect wears off this is called
+	CHAR_DATA *owner = nullptr;
+	short where = 0;
+	short type = 0;
+	short level = 0;
+	short duration = 0;
+	short location = 0;
+	short modifier = 0;
+	long bitvector[MAX_BITVECTOR] = {};
+	int aftype = 0;
+	RAFF_FUN *pulse_fun = nullptr;
+	RAFF_FUN *tick_fun = nullptr;	// goes off every tick
+	RAFF_FUN *end_fun = nullptr;	// when the affect wears off this is called
 };
 
 //
 // An area affect.
 //
 
+// An area affect. Plain value type; an area owns these by value in a
+// std::list<AREA_AFFECT_DATA> (area->affected). `owner` is a non-owning
+// CHAR_DATA back-reference and stays a raw pointer.
 struct area_affect_data
 {
-	AREA_AFFECT_DATA *next;
-	CHAR_DATA *owner;
-	bool valid;
-	short where;
-	short type;
-	short level;
-	short duration;
-	short location;
-	short modifier;
-	long bitvector[MAX_BITVECTOR];
-	int aftype;
-	AAFF_FUN *pulse_fun;
-	AAFF_FUN *tick_fun;
-	AAFF_FUN *end_fun;
+	CHAR_DATA *owner = nullptr;
+	short where = 0;
+	short type = 0;
+	short level = 0;
+	short duration = 0;
+	short location = 0;
+	short modifier = 0;
+	long bitvector[MAX_BITVECTOR] = {};
+	int aftype = 0;
+	AAFF_FUN *pulse_fun = nullptr;
+	AAFF_FUN *tick_fun = nullptr;
+	AAFF_FUN *end_fun = nullptr;
 };
 
+// An object affect. Plain value type; an object owns these by value in a
+// std::list<OBJ_AFFECT_DATA> (obj->affected). `owner` is a non-owning
+// CHAR_DATA back-reference and stays a raw pointer.
 struct obj_affect_data
 {
-	OBJ_AFFECT_DATA *next;
-	CHAR_DATA *owner;
-	bool valid;
-	short where;
-	short type;
-	short level;
-	short duration;
-	short location;
-	short modifier;
-	long bitvector[MAX_BITVECTOR];
-	int aftype;
-	OAFF_FUN *pulse_fun;
-	OAFF_FUN *tick_fun;
-	OAFF_FUN *end_fun;
+	CHAR_DATA *owner = nullptr;
+	short where = 0;
+	short type = 0;
+	short level = 0;
+	short duration = 0;
+	short location = 0;
+	short modifier = 0;
+	long bitvector[MAX_BITVECTOR] = {};
+	int aftype = 0;
+	OAFF_FUN *pulse_fun = nullptr;
+	OAFF_FUN *tick_fun = nullptr;
+	OAFF_FUN *end_fun = nullptr;
 };
 
+// A stat apply on an object. Plain value type; parents own these by value in a
+// std::list<OBJ_APPLY_DATA> (list, not vector: spell_enchant_weapon holds element
+// pointers across a second prepend, so nodes must not move).
 struct obj_apply_data
 {
-	bool valid;
-	short location;
-	short modifier;
-	short type;						// For gsns, if relevant.
-	OBJ_APPLY_DATA *next;
+	short location = 0;
+	short modifier = 0;
+	short type = 0;						// For gsns, if relevant.
 };
 
 #endif /* ENTITY_AFFECT_DATA_H */

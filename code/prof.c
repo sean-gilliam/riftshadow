@@ -827,9 +827,9 @@ void add_prof_affect(CHAR_DATA *ch, char *name, int duration, bool fInvis = true
 /// @returns true if the character is affected by the specific proficiency affliction.
 bool is_affected_prof(CHAR_DATA *ch, char *prof)
 {
-	for (auto paf = ch->affected; paf; paf = paf->next)
+	for (auto &paf : ch->affected)
 	{
-		if (paf->type == gsn_timer && paf->name && !str_cmp(paf->name, prof))
+		if (paf.type == gsn_timer && paf.name && !str_cmp(paf.name, prof))
 			return true;
 	}
 
@@ -929,13 +929,10 @@ void prof_tracking(CHAR_DATA *ch, char *argument)
 	char *direction = nullptr;
 	for (auto i = 0; i < MAX_TRACKS; i++)
 	{
-		if (!ch->in_room->tracks[i])
-			break;
-
-		if (ch->in_room->tracks[i]->prey != victim || ch->in_room->tracks[i]->flying || ch->in_room->tracks[i]->sneaking)
+		if (ch->in_room->tracks[i].prey != victim || ch->in_room->tracks[i].flying || ch->in_room->tracks[i].sneaking)
 			continue;
 
-		auto &ttime = ch->in_room->tracks[i]->time;
+		auto &ttime = ch->in_room->tracks[i].time;
 		if (abs(ttime.day - time_info.day) > 1 || (ttime.month != time_info.month && ttime.day != 30))
 			continue;
 
@@ -947,7 +944,7 @@ void prof_tracking(CHAR_DATA *ch, char *argument)
 		}
 
 		int diruse = (number_percent() > (35 - (ch->Profs()->GetProf("tracking")) * 2))
-			? ch->in_room->tracks[i]->direction
+			? ch->in_room->tracks[i].direction
 			: number_range(0, MAX_DIR - 1);
 
 		direction = flag_name_lookup(diruse, direction_table);

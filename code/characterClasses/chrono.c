@@ -51,7 +51,9 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	}
 
 	// allocate temporary rune, it'll be discarded after apply_rune anyway
-	rune = (RUNE_DATA *)talloc_struct(sizeof(rune));
+	// (sizeof(*rune), not sizeof(rune): the latter is the pointer's 8 bytes, which
+	// left every field write below running off the end of the allocation)
+	rune = (RUNE_DATA *)talloc_struct(sizeof(*rune));
 
 	// if it's not RUNE_DOOR then it's been casted, not runed, so it's immediate
 	if (target != RUNE_DOOR)

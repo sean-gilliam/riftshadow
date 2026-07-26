@@ -174,12 +174,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (is_affected_room(ch->in_room, gsn_smokescreen))
 	{
-		auto raf = ch->in_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_smokescreen)
-				break;
-		}
+		auto raf = affect_find_room(ch->in_room->affected, gsn_smokescreen);
 
 		if (raf != nullptr)
 		{
@@ -680,18 +675,24 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (is_affected_room(in_room, gsn_tripwire) && is_affected_room(to_room, gsn_tripwire))
 	{
-		auto raf = in_room->affected;
-		for (; raf != nullptr; raf = raf->next)
+		ROOM_AFFECT_DATA *raf = nullptr;
+		for (auto &r : in_room->affected)
 		{
-			if (raf->modifier == door && raf->type == gsn_tripwire)
+			if (r.modifier == door && r.type == gsn_tripwire)
+			{
+				raf = &r;
 				break;
+			}
 		}
 
-		auto raf_two = to_room->affected;
-		for (; raf_two != nullptr; raf_two = raf_two->next)
+		ROOM_AFFECT_DATA *raf_two = nullptr;
+		for (auto &r : to_room->affected)
 		{
-			if (raf_two->modifier == reverse_d(door) && raf->type == gsn_tripwire)
+			if (r.modifier == reverse_d(door) && raf->type == gsn_tripwire)
+			{
+				raf_two = &r;
 				break;
+			}
 		}
 
 		if (is_affected_by(ch, AFF_FLYING))
@@ -722,22 +723,22 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (is_affected_room(to_room, gsn_riptide))
 	{
-		for (auto raf = to_room->affected; raf != nullptr; raf = raf->next)
+		for (auto &raf : to_room->affected)
 		{
-			if (raf->type == gsn_riptide && raf->location == APPLY_ROOM_NONE && raf->modifier == 1)
+			if (raf.type == gsn_riptide && raf.location == APPLY_ROOM_NONE && raf.modifier == 1)
 			{
-				if (is_safe_new(raf->owner, ch, false) || raf->owner == ch)
+				if (is_safe_new(raf.owner, ch, false) || raf.owner == ch)
 					break;
 
-				ROOM_INDEX_DATA *riptideroom;
+				ROOM_INDEX_DATA *riptideroom = nullptr;
 				for (auto room = top_affected_room; room; room = room->aff_next)
 				{
 					if (is_affected_room(room, gsn_riptide))
 					{
-						for (auto raf_two = room->affected; raf_two != nullptr; raf_two = raf_two->next)
+						for (auto &raf_two : room->affected)
 						{
-							if (raf_two->type == gsn_riptide && raf_two->owner == raf->owner &&
-								raf_two->location == APPLY_ROOM_NONE && raf_two->modifier == 2)
+							if (raf_two.type == gsn_riptide && raf_two.owner == raf.owner &&
+								raf_two.location == APPLY_ROOM_NONE && raf_two.modifier == 2)
 								riptideroom = room;
 						}
 					}
@@ -768,12 +769,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	while (is_affected_room(to_room, gsn_frost_growth))
 	{
-		auto raf = to_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_frost_growth)
-				break;
-		}
+		auto raf = affect_find_room(to_room->affected, gsn_frost_growth);
 
 		if (is_affected_by(ch, AFF_FLYING))
 			break;
@@ -809,12 +805,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_npc(ch))
 			break;
 
-		auto raf = to_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_quicksand)
-				break;
-		}
+		auto raf = affect_find_room(to_room->affected, gsn_quicksand);
 
 		if (is_safe_new(raf->owner, ch, false) || is_same_group(raf->owner, ch) || is_same_cabal(raf->owner, ch))
 			break;
@@ -851,12 +842,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	while (is_affected_room(to_room, gsn_stalactites))
 	{
-		auto raf = to_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_stalactites)
-				break;
-		}
+		auto raf = affect_find_room(to_room->affected, gsn_stalactites);
 
 		if (is_safe_new(raf->owner, ch, false) || is_same_group(raf->owner, ch) || is_same_cabal(raf->owner, ch))
 			break;
@@ -894,12 +880,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (is_affected_room(to_room, gsn_caustic_vapor))
 	{
-		auto raf = to_room->affected;
-		for (; raf != nullptr; raf = raf->next)
-		{
-			if (raf->type == gsn_caustic_vapor)
-				break;
-		}
+		auto raf = affect_find_room(to_room->affected, gsn_caustic_vapor);
 
 		if (is_immortal(ch))
 			return;
@@ -924,10 +905,14 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 				new_affect_to_char(ch, &cvaf);
 			}
 
-			for (auto paf = ch->affected; paf != nullptr; paf = paf->next)
+			AFFECT_DATA *paf = nullptr;
+			for (auto &paf_elem : ch->affected)
 			{
-				if (paf->type == gsn_noxious_fumes)
+				if (paf_elem.type == gsn_noxious_fumes)
+				{
+					paf = &paf_elem;
 					break;
+				}
 			}
 
 			paf->modifier = URANGE(0, paf->modifier, 5);
@@ -1103,33 +1088,25 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	if (IS_SET(ch->progtypes, MPROG_ENTRY))
 		ch->pIndexData->mprogs->entry_prog(ch);
 
-	if (!is_npc(ch) && to_room->tracks[0] != nullptr)
+	if (!is_npc(ch))
 	{
 		auto i = 0;
 		for (; i < MAX_TRACKS; i++)
 		{
-			if (to_room->tracks[i]->prey == ch)
+			if (to_room->tracks[i].prey == ch)
 				break;
 		}
 
 		if (i == MAX_TRACKS)
 			i--;
 
-		if (to_room->tracks[i]->prey == ch)
+		if (to_room->tracks[i].prey == ch)
 		{
 			for (; i < MAX_TRACKS - 1; i++)
-			{
-				to_room->tracks[i]->prey = to_room->tracks[i + 1]->prey;
-				to_room->tracks[i]->time = to_room->tracks[i + 1]->time;
-				to_room->tracks[i]->direction = to_room->tracks[i + 1]->direction;
-				to_room->tracks[i]->flying = to_room->tracks[i + 1]->flying;
-				to_room->tracks[i]->sneaking = to_room->tracks[i + 1]->sneaking;
-				to_room->tracks[i]->bleeding = to_room->tracks[i + 1]->bleeding;
-				to_room->tracks[i]->legs = to_room->tracks[i + 1]->legs;
-			}
+				to_room->tracks[i] = to_room->tracks[i + 1];
 
-			to_room->tracks[MAX_TRACKS - 1]->prey = nullptr;
-			to_room->tracks[MAX_TRACKS - 1]->direction = -1;
+			to_room->tracks[MAX_TRACKS - 1].prey = nullptr;
+			to_room->tracks[MAX_TRACKS - 1].direction = -1;
 		}
 	}
 
@@ -1264,19 +1241,21 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 
 			send_to_char("Your blood burns as a deadly venom seeps into your body!\n\r", victim);
 
-			AFFECT_DATA af;
-			init_affect(&af);
-			af.where = TO_AFFECTS;
-			af.aftype = AFT_MALADY;
-			af.type = gsn_poison;
-			af.level = trap->quality * 7;
-			af.location = APPLY_STR;
-			af.modifier = -5;
-			af.duration = trap->quality * 2;
-			af.owner = victim;
-			SET_BIT(af.bitvector, AFF_POISON);
-			af.tick_fun = poison_tick;
-			affect_to_char(victim, &af);
+			{
+				AFFECT_DATA af;
+				init_affect(&af);
+				af.where = TO_AFFECTS;
+				af.aftype = AFT_MALADY;
+				af.type = gsn_poison;
+				af.level = trap->quality * 7;
+				af.location = APPLY_STR;
+				af.modifier = -5;
+				af.duration = trap->quality * 2;
+				af.owner = victim;
+				SET_BIT(af.bitvector, AFF_POISON);
+				af.tick_fun = poison_tick;
+				affect_to_char(victim, &af);
+			}
 			break;
 		case TRAP_FIREBALL:
 			for (auto vch = room->people; vch; vch = vch->next_in_room)
@@ -3769,7 +3748,7 @@ void track_char(CHAR_DATA *ch, CHAR_DATA *mob)
 	auto found = false;
 	for (; i < MAX_TRACKS; i++)
 	{
-		if (mob->in_room->tracks[i] && mob->in_room->tracks[i]->prey == ch)
+		if (mob->in_room->tracks[i].prey == ch)
 		{
 			found = true;
 			break;
@@ -3779,10 +3758,10 @@ void track_char(CHAR_DATA *ch, CHAR_DATA *mob)
 	if (!found)
 		return;
 
-	if (mob->in_room->tracks[i]->prey != ch)
+	if (mob->in_room->tracks[i].prey != ch)
 		return;
 
-	auto track_dir = mob->in_room->tracks[i]->direction;
+	auto track_dir = mob->in_room->tracks[i].direction;
 
 	if (is_affected_by(mob, AFF_CHARM))
 		return;
@@ -4513,41 +4492,30 @@ void add_tracks(ROOM_INDEX_DATA *room, CHAR_DATA *ch, int direction)
 	if (is_ground(room) && is_affected(ch, gsn_pass_without_trace))
 		return;
 
-	if (room->tracks[0] == nullptr)
-		return;
-
-	if (room->tracks[0]->prey != nullptr)
+	if (room->tracks[0].prey != nullptr)
 	{
 		for (auto i = MAX_TRACKS - 1; i > 0; i--)
-		{
-			room->tracks[i]->prey = room->tracks[i - 1]->prey;
-			room->tracks[i]->time = room->tracks[i - 1]->time;
-			room->tracks[i]->direction = room->tracks[i - 1]->direction;
-			room->tracks[i]->flying = room->tracks[i - 1]->flying;
-			room->tracks[i]->sneaking = room->tracks[i - 1]->sneaking;
-			room->tracks[i]->bleeding = room->tracks[i - 1]->bleeding;
-			room->tracks[i]->legs = room->tracks[i - 1]->legs;
-		}
+			room->tracks[i] = room->tracks[i - 1];
 	}
 
-	room->tracks[0]->prey = ch;
-	room->tracks[0]->time = time_info;
-	room->tracks[0]->direction = direction;
-	room->tracks[0]->flying = is_affected_by(ch, AFF_FLYING);
-	room->tracks[0]->sneaking = is_affected_by(ch, AFF_SNEAK);
-	room->tracks[0]->bleeding = is_affected(ch, gsn_bleeding);
-	room->tracks[0]->legs = ch->legs;
+	room->tracks[0].prey = ch;
+	room->tracks[0].time = time_info;
+	room->tracks[0].direction = direction;
+	room->tracks[0].flying = is_affected_by(ch, AFF_FLYING);
+	room->tracks[0].sneaking = is_affected_by(ch, AFF_SNEAK);
+	room->tracks[0].bleeding = is_affected(ch, gsn_bleeding);
+	room->tracks[0].legs = ch->legs;
 }
 
 void clear_tracks(ROOM_INDEX_DATA *room)
 {
 	for (auto i = 0; i < MAX_TRACKS - 1; i++)
 	{
-		room->tracks[i]->prey = nullptr;
-		room->tracks[i]->direction = -1;
-		room->tracks[i]->flying= false;
-		room->tracks[i]->sneaking= false;
-		room->tracks[i]->bleeding= false;
-		room->tracks[i]->legs = -1;
+		room->tracks[i].prey = nullptr;
+		room->tracks[i].direction = -1;
+		room->tracks[i].flying= false;
+		room->tracks[i].sneaking= false;
+		room->tracks[i].bleeding= false;
+		room->tracks[i].legs = -1;
 	}
 }

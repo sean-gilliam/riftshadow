@@ -659,7 +659,7 @@ void greet_prog_ruins_mouth(CHAR_DATA *mob, CHAR_DATA *ch)
 void speech_prog_testmob(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 {
 	if (strstr(speech, "test"))
-		execute_speech(ch, mob, mob->pIndexData->speech);
+		execute_speech(ch, mob, mob->pIndexData->speech.empty() ? nullptr : &mob->pIndexData->speech.front());
 }
 
 void speech_prog_ruins_mouth(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
@@ -2497,11 +2497,13 @@ void pulse_prog_wizard_summon(CHAR_DATA *mob)
 
 		if (is_affected(mob, gsn_bash))
 		{
-			for (paf = mob->affected; paf; paf = paf->next)
+			paf = nullptr;
+			for (auto &paf_elem : mob->affected)
 			{
-				if (paf->type == gsn_bash && paf->owner == vch)
+				if (paf_elem.type == gsn_bash && paf_elem.owner == vch)
 				{
 					found = true;
+					paf = &paf_elem;
 					break;
 				}
 			}

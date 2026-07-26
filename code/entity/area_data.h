@@ -1,8 +1,11 @@
 #ifndef ENTITY_AREA_DATA_H
 #define ENTITY_AREA_DATA_H
 
+#include <list>
+
 #include "fwd.h"
 #include "limits.h"
+#include "affect_data.h"					// AREA_AFFECT_DATA held by value in area->affected
 
 //
 // Area definition.
@@ -29,7 +32,7 @@ struct area_data
 	long area_flags[MAX_BITVECTOR];
 	bool empty;
 	long affected_by[MAX_BITVECTOR];
-	AREA_AFFECT_DATA *affected;
+	std::list<AREA_AFFECT_DATA> affected;
 	AREA_DATA *adjacent[MAX_ADJACENT];
 	short climate;
 	short sky;

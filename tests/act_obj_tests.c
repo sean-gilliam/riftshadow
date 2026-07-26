@@ -71,7 +71,7 @@ char_data* TestHelperCreatePlayer(char *name, obj_data *item = nullptr)
 	auto player = new char_data();
 	player->name = name;
 	auto dnew = new descriptor_data();
-	player->pcdata = new pc_data();
+	player->pcdata = std::make_unique<pc_data>();
 	TestHelperLoadCClass();
 	player->SetClass(5);
 	player->level = 51;

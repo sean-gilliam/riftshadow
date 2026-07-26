@@ -287,7 +287,7 @@ void update_read(CHAR_DATA *ch, long stamp, int type)
 void parse_note(CHAR_DATA *ch, char *argument, int type)
 {
 	// TODO: Break this function up into its constituent parts. It's doing like 12 different things.
-	BUFFER *buffer;
+	BUFFER buffer;
 	char buf[MAX_STRING_LENGTH];
 	char arg[MAX_INPUT_LENGTH];
 	char *list_name;
@@ -524,16 +524,12 @@ void parse_note(CHAR_DATA *ch, char *argument, int type)
 			return;
 		}
 
-		buffer = new_buf();
-
-		add_buf(buffer, ch->pnote->text);
-		add_buf(buffer, argument);
-		add_buf(buffer, "\n\r");
+		buffer.add(ch->pnote->text);
+		buffer.add(argument);
+		buffer.add("\n\r");
 
 		free_pstring(ch->pnote->text);
-		ch->pnote->text = palloc_string(buf_string(buffer));
-
-		free_buf(buffer);
+		ch->pnote->text = palloc_string(buffer.str());
 
 		send_to_char("Ok.\n\r", ch);
 		return;

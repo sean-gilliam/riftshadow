@@ -602,3 +602,139 @@ SCENARIO("Testing deduct gold cost from character","[deduct_cost]")
 		}
 	}
 }
+
+// Characterization tests for the char-affect list handlers (affect_to_char,
+// affect_remove, affect_strip). These pin the observable add/find/remove/strip
+// contract via the stable API (is_affected / affect_find) so it is provably
+// preserved when ch->affected changes container.
+SCENARIO("affect_to_char adds a char affect", "[affect_to_char]")
+{
+	GIVEN("a fresh character")
+	{
+		auto ch = new char_data();
+		ch->name = "tester";
+
+		WHEN("an affect is given to the character")
+		{
+			AFFECT_DATA af;
+			init_affect(&af);
+			af.type = 100;
+			af.where = TO_AFFECTS;
+			af.level = 7;
+			af.duration = 5;
+			af.modifier = 3;
+			affect_to_char(ch, &af);
+
+			THEN("the character reports being affected by it")
+			{
+				REQUIRE(is_affected(ch, 100) == true);
+				REQUIRE(is_affected(ch, 999) == false);
+			}
+
+			THEN("the stored affect carries the same fields")
+			{
+				AFFECT_DATA *found = affect_find(ch->affected, 100);
+				REQUIRE(found != nullptr);
+				REQUIRE(found->level == 7);
+				REQUIRE(found->duration == 5);
+				REQUIRE(found->modifier == 3);
+			}
+
+			THEN("init_duration is seeded from duration")
+			{
+				AFFECT_DATA *found = affect_find(ch->affected, 100);
+				REQUIRE(found != nullptr);
+				REQUIRE(found->init_duration == 5);
+			}
+		}
+	}
+}
+
+SCENARIO("affect_remove removes a char affect", "[affect_remove]")
+{
+	GIVEN("a character with a single affect")
+	{
+		auto ch = new char_data();
+		ch->name = "tester";
+
+		AFFECT_DATA af;
+		init_affect(&af);
+		af.type = 100;
+		af.where = TO_AFFECTS;
+		af.duration = 5;
+		affect_to_char(ch, &af);
+
+		WHEN("that affect is removed")
+		{
+			affect_remove(ch, affect_find(ch->affected, 100));
+
+			THEN("the character is no longer affected")
+			{
+				REQUIRE(is_affected(ch, 100) == false);
+				REQUIRE(affect_find(ch->affected, 100) == nullptr);
+			}
+		}
+	}
+}
+
+SCENARIO("removing one of several char affects preserves the rest", "[affect_remove]")
+{
+	GIVEN("a character with three distinct affects")
+	{
+		auto ch = new char_data();
+		ch->name = "tester";
+
+		for (int type : {100, 101, 102})
+		{
+			AFFECT_DATA af;
+			init_affect(&af);
+			af.type = type;
+			af.where = TO_AFFECTS;
+			af.duration = 5;
+			affect_to_char(ch, &af);
+		}
+
+		WHEN("the middle-added affect is removed")
+		{
+			affect_remove(ch, affect_find(ch->affected, 101));
+
+			THEN("only that affect is gone")
+			{
+				REQUIRE(is_affected(ch, 100) == true);
+				REQUIRE(is_affected(ch, 101) == false);
+				REQUIRE(is_affected(ch, 102) == true);
+			}
+		}
+	}
+}
+
+SCENARIO("affect_strip removes all affects of a type but leaves others", "[affect_strip]")
+{
+	GIVEN("a character affected twice by one type and once by another")
+	{
+		auto ch = new char_data();
+		ch->name = "tester";
+
+		for (int type : {100, 100, 101})
+		{
+			AFFECT_DATA af;
+			init_affect(&af);
+			af.type = type;
+			af.where = TO_AFFECTS;
+			af.duration = 5;
+			affect_to_char(ch, &af);
+		}
+
+		WHEN("that type is stripped")
+		{
+			affect_strip(ch, 100);
+
+			THEN("every instance of it is gone and the other type remains")
+			{
+				REQUIRE(is_affected(ch, 100) == false);
+				REQUIRE(affect_find(ch->affected, 100) == nullptr);
+				REQUIRE(is_affected(ch, 101) == true);
+			}
+		}
+	}
+}

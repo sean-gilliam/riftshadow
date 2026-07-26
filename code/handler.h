@@ -1,6 +1,7 @@
 #ifndef HANDLER_H
 #define HANDLER_H
 
+#include <list>
 #include <string>
 
 #include "entity/fwd.h"
@@ -83,10 +84,10 @@ void init_affect (AFFECT_DATA *paf);
  */
 void affect_modify (CHAR_DATA *ch, AFFECT_DATA *paf, bool fAdd);
 /* find an effect in an affect list */
-AFFECT_DATA *affect_find (AFFECT_DATA *paf, int sn);
-OBJ_AFFECT_DATA *affect_find_obj (OBJ_AFFECT_DATA *paf, int sn);
-ROOM_AFFECT_DATA *affect_find_room (ROOM_AFFECT_DATA *paf, int sn);
-AREA_AFFECT_DATA *affect_find_area (AREA_AFFECT_DATA *paf, int sn);
+AFFECT_DATA *affect_find (std::list<AFFECT_DATA> &affects, int sn);
+OBJ_AFFECT_DATA *affect_find_obj (std::list<OBJ_AFFECT_DATA> &affects, int sn);
+ROOM_AFFECT_DATA *affect_find_room (std::list<ROOM_AFFECT_DATA> &affects, int sn);
+AREA_AFFECT_DATA *affect_find_area (std::list<AREA_AFFECT_DATA> &affects, int sn);
 /* fix object affects when removing one */
 void affect_check (CHAR_DATA *ch, int where, long vector[]);
 /*

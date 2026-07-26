@@ -411,8 +411,6 @@ void load_mobs(FILE *fp)
 	MOB_INDEX_DATA *pMobIndex;
 	int i = 0, pos = 0;
 	char *aword, *bword, *temp_wealth;
-	SPEECH_DATA *speech;
-	LINE_DATA *line;
 	char bugtext[250];
 	short wealth;
 
@@ -628,44 +626,20 @@ void load_mobs(FILE *fp)
 			{
 				char *word;
 
-				speech = new_speech_data();
-				speech->mob = pMobIndex;
+				SPEECH_DATA *speech = &pMobIndex->speech.emplace_back();
 				speech->name = palloc_string(bword);
-
-				if (!pMobIndex->speech)
-				{
-					pMobIndex->speech = speech;
-				}
-				else
-				{
-					SPEECH_DATA *sptr;
-
-					for (sptr = pMobIndex->speech; sptr->next; sptr = sptr->next);
-
-					sptr->next = speech;
-					speech->prev = sptr;
-				}
 
 				for (;;)
 				{
 					word = fread_word(fp);
 					if (!str_cmp(word, "LINE"))
 					{
-						line = new_line_data();
-						line->speech = speech;
-						if (!speech->first_line)
-						{
-							line->number = 0;
-							speech->first_line = line;
-							speech->current_line = line;
-						}
-						else
-						{
-							line->number = speech->current_line->number + 1;
-							speech->current_line->next = line;
-							line->prev = speech->current_line;
-							speech->current_line = line;
-						}
+						int number = speech->first_line.empty()
+							? 0
+							: speech->first_line.back().number + 1;
+
+						LINE_DATA *line = &speech->first_line.emplace_back();
+						line->number = number;
 
 						line->delay = fread_number(fp);
 						line->type = pos = flag_lookup(fread_word(fp), speech_table);
@@ -678,7 +652,7 @@ void load_mobs(FILE *fp)
 					}
 					else if (!str_cmp(word, "END"))
 					{
-						speech->current_line = speech->first_line;
+						speech->current_line = speech->first_line.begin();
 						break;
 					}
 					else
@@ -1052,7 +1026,7 @@ void load_objs(FILE *fp)
 		newobjs++;
 		pObjIndex->limcount = 0;
 		pObjIndex->limtotal = 0;
-		pObjIndex->extra_descr = nullptr;
+		pObjIndex->extra_descr.clear();
 
 		pObjIndex->name = fread_string(fp);
 		pObjIndex->short_descr = fread_string(fp);
@@ -1072,14 +1046,14 @@ void load_objs(FILE *fp)
 		zero_vector(pObjIndex->vuln_flags);
 		pObjIndex->start_timer = -1;
 		pObjIndex->notes = nullptr;
-		pObjIndex->charaffs = nullptr;
-		pObjIndex->apply = nullptr;
+		pObjIndex->charaffs.clear();
+		pObjIndex->apply.clear();
 		pObjIndex->wear_echo[0] = nullptr;
 		pObjIndex->remove_echo[0] = nullptr;
 		pObjIndex->wear_echo[1] = nullptr;
 		pObjIndex->remove_echo[1] = nullptr;
 		pObjIndex->wear_loc_name = nullptr;
-		pObjIndex->affected = nullptr;
+		pObjIndex->affected.clear();
 		pObjIndex->spec_prog.trapvector = 0;
 		pObjIndex->cabal = 0;
 		pObjIndex->verb = nullptr;
@@ -1180,18 +1154,16 @@ void load_objs(FILE *fp)
 
 			if (letter == 'A')
 			{
-				OBJ_APPLY_DATA *apply;
+				OBJ_APPLY_DATA apply;
 				// read in PPLY and discard it
 				discard = fread_word(fp);
-				apply = new_apply_data();
-				apply->location = display_lookup(fread_word(fp), apply_locations);
+				apply.location = display_lookup(fread_word(fp), apply_locations);
 
-				if (apply->location == -1)
+				if (apply.location == -1)
 					bugout("Invalid affect apply location.");
 
-				apply->modifier = fread_number(fp);
-				apply->next = pObjIndex->apply;
-				pObjIndex->apply = apply;
+				apply.modifier = fread_number(fp);
+				pObjIndex->apply.insert(pObjIndex->apply.begin(), apply);
 			}
 			else if (letter == 'C') /* Cabal */
 			{
@@ -1277,13 +1249,11 @@ void load_objs(FILE *fp)
 
 			else if (letter == 'E')
 			{
-				EXTRA_DESCR_DATA *ed;
+				EXTRA_DESCR_DATA ed;
 
-				ed = new_extra_descr();
-				ed->keyword = fread_string(fp);
-				ed->description = fread_string(fp);
-				ed->next = pObjIndex->extra_descr;
-				pObjIndex->extra_descr = ed;
+				ed.keyword = fread_string(fp);
+				ed.description = fread_string(fp);
+				pObjIndex->extra_descr.insert(pObjIndex->extra_descr.begin(), std::move(ed));
 				top_ed++;
 			}
 			else if (letter == 'I')

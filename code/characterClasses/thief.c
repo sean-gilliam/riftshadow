@@ -1581,7 +1581,6 @@ void do_undisguise(CHAR_DATA *ch, char *argument)
 void do_search(CHAR_DATA *ch, char *argument)
 {
 	OBJ_DATA *obj = nullptr;
-	OBJ_AFFECT_DATA *oaf;
 	int chance;
 
 	act("You intently scrutinize your surroundings...", ch, 0, 0, TO_CHAR);
@@ -1593,17 +1592,17 @@ void do_search(CHAR_DATA *ch, char *argument)
 	{
 		if (is_affected_obj(obj, gsn_stash))
 		{
-			for (oaf = obj->affected; oaf != nullptr; oaf = oaf->next)
+			for (auto &oaf : obj->affected)
 			{
-				if (oaf->type == gsn_stash)
+				if (oaf.type == gsn_stash)
 					break;
 
-				chance += (ch->level - oaf->level);
+				chance += (ch->level - oaf.level);
 
 				if (ch->Class()->GetIndex() == CLASS_THIEF)
 					chance += (ch->level / 2);
 
-				if (oaf->owner != ch && (number_percent() < chance))
+				if (oaf.owner != ch && (number_percent() < chance))
 				{
 					affect_strip_obj(obj, gsn_stash);
 					act("You stumble across $p which seemed to be hidden from your eye.", ch, obj, 0, TO_CHAR);
@@ -1994,15 +1993,18 @@ void thief_yell(CHAR_DATA *ch, CHAR_DATA *victim)
 
 AFFECT_DATA *check_bind(CHAR_DATA *ch, char *type)
 {
-	AFFECT_DATA *af;
+	AFFECT_DATA *af = nullptr;
 
-	for (af = ch->affected; af != nullptr; af = af->next)
+	for (auto &af_elem : ch->affected)
 	{
-		if (af->type == gsn_bind && !str_infix(type, af->name))
-			return af;
+		if (af_elem.type == gsn_bind && !str_infix(type, af_elem.name))
+		{
+			af = &af_elem;
+			break;
+		}
 	}
 
-	return nullptr;
+	return af;
 }
 
 void do_bind(CHAR_DATA *ch, char *argument)

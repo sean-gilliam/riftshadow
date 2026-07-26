@@ -1,9 +1,12 @@
 #ifndef ENTITY_MOB_INDEX_DATA_H
 #define ENTITY_MOB_INDEX_DATA_H
 
+#include <list>
+
 #include "fwd.h"
 #include "limits.h"
 #include "spec_func.h"
+#include "speech_data.h"						// SPEECH_DATA held by value in mob->speech
 #include "../characterClasses/class.h"		// CClass, used by the inline accessors
 
 //
@@ -19,7 +22,7 @@ public:
 	BARRED_DATA *barred_entry; //dev
 	MPROG_DATA *mprogs;
 	AREA_DATA *area;
-	SPEECH_DATA *speech;
+	std::list<SPEECH_DATA> speech;
 	long progtypes[MAX_BITVECTOR];
 	short vnum;
 	short group;

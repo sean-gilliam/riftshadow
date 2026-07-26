@@ -304,7 +304,7 @@ bool redit_rlist(CHAR_DATA *ch, char *argument)
 	ROOM_INDEX_DATA *pRoomIndex;
 	AREA_DATA *pArea;
 	char buf[MAX_STRING_LENGTH];
-	BUFFER *buf1;
+	BUFFER buf1;
 	char arg[MAX_INPUT_LENGTH];
 	bool found;
 	int vnum;
@@ -313,7 +313,6 @@ bool redit_rlist(CHAR_DATA *ch, char *argument)
 	one_argument(argument, arg);
 
 	pArea = ch->in_room->area;
-	buf1 = new_buf();
 	/*    buf1[0] = '\0'; */
 	found = false;
 
@@ -325,10 +324,10 @@ bool redit_rlist(CHAR_DATA *ch, char *argument)
 			found = true;
 
 			sprintf(buf, "[%5d] %-17.16s", vnum, capitalize(pRoomIndex->name));
-			add_buf(buf1, buf);
+			buf1.add(buf);
 
 			if (++col % 3 == 0)
-				add_buf(buf1, "\n\r");
+				buf1.add("\n\r");
 		}
 	}
 
@@ -339,10 +338,9 @@ bool redit_rlist(CHAR_DATA *ch, char *argument)
 	}
 
 	if (col % 3 != 0)
-		add_buf(buf1, "\n\r");
+		buf1.add("\n\r");
 
-	page_to_char(buf_string(buf1), ch);
-	free_buf(buf1);
+	page_to_char(buf1.str(), ch);
 	return false;
 }
 
@@ -400,7 +398,7 @@ bool redit_mlist(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMobIndex;
 	AREA_DATA *pArea;
 	char buf[MAX_STRING_LENGTH];
-	BUFFER *buf1;
+	BUFFER buf1;
 	char arg[MAX_INPUT_LENGTH];
 	bool fAll, found;
 	int vnum;
@@ -414,7 +412,6 @@ bool redit_mlist(CHAR_DATA *ch, char *argument)
 		return false;
 	}
 
-	buf1 = new_buf();
 	pArea = ch->in_room->area;
 	/*    buf1[0] = '\0'; */
 	fAll = !str_cmp(arg, "all");
@@ -431,10 +428,10 @@ bool redit_mlist(CHAR_DATA *ch, char *argument)
 				found = true;
 
 				sprintf(buf, "[%5d] %-17.16s", pMobIndex->vnum, capitalize(pMobIndex->short_descr));
-				add_buf(buf1, buf);
+				buf1.add(buf);
 
 				if (++col % 3 == 0)
-					add_buf(buf1, "\n\r");
+					buf1.add("\n\r");
 			}
 		}
 	}
@@ -446,10 +443,9 @@ bool redit_mlist(CHAR_DATA *ch, char *argument)
 	}
 
 	if (col % 3 != 0)
-		add_buf(buf1, "\n\r");
+		buf1.add("\n\r");
 
-	page_to_char(buf_string(buf1), ch);
-	free_buf(buf1);
+	page_to_char(buf1.str(), ch);
 	return false;
 }
 
@@ -458,7 +454,7 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 	OBJ_INDEX_DATA *pObjIndex;
 	AREA_DATA *pArea;
 	char buf[MAX_STRING_LENGTH];
-	BUFFER *buf1;
+	BUFFER buf1;
 	char arg[MAX_INPUT_LENGTH];
 	bool fAll, found;
 	int vnum;
@@ -473,7 +469,6 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 	}
 
 	pArea = ch->in_room->area;
-	buf1 = new_buf();
 	/*    buf1[0] = '\0'; */
 	fAll = !str_cmp(arg, "all");
 	found = false;
@@ -489,10 +484,10 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 				found = true;
 
 				sprintf(buf, "[%5d] %-17.16s", pObjIndex->vnum, capitalize(pObjIndex->short_descr));
-				add_buf(buf1, buf);
+				buf1.add(buf);
 
 				if (++col % 3 == 0)
-					add_buf(buf1, "\n\r");
+					buf1.add("\n\r");
 			}
 		}
 	}
@@ -504,10 +499,9 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 	}
 
 	if (col % 3 != 0)
-		add_buf(buf1, "\n\r");
+		buf1.add("\n\r");
 
-	page_to_char(buf_string(buf1), ch);
-	free_buf(buf1);
+	page_to_char(buf1.str(), ch);
 	return false;
 }
 
@@ -669,9 +663,8 @@ bool medit_group(CHAR_DATA *ch, char *argument)
 bool medit_speech(CHAR_DATA *ch, char *argument)
 {
 	MOB_INDEX_DATA *pMobIndex;
-	SPEECH_DATA *speech, *sptr;
+	SPEECH_DATA *speech;
 	char buf[MSL], cmd[MSL], name[MSL], arg3[MSL], arg4[MSL], arg5[MSL];
-	LINE_DATA *lptr, *new_line;
 	int type;
 
 	EDIT_MOB(ch, pMobIndex);
@@ -706,7 +699,7 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 			{
 				if (!str_prefix(arg3, "list"))
 				{
-					if (!speech->first_line)
+					if (speech->first_line.empty())
 					{
 						send_to_char("This speech has no lines.\n\r", ch);
 						return false;
@@ -715,13 +708,13 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 					sprintf(buf, "%s Lines:\n\r", speech->name);
 					send_to_char(buf, ch);
 
-					for (lptr = speech->first_line; lptr; lptr = lptr->next)
+					for (auto &line : speech->first_line)
 					{
 						sprintf(buf, "Line #%d: %d %s %s\n\r",
-							lptr->number,
-							lptr->delay,
-							flag_name_lookup(lptr->type, speech_table),
-							lptr->text);
+							line.number,
+							line.delay,
+							flag_name_lookup(line.type, speech_table),
+							line.text);
 						send_to_char(buf, ch);
 					}
 				}
@@ -729,9 +722,7 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 				{
 					argument = one_argument(argument, arg4);
 					argument = one_argument(argument, arg5);
-					new_line = new_line_data();
 
-					new_line->delay = atoi(arg4);
 					type = flag_lookup(arg5, speech_table);
 
 					if (type == NO_FLAG)
@@ -740,13 +731,16 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 						return false;
 					}
 
-					new_line->type = type;
-					new_line->text = palloc_string(argument);
-
-					for (lptr = speech->first_line; lptr->next != nullptr; lptr = lptr->next)
-					{
-						lptr->next = new_line;
-					}
+					// Append to the end of the line list. (The old code walked
+					// off the end and orphaned the tail, and never assigned a
+					// line number; std::list appends cleanly and next_sline
+					// gives the new line its number.)
+					int number = next_sline(speech);
+					LINE_DATA &new_line = speech->first_line.emplace_back();
+					new_line.number = number;
+					new_line.delay = atoi(arg4);
+					new_line.type = type;
+					new_line.text = palloc_string(argument);
 
 					send_to_char("Added.\n\r", ch);
 					return true;
@@ -755,13 +749,14 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 				{
 					argument = one_argument(argument, arg4);
 
-					for (lptr = speech->first_line; lptr; lptr = lptr->next)
+					auto lptr = speech->first_line.begin();
+					for (; lptr != speech->first_line.end(); ++lptr)
 					{
 						if (lptr->number == atoi(arg3))
 							break;
 					}
 
-					if (!lptr)
+					if (lptr == speech->first_line.end())
 					{
 						send_to_char("Not a valid line number.\n\r", ch);
 						return false;
@@ -770,7 +765,9 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 					{
 						if (!str_cmp(arg4, "delete"))
 						{
-							delete lptr;
+							// Properly unlink and free (the old code did a raw
+							// `delete` that left a dangling node in the list).
+							speech->first_line.erase(lptr);
 							send_to_char("Deleted.\n\r", ch);
 							return true;
 						}
@@ -819,7 +816,7 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 		}
 		else if (!str_prefix(cmd, "list"))
 		{
-			if (!pMobIndex->speech)
+			if (pMobIndex->speech.empty())
 			{
 				send_to_char("Mobile has no speeches defined.\n\r", ch);
 				return false;
@@ -827,9 +824,9 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 
 			send_to_char("Mobile has the following speeches defined:\n\r", ch);
 
-			for (sptr = pMobIndex->speech; sptr; sptr = sptr->next)
+			for (auto &sp : pMobIndex->speech)
 			{
-				sprintf(buf, "%s\n\r", sptr->name);
+				sprintf(buf, "%s\n\r", sp.name);
 				send_to_char(buf, ch);
 			}
 		}
@@ -841,19 +838,8 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 				return false;
 			}
 
-			speech = new_speech_data();
-			speech->name = palloc_string(name);
-
-			if (!pMobIndex->speech)
-			{
-				pMobIndex->speech = speech;
-			}
-			else
-			{
-				for (sptr = pMobIndex->speech; sptr->next; sptr = sptr->next);
-				sptr->next = speech;
-				speech->prev = sptr;
-			}
+			SPEECH_DATA &sp = pMobIndex->speech.emplace_back();
+			sp.name = palloc_string(name);
 
 			send_to_char("Speech added.\n\r", ch);
 			return true;
@@ -866,15 +852,20 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 				return false;
 			}
 
-			speech = find_speech(pMobIndex, name);
+			auto sit = pMobIndex->speech.begin();
+			for (; sit != pMobIndex->speech.end(); ++sit)
+			{
+				if (!str_cmp(sit->name, name))
+					break;
+			}
 
-			if (!speech)
+			if (sit == pMobIndex->speech.end())
 			{
 				send_to_char("No speech by that name found.\n\r", ch);
 				return false;
 			}
 
-			free_speech(speech);
+			pMobIndex->speech.erase(sit);
 			send_to_char("Speech deleted.\n\r", ch);
 			return true;
 		}
@@ -2377,12 +2368,12 @@ bool redit_show(CHAR_DATA *ch, char *argument)
 		strcat(buf1, "none]\n\r");
 	}
 
-	if (pRoom->extra_descr)
+	if (!pRoom->extra_descr.empty())
 	{
-		for (EXTRA_DESCR_DATA *ed = pRoom->extra_descr; ed; ed = ed->next)
+		for (const auto &ed : pRoom->extra_descr)
 		{
 			strcat(buf1, "Extra Desc Keyword: ");
-			strcat(buf1, ed->keyword);
+			strcat(buf1, ed.keyword);
 			strcat(buf1, "\n\r");
 		}
 	}
@@ -2820,7 +2811,6 @@ bool redit_down(CHAR_DATA *ch, char *argument)
 bool redit_ed(CHAR_DATA *ch, char *argument)
 {
 	ROOM_INDEX_DATA *pRoom;
-	EXTRA_DESCR_DATA *ed;
 	char command[MAX_INPUT_LENGTH];
 
 	EDIT_ROOM(ch, pRoom);
@@ -2844,13 +2834,12 @@ bool redit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		ed = new_extra_descr();
-		ed->keyword = palloc_string(argument);
-		ed->description = palloc_string("");
-		ed->next = pRoom->extra_descr;
-		pRoom->extra_descr = ed;
+		EXTRA_DESCR_DATA ed;
+		ed.keyword = palloc_string(argument);
+		ed.description = palloc_string("");
+		pRoom->extra_descr.push_front(std::move(ed));
 
-		string_append(ch, &ed->description);
+		string_append(ch, &pRoom->extra_descr.front().description);
 
 		return true;
 	}
@@ -2863,10 +2852,14 @@ bool redit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		for (ed = pRoom->extra_descr; ed; ed = ed->next)
+		EXTRA_DESCR_DATA *ed = nullptr;
+		for (auto &e : pRoom->extra_descr)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, e.keyword))
+			{
+				ed = &e;
 				break;
+			}
 		}
 
 		if (!ed)
@@ -2882,34 +2875,26 @@ bool redit_ed(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(command, "delete"))
 	{
-		EXTRA_DESCR_DATA *ped = nullptr;
-
 		if (argument[0] == '\0')
 		{
 			send_to_char("Syntax:  ed delete [keyword]\n\r", ch);
 			return false;
 		}
 
-		for (ed = pRoom->extra_descr; ed; ed = ed->next)
+		auto it = pRoom->extra_descr.begin();
+		for (; it != pRoom->extra_descr.end(); ++it)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, it->keyword))
 				break;
-
-			ped = ed;
 		}
 
-		if (!ed)
+		if (it == pRoom->extra_descr.end())
 		{
 			send_to_char("REdit:  Extra description keyword not found.\n\r", ch);
 			return false;
 		}
 
-		if (!ped)
-			pRoom->extra_descr = ed->next;
-		else
-			ped->next = ed->next;
-
-		free_extra_descr(ed);
+		pRoom->extra_descr.erase(it);		// element dtor frees the strings
 
 		send_to_char("Extra description deleted.\n\r", ch);
 		return true;
@@ -2923,10 +2908,14 @@ bool redit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		for (ed = pRoom->extra_descr; ed; ed = ed->next)
+		EXTRA_DESCR_DATA *ed = nullptr;
+		for (auto &e : pRoom->extra_descr)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, e.keyword))
+			{
+				ed = &e;
 				break;
+			}
 		}
 
 		if (!ed)
@@ -3923,9 +3912,7 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 {
 	OBJ_INDEX_DATA *pObj;
 	char buf[MAX_STRING_LENGTH];
-	OBJ_APPLY_DATA *paf;
 	int cnt, i;
-	AFFECT_DATA *af;
 
 	EDIT_OBJ(ch, pObj);
 
@@ -4159,7 +4146,7 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 	if (!IS_ZERO_VECTOR(pObj->imm_flags)
 		|| !IS_ZERO_VECTOR(pObj->res_flags)
 		|| !IS_ZERO_VECTOR(pObj->vuln_flags)
-		|| pObj->charaffs)
+		|| !pObj->charaffs.empty())
 	{
 		send_to_char("Flag data:\n\r", ch);
 
@@ -4181,17 +4168,17 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 			send_to_char(buf, ch);
 		}
 
-		if (pObj->charaffs)
+		if (!pObj->charaffs.empty())
 		{
 			i = 0;
 
 			std::string buffer = std::string(" AFF ");
-			for (af = pObj->charaffs; af; af = af->next)
+			for (auto &af : pObj->charaffs)
 			{
 				if (i > 0)
 					buffer += fmt::format("{}     ", buffer);
 
-				buffer += fmt::format("[{}]\n\r", skill_table[af->type].name);
+				buffer += fmt::format("[{}]\n\r", skill_table[af.type].name);
 				i++;
 			}
 
@@ -4199,17 +4186,18 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	if (pObj->extra_descr)
+	if (!pObj->extra_descr.empty())
 	{
-		for (EXTRA_DESCR_DATA *ed = pObj->extra_descr; ed; ed = ed->next)
+		for (const auto &ed : pObj->extra_descr)
 		{
 			send_to_char("Extra Desc Keyword: ", ch);
-			send_to_char(ed->keyword, ch);
+			send_to_char(ed.keyword, ch);
 			send_to_char("\n\r", ch);
 		}
 	}
 
-	for (cnt = 0, paf = pObj->apply; paf; paf = paf->next)
+	cnt = 0;
+	for (const auto &paf : pObj->apply)
 	{
 		if (cnt == 0)
 		{
@@ -4217,7 +4205,7 @@ bool oedit_show(CHAR_DATA *ch, char *argument)
 			send_to_char("------ -------- -------\n\r", ch);
 		}
 
-		sprintf(buf, "[%4d] %-8d %s\n\r", cnt, paf->modifier, flag_string_old(apply_flags, paf->location));
+		sprintf(buf, "[%4d] %-8d %s\n\r", cnt, paf.modifier, flag_string_old(apply_flags, paf.location));
 		send_to_char(buf, ch);
 		cnt++;
 	}
@@ -4234,7 +4222,6 @@ bool oedit_addapply(CHAR_DATA *ch, char *argument)
 {
 	int value;
 	OBJ_INDEX_DATA *pObj;
-	OBJ_APPLY_DATA *pAf;
 	char loc[MAX_STRING_LENGTH];
 	char mod[MAX_STRING_LENGTH];
 
@@ -4257,11 +4244,10 @@ bool oedit_addapply(CHAR_DATA *ch, char *argument)
 		return false;
 	}
 
-	pAf = new_apply_data();
-	pAf->location = value;
-	pAf->modifier = atoi(mod);
-	pAf->next = pObj->apply;
-	pObj->apply = pAf;
+	OBJ_APPLY_DATA pAf;
+	pAf.location = value;
+	pAf.modifier = atoi(mod);
+	pObj->apply.push_front(pAf);
 
 	send_to_char("Affect added.\n\r", ch);
 	return true;
@@ -4320,11 +4306,8 @@ bool oedit_addaffect(CHAR_DATA *ch, char *argument)
 bool oedit_delapply(CHAR_DATA *ch, char *argument)
 {
 	OBJ_INDEX_DATA *pObj;
-	OBJ_APPLY_DATA *pAf;
-	OBJ_APPLY_DATA *pAf_next;
 	char apply[MAX_STRING_LENGTH];
 	int value;
-	int cnt = 0;
 
 	EDIT_OBJ(ch, pObj);
 
@@ -4344,36 +4327,23 @@ bool oedit_delapply(CHAR_DATA *ch, char *argument)
 		return false;
 	}
 
-	if (!(pAf = pObj->apply))
+	if (pObj->apply.empty())
 	{
 		send_to_char("OEdit:  Non-existant apply.\n\r", ch);
 		return false;
 	}
 
-	if (value == 0) /* First case: Remove first affect */
-	{
-		pAf = pObj->apply;
-		pObj->apply = pAf->next;
-		free_apply(pAf);
-	}
-	else /* Affect to remove is not the first */
-	{
-		while ((pAf_next = pAf->next) && (++cnt < value))
-		{
-			pAf = pAf_next;
-		}
+	auto it = pObj->apply.begin();
+	for (int cnt = 0; cnt < value && it != pObj->apply.end(); ++cnt)
+		++it;
 
-		if (pAf_next) /* See if it's the next affect */
-		{
-			pAf->next = pAf_next->next;
-			free_apply(pAf_next);
-		}
-		else /* Doesn't exist */
-		{
-			send_to_char("No such affect.\n\r", ch);
-			return false;
-		}
+	if (it == pObj->apply.end()) /* Doesn't exist */
+	{
+		send_to_char("No such affect.\n\r", ch);
+		return false;
 	}
+
+	pObj->apply.erase(it);
 
 	send_to_char("Affect removed.\n\r", ch);
 	return true;
@@ -4688,11 +4658,7 @@ bool oedit_flag(CHAR_DATA *ch, char *argument)
 
 		if (!str_cmp(arg3, "delete"))
 		{
-			for (af = pObj->charaffs; af != nullptr; af = af->next)
-			{
-				if (af->type == skill_lookup(arg2))
-					break;
-			}
+			af = affect_find(pObj->charaffs, skill_lookup(arg2));
 
 			if (af == nullptr || skill_lookup(arg2) == -1)
 			{
@@ -4951,7 +4917,6 @@ bool oedit_create(CHAR_DATA *ch, char *argument)
 bool oedit_ed(CHAR_DATA *ch, char *argument)
 {
 	OBJ_INDEX_DATA *pObj;
-	EXTRA_DESCR_DATA *ed;
 	char command[MAX_INPUT_LENGTH];
 
 	EDIT_OBJ(ch, pObj);
@@ -4975,12 +4940,11 @@ bool oedit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		ed = new_extra_descr();
-		ed->keyword = palloc_string(argument);
-		ed->next = pObj->extra_descr;
-		pObj->extra_descr = ed;
+		EXTRA_DESCR_DATA ed;
+		ed.keyword = palloc_string(argument);
+		pObj->extra_descr.push_front(std::move(ed));
 
-		string_append(ch, &ed->description);
+		string_append(ch, &pObj->extra_descr.front().description);
 
 		return true;
 	}
@@ -4993,10 +4957,14 @@ bool oedit_ed(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		for (ed = pObj->extra_descr; ed; ed = ed->next)
+		EXTRA_DESCR_DATA *ed = nullptr;
+		for (auto &e : pObj->extra_descr)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, e.keyword))
+			{
+				ed = &e;
 				break;
+			}
 		}
 
 		if (!ed)
@@ -5012,33 +4980,26 @@ bool oedit_ed(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(command, "delete"))
 	{
-		EXTRA_DESCR_DATA *ped = nullptr;
-
 		if (argument[0] == '\0')
 		{
 			send_to_char("Syntax:  ed delete [keyword]\n\r", ch);
 			return false;
 		}
 
-		for (ed = pObj->extra_descr; ed; ed = ed->next)
+		auto it = pObj->extra_descr.begin();
+		for (; it != pObj->extra_descr.end(); ++it)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, it->keyword))
 				break;
-			ped = ed;
 		}
 
-		if (!ed)
+		if (it == pObj->extra_descr.end())
 		{
 			send_to_char("OEdit:  Extra description keyword not found.\n\r", ch);
 			return false;
 		}
 
-		if (!ped)
-			pObj->extra_descr = ed->next;
-		else
-			ped->next = ed->next;
-
-		free_extra_descr(ed);
+		pObj->extra_descr.erase(it);		// element dtor frees the strings
 
 		send_to_char("Extra description deleted.\n\r", ch);
 		return true;
@@ -5046,19 +5007,20 @@ bool oedit_ed(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(command, "format"))
 	{
-		EXTRA_DESCR_DATA *ped = nullptr;
-
 		if (argument[0] == '\0')
 		{
 			send_to_char("Syntax:  ed format [keyword]\n\r", ch);
 			return false;
 		}
 
-		for (ed = pObj->extra_descr; ed; ed = ed->next)
+		EXTRA_DESCR_DATA *ed = nullptr;
+		for (auto &e : pObj->extra_descr)
 		{
-			if (is_name(argument, ed->keyword))
+			if (is_name(argument, e.keyword))
+			{
+				ed = &e;
 				break;
-			ped = ed;
+			}
 		}
 
 		if (!ed)
@@ -6939,15 +6901,13 @@ bool medit_hitroll(CHAR_DATA *ch, char *argument)
 
 bool oedit_liqlist(CHAR_DATA *ch, char *argument)
 {
-	BUFFER *buffer;
+	BUFFER buffer;
 	char buf[MAX_STRING_LENGTH];
-
-	buffer = new_buf();
 
 	for (int liq = 0; liq_table[liq].liq_name != nullptr; liq++)
 	{
 		if (liq % 21 == 0)
-			add_buf(buffer, "Name                 Color          Proof Full Thirst Food Ssize\n\r");
+			buffer.add("Name                 Color          Proof Full Thirst Food Ssize\n\r");
 
 		sprintf(buf, "%-20s %-14s %5d %4d %6d %4d %5d\n\r",
 			liq_table[liq].liq_name,
@@ -6957,11 +6917,10 @@ bool oedit_liqlist(CHAR_DATA *ch, char *argument)
 			liq_table[liq].liq_affect[2],
 			liq_table[liq].liq_affect[3],
 			liq_table[liq].liq_affect[4]);
-		add_buf(buffer, buf);
+		buffer.add(buf);
 	}
 
-	page_to_char(buf_string(buffer), ch);
-	free_buf(buffer);
+	page_to_char(buffer.str(), ch);
 
 	return true;
 }

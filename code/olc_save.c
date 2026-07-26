@@ -332,25 +332,19 @@ void save_mobile(FILE *fp, MOB_INDEX_DATA *pMobIndex)
 		}
 	}
 
-	if (pMobIndex->speech)
+	for (auto &speech : pMobIndex->speech)
 	{
-		SPEECH_DATA *sptr;
-		LINE_DATA *lptr;
+		fprintf(fp, "SPEECH %s\n", speech.name);
 
-		for (sptr = pMobIndex->speech; sptr; sptr = sptr->next)
+		for (auto &line : speech.first_line)
 		{
-			fprintf(fp, "SPEECH %s\n", sptr->name);
-
-			for (lptr = sptr->first_line; lptr; lptr = lptr->next)
-			{
-				fprintf(fp, "LINE %d %s %s~\n",
-					lptr->delay,
-					flag_name_lookup(lptr->type, speech_table),
-					lptr->text);
-			}
-
-			fprintf(fp, "END\n");
+			fprintf(fp, "LINE %d %s %s~\n",
+				line.delay,
+				flag_name_lookup(line.type, speech_table),
+				line.text);
 		}
+
+		fprintf(fp, "END\n");
 	}
 }
 
@@ -375,8 +369,6 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 	long i;
 	long dummy[MAX_BITVECTOR];
 	OBJ_APPLY_DATA *app;
-	AFFECT_DATA *paf;
-	EXTRA_DESCR_DATA *ed;
 
 	zero_vector(dummy);
 
@@ -481,11 +473,11 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 			fprintf(fp, "ITEM %s\n", (upstring(flag_name_lookup(i, extra_flags))));
 	}
 
-	for (app = pObjIndex->apply; app; app = app->next)
+	for (const auto &app : pObjIndex->apply)
 	{
 		fprintf(fp, "APPLY %s %d\n",
-			upstring(display_name_lookup(app->location, apply_locations)),
-			app->modifier);
+			upstring(display_name_lookup(app.location, apply_locations)),
+			app.modifier);
 	}
 
 	fprintf(fp, "LIMIT %d\n", pObjIndex->limtotal);
@@ -523,12 +515,12 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 			fprintf(fp, "FLAG VUL %s\n", (upstring(flag_name_lookup(i, imm_flags))));
 	}
 
-	for (paf = pObjIndex->charaffs; paf; paf = paf->next)
+	for (auto &paf : pObjIndex->charaffs)
 	{
 		fprintf(fp, "FLAG AFF '%s' %s %s\n",
-			skill_table[paf->type].name,
-			affect_bit_name(paf->bitvector),
-			paf->aftype == AFT_SPELL ? "SHOW" : "NOSHOW");
+			skill_table[paf.type].name,
+			affect_bit_name(paf.bitvector),
+			paf.aftype == AFT_SPELL ? "SHOW" : "NOSHOW");
 	}
 
 	if (pObjIndex->wear_loc_name)
@@ -537,10 +529,8 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 	if (pObjIndex->notes)
 		fprintf(fp, "NOTES %s~\n", pObjIndex->notes);
 
-	for (ed = pObjIndex->extra_descr; ed; ed = ed->next)
-	{
-		fprintf(fp, "E %s~\n%s~\n", ed->keyword, munch(ed->description));
-	}
+	for (const auto &ed : pObjIndex->extra_descr)
+		fprintf(fp, "E %s~\n%s~\n", ed.keyword, munch(ed.description));
 
 	fprintf(fp, "\n");
 }
@@ -563,7 +553,6 @@ void save_objects(FILE *fp, AREA_DATA *pArea)
 void save_rooms(FILE *fp, AREA_DATA *pArea)
 {
 	ROOM_INDEX_DATA *pRoom;
-	EXTRA_DESCR_DATA *ed;
 	EXIT_DATA *pexit;
 	char buf1[MSL], buf2[MSL];
 	long i;
@@ -630,10 +619,8 @@ void save_rooms(FILE *fp, AREA_DATA *pArea)
 					pRoom->alt_description);
 			}
 
-			for (ed = pRoom->extra_descr; ed; ed = ed->next)
-			{
-				fprintf(fp, "E %s~\n%s~\n", ed->keyword, munch(ed->description));
-			}
+			for (const auto &ed : pRoom->extra_descr)
+				fprintf(fp, "E %s~\n%s~\n", ed.keyword, munch(ed.description));
 
 			if (pRoom->cabal)
 				fprintf(fp, "CABAL %s\n", cabal_table[pRoom->cabal].name);
