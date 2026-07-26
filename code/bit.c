@@ -174,13 +174,14 @@ char *style_string(const struct style_type *style_table, long bits[])
 
 	buf[0] = '\0';
 
-	for (flag = 0; flag < MAX_STYLE; flag++)
+	// Entry 0 is the STYLE_NONE sentinel of -1, which IS_SET cannot shift by,
+	// so start at the first real style. Every entry appended is therefore
+	// space-prefixed, and the leading space is trimmed by the return below.
+	for (flag = 1; flag < MAX_STYLE; flag++)
 	{
 		if (IS_SET(bits, style_table[flag].bit))
 		{
-			if (flag > 0)
-				strcat(buf, " ");
-
+			strcat(buf, " ");
 			strcat(buf, style_table[flag].name);
 		}
 	}
