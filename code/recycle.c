@@ -58,7 +58,6 @@ const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192
 
 DESCRIPTOR_DATA *descriptor_free;
 RUNE_DATA *rune_free;
-QUEUE_DATA *queue_free;
 OBJ_DATA *obj_free;
 CHAR_DATA *char_free;
 OLD_CHAR *oldtype_free;
@@ -427,31 +426,6 @@ void free_rune(RUNE_DATA *rune)
 {
 	rune->next = rune_free;
 	rune_free = rune;
-}
-
-QUEUE_DATA *new_queue(void)
-{
-	static QUEUE_DATA queue_zero;
-	QUEUE_DATA *queue;
-
-	if (queue_free == nullptr)
-	{
-		queue = new QUEUE_DATA;
-	}
-	else
-	{
-		queue = queue_free;
-		queue_free = queue->next;
-	}
-
-	*queue = queue_zero;
-	return queue;
-}
-
-void free_queue(QUEUE_DATA *queue)
-{
-	queue->next = queue_free;
-	queue_free = queue;
 }
 
 /* stuff for recycling objects */

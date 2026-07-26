@@ -286,12 +286,6 @@ struct improg_type
 	char *owner;
 };
 
-#define MAX_ARG						6
-
-#define FUN_GENERIC					0
-#define FUN_ACT						1
-
-typedef void FUNC 	  (void*, void*, void*, void*, void*, void*);
 typedef bool RUNE_FUN (void*, void*, void*, void*);
 typedef void RUNE_END (RUNE_DATA *rune);
 
@@ -310,16 +304,6 @@ struct rune_data
 	RUNE_DATA *next;
 	RUNE_DATA *next_content;
 	RUNE_END *end_fun;
-};
-
-struct queue_data
-{
-	int timer;
-	int funtype;
-	FUNC *function;
-	void *arg[MAX_ARG];
-	int act_to;
-	QUEUE_DATA *next;
 };
 
 struct descriptor_data
@@ -1349,7 +1333,6 @@ struct pathfind_data
 
 //TODO: Find out where these are implemented
 extern const struct class_type class_table[MAX_CLASS];
-extern QUEUE_DATA *global_queue;
 
 #define MULT_EXP					5
 

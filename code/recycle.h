@@ -76,8 +76,6 @@ TRAP_DATA *new_trap(void);
 void free_trap(TRAP_DATA *trap);
 RUNE_DATA *new_rune(void);
 void free_rune(RUNE_DATA *rune);
-QUEUE_DATA *new_queue(void);
-void free_queue(QUEUE_DATA *queue);
 /* object recycling */
 OBJ_DATA *new_obj(void);
 void free_obj(OBJ_DATA *obj);
