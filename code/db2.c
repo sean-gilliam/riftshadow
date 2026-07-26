@@ -608,12 +608,17 @@ void load_mobs(FILE *fp)
 				pMobIndex->SetClass(CClass::Lookup(bword));
 				if (pMobIndex->Class()->GetIndex() == CLASS_WARRIOR)
 				{
-					long bit;
+					// Warriors always carry two style words; unspecialized slots are
+					// written as "none". style_lookup returns 0 for those (and for any
+					// unrecognized word), and style_table[0].bit is the STYLE_NONE
+					// sentinel of -1, which SET_BIT cannot shift by. Skip those slots.
+					for (int i = 0; i < 2; i++)
+					{
+						int style = style_lookup(fread_word(fp));
 
-					bit = style_table[style_lookup(fread_word(fp))].bit;
-					SET_BIT(pMobIndex->styles, bit);
-					bit = style_table[style_lookup(fread_word(fp))].bit;
-					SET_BIT(pMobIndex->styles, bit);
+						if (style != 0)
+							SET_BIT(pMobIndex->styles, style_table[style].bit);
+					}
 				}
 				else if (pMobIndex->Class()->GetIndex() == CLASS_SORCERER)
 				{
