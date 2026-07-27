@@ -2522,7 +2522,7 @@ void do_sleep(CHAR_DATA *ch, char *argument)
 		case POS_RESTING:
 		case POS_SITTING:
 		case POS_STANDING:
-			if (argument[0] == '\0' && ch->on == nullptr)
+			if (argument[0] == '\0' && Deref(ch->on) == nullptr)
 			{
 				send_to_char("You go to sleep.\n\r", ch);
 				act("$n goes to sleep.", ch, nullptr, nullptr, TO_ROOM);

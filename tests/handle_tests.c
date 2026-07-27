@@ -157,6 +157,30 @@ TEST_CASE("assigning nullptr clears a handle", "[handle]")
 }
 
 //
+// The distinction the deleted `operator==(nullptr_t)` protects. Assigning
+// nullptr has to keep working, which means the converting constructor has to
+// exist, which would otherwise make `handle == nullptr` compile and answer a
+// different question than the raw-pointer null check it replaced.
+//
+TEST_CASE("a handle to a freed entity is not null, but derefs to null", "[handle]")
+{
+	SlotMap<Widget> map;
+	Widget widget;
+
+	auto handle = map.Add(&widget);
+	map.Remove(handle);
+
+	// "Was never assigned" and "no longer resolves" are different states, and
+	// only the second one is what a null check on the old raw pointer meant.
+	REQUIRE(!handle.IsNull());
+	REQUIRE(map.Deref(handle) == nullptr);
+
+	// So these two disagree, which is why asking the wrong one is a compile
+	// error rather than a silent wrong answer.
+	REQUIRE(handle.IsNull() != (map.Deref(handle) == nullptr));
+}
+
+//
 // Removing something twice is a silent no-op today (`if (!(p && p->valid))
 // return;` in the free_X functions). Preserve that: the second Remove must not
 // bump the generation again, or it would burn a generation per stray call.

@@ -94,7 +94,7 @@ SCENARIO("Testing a mob dropping an object", "[mprog_drop]")
 
 			THEN("the object leaves the mob and lies in the room")
 			{
-				REQUIRE(obj->carried_by == nullptr);
+				REQUIRE(Deref(obj->carried_by) == nullptr);
 				REQUIRE(obj->in_room == room);
 				REQUIRE(room->contents == obj);
 				REQUIRE(mob->carrying == nullptr);

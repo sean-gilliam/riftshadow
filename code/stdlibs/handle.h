@@ -68,6 +68,19 @@ public:
 
 	bool operator!=(const Handle &other) const { return !(*this == other); }
 
+	// Comparing against nullptr is deliberately a compile error, even though
+	// assigning nullptr is not. Without these the converting constructor above
+	// makes `h == nullptr` compile and quietly mean "was never assigned",
+	// which is not the question a raw-pointer null check used to ask -- that
+	// one meant "is there something there", and the handle's answer to it is
+	// Deref(h) == nullptr. The two differ for exactly the case handles exist
+	// to catch: a reference to an entity that has since been freed.
+	//
+	// Deleting them puts those sites back in front of a human, which is the
+	// same reason there is no operator bool and no operator->.
+	bool operator==(std::nullptr_t) const = delete;
+	bool operator!=(std::nullptr_t) const = delete;
+
 private:
 	friend class SlotMap<T, GenT>;
 

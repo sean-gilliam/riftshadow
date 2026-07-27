@@ -3856,7 +3856,7 @@ void do_clone(CHAR_DATA *ch, char *argument)
 		clone = create_object(obj->pIndexData, 0);
 		clone_object(obj, clone);
 
-		if (obj->carried_by != nullptr)
+		if (Deref(obj->carried_by) != nullptr)
 			obj_to_char(clone, ch);
 		else
 			obj_to_room(clone, ch->in_room);

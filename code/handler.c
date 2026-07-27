@@ -2178,11 +2178,14 @@ void extract_obj(OBJ_DATA *obj)
 	OBJ_DATA *obj_content;
 	OBJ_DATA *obj_next;
 
+	// Asks whether there is a live container to detach from, not merely whether
+	// the field was ever set: a carrier that has already been freed has no
+	// carrying list left to unlink from.
 	if (obj->in_room != nullptr)
 		obj_from_room(obj);
-	else if (obj->carried_by != nullptr)
+	else if (Deref(obj->carried_by) != nullptr)
 		obj_from_char(obj);
-	else if (obj->in_obj != nullptr)
+	else if (Deref(obj->in_obj) != nullptr)
 		obj_from_obj(obj);
 
 	obj->pIndexData->limcount -= 1;
