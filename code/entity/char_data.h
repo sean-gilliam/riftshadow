@@ -51,7 +51,11 @@ public:
 	std::list<AFFECT_DATA> affected;
 	NOTE_DATA *pnote;
 	OBJ_DATA *carrying;
-	OBJ_DATA *on;
+	// The furniture this character is sitting/resting/sleeping on. Non-owning,
+	// and the object can be destroyed independently, so it is a handle rather
+	// than a pointer. Cleared outright when the character or the object leaves
+	// the room -- that is about position, not lifetime.
+	Handle<OBJ_DATA> on;
 	ROOM_INDEX_DATA *in_room;
 	ROOM_INDEX_DATA *was_in_room;
 	AREA_DATA *zone;

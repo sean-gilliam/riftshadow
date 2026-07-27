@@ -2,6 +2,8 @@
 #include "../code/handler.h"
 #include "../code/entity/char_data.h"
 #include "../code/entity/obj_data.h"
+#include "../code/entity/room_index_data.h"
+#include "../code/entity/area_data.h"
 #include "../code/entity/handles.h"
 #include "../code/enums.h"
 #include "../code/db.h"
@@ -841,6 +843,183 @@ SCENARIO("an entity that never came from new_char is safe by default", "[handles
 		{
 			REQUIRE(ch->self.IsNull());
 			REQUIRE(Deref(ch->self) == nullptr);
+		}
+	}
+}
+
+//
+// ch->on -- what it means for the reference to go away.
+//
+// These pin the behavior of the two places that clear it today, because that
+// behavior is the specification against which any change is judged.
+//
+// Worth stating plainly, because it is easy to get backwards: the clear inside
+// obj_from_room is NOT lifetime bookkeeping. Nine of that function's ten
+// callers leave the object entirely alive -- a player picking it up, wind
+// blowing it to the next room, a portal being relocated. Only extract_obj is
+// about death. So the rule it encodes is "the furniture left the room", which
+// is a question about position, not about whether the object still exists.
+//
+// SittingOn is the single point that has to change if the field's type
+// changes; every assertion below is written through it and stays as-is.
+//
+
+namespace
+{
+	OBJ_DATA *SittingOn(CHAR_DATA *ch)
+	{
+		return Deref(ch->on);
+	}
+
+	ROOM_INDEX_DATA *MakeRoomForSitting()
+	{
+		auto room = new room_index_data();
+		room->area = new area_data();	// char_from_room decrements area->nplayer
+
+		return room;
+	}
+
+	void PutCharInRoomForSitting(CHAR_DATA *ch, ROOM_INDEX_DATA *room)
+	{
+		ch->in_room = room;
+		ch->next_in_room = room->people;
+		room->people = ch;
+	}
+
+	void PutObjInRoomForSitting(OBJ_DATA *obj, ROOM_INDEX_DATA *room)
+	{
+		obj->in_room = room;
+		obj->next_content = room->contents;
+		room->contents = obj;
+	}
+}
+
+SCENARIO("a character stops sitting on furniture that leaves the room", "[on]")
+{
+	GIVEN("two characters each sitting on a different object in one room")
+	{
+		auto room = MakeRoomForSitting();
+		OBJ_DATA *chair = new_obj();
+		OBJ_DATA *bench = new_obj();
+		auto sitter = new char_data();
+		auto bystander = new char_data();
+
+		PutObjInRoomForSitting(chair, room);
+		PutObjInRoomForSitting(bench, room);
+		PutCharInRoomForSitting(sitter, room);
+		PutCharInRoomForSitting(bystander, room);
+
+		sitter->on = chair->self;
+		bystander->on = bench->self;
+
+		WHEN("the chair is taken out of the room but not destroyed")
+		{
+			obj_from_room(chair);
+
+			THEN("whoever was on it no longer is")
+			{
+				REQUIRE(SittingOn(sitter) == nullptr);
+			}
+
+			THEN("someone on a different object is left alone")
+			{
+				REQUIRE(SittingOn(bystander) == bench);
+			}
+
+			THEN("the chair itself is still a perfectly live object")
+			{
+				// This is the whole reason the clear above cannot be replaced
+				// by a liveness check: the object did not die, it moved.
+				REQUIRE(chair->valid);
+				REQUIRE(Deref(chair->self) == chair);
+			}
+		}
+	}
+}
+
+SCENARIO("the on-clear reaches only the room the object left", "[on]")
+{
+	GIVEN("a character in another room referring to the object")
+	{
+		auto room = MakeRoomForSitting();
+		auto elsewhere = MakeRoomForSitting();
+		OBJ_DATA *chair = new_obj();
+		auto sitter = new char_data();
+		auto distant = new char_data();
+
+		PutObjInRoomForSitting(chair, room);
+		PutCharInRoomForSitting(sitter, room);
+		PutCharInRoomForSitting(distant, elsewhere);
+
+		sitter->on = chair->self;
+		distant->on = chair->self;
+
+		WHEN("the chair leaves the room")
+		{
+			obj_from_room(chair);
+
+			THEN("only the character in that room is cleared")
+			{
+				// Documents the mechanism's reach rather than a reachable game
+				// state: the walk is over in_room->people, so it is scoped to
+				// one room and is not a global sweep.
+				REQUIRE(SittingOn(sitter) == nullptr);
+				REQUIRE(SittingOn(distant) == chair);
+			}
+		}
+	}
+}
+
+SCENARIO("a character stops sitting on anything when it leaves the room", "[on]")
+{
+	GIVEN("a character sitting on an object")
+	{
+		auto room = MakeRoomForSitting();
+		OBJ_DATA *chair = new_obj();
+		auto sitter = new char_data();
+
+		PutObjInRoomForSitting(chair, room);
+		PutCharInRoomForSitting(sitter, room);
+		sitter->on = chair->self;
+
+		WHEN("the character leaves")
+		{
+			char_from_room(sitter);
+
+			THEN("it is no longer on anything")
+			{
+				REQUIRE(SittingOn(sitter) == nullptr);
+			}
+		}
+	}
+}
+
+SCENARIO("a character is not left pointing at furniture that was destroyed", "[on]")
+{
+	GIVEN("a character sitting on an object")
+	{
+		auto room = MakeRoomForSitting();
+		OBJ_DATA *chair = new_obj();
+		auto sitter = new char_data();
+
+		PutObjInRoomForSitting(chair, room);
+		PutCharInRoomForSitting(sitter, room);
+		sitter->on = chair->self;
+
+		REQUIRE(SittingOn(sitter) == chair);
+
+		WHEN("the object is destroyed without going through obj_from_room")
+		{
+			// obj_from_room clears the reference for anyone in the room, so it
+			// hides this case. The paths that do not run it -- extract_obj's
+			// not-found bail-out, or an object freed while held -- are the ones
+			// that used to leave a pointer into a recycled object behind.
+			free_obj(chair);
+
+			THEN("the reference reads as nothing rather than as freed memory")
+			{
+				REQUIRE(SittingOn(sitter) == nullptr);
+			}
 		}
 	}
 }

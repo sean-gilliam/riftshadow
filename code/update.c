@@ -40,6 +40,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "update.h"
+#include "entity/handles.h"
 #include "weather_enums.h"
 #include "direction.h"
 #include "newmem.h"
@@ -291,7 +292,7 @@ int hit_gain(CHAR_DATA *ch)
 			gain /= 2;
 	}
 
-	if (ch->on != nullptr && ch->on->item_type == ITEM_FURNITURE)
+	if (OBJ_DATA *seatedOn = Deref(ch->on); seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
 		gain = (gain * 7 / 5);
 
 	if (is_affected(ch, gsn_bleeding))
@@ -424,7 +425,7 @@ int mana_gain(CHAR_DATA *ch)
 			gain /= 2;
 	}
 
-	if (ch->on != nullptr && ch->on->item_type == ITEM_FURNITURE)
+	if (OBJ_DATA *seatedOn = Deref(ch->on); seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
 		gain = gain * 7 / 5;
 
 	if (is_affected_by(ch, AFF_POISON))
@@ -500,7 +501,7 @@ int move_gain(CHAR_DATA *ch)
 
 	gain *= ch->in_room->heal_rate / 100;
 
-	if (ch->on != nullptr && ch->on->item_type == ITEM_FURNITURE)
+	if (OBJ_DATA *seatedOn = Deref(ch->on); seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
 		gain = gain * 6 / 5;
 
 	if (is_affected_by(ch, AFF_POISON))

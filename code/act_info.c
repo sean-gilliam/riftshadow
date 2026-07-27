@@ -48,6 +48,7 @@
 
 #include "merc.h"
 #include "act_info.h"
+#include "entity/handles.h"
 #include "rift.h"
 #include "weather_enums.h"
 #include "handler.h"
@@ -476,6 +477,7 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 		strcat(buf, victim->pcdata->title);
 
 	char message[MAX_STRING_LENGTH];
+	OBJ_DATA *seatedOn = Deref(victim->on);	// the furniture, if it is still around
 	switch (victim->position)
 	{
 		case POS_DEAD:
@@ -491,21 +493,21 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			strcat(buf, " is lying here stunned.");
 			break;
 		case POS_SLEEPING:
-			if (victim->on != nullptr)
+			if (seatedOn != nullptr)
 			{
-				if (IS_SET_OLD(victim->on->value[2], SLEEP_AT))
+				if (IS_SET_OLD(seatedOn->value[2], SLEEP_AT))
 				{
-					sprintf(message, " is here, sleeping at %s.", victim->on->short_descr);
+					sprintf(message, " is here, sleeping at %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], SLEEP_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], SLEEP_ON))
 				{
-					sprintf(message, " is here, sleeping on %s.", victim->on->short_descr);
+					sprintf(message, " is here, sleeping on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 				else
 				{
-					sprintf(message, " is here, sleeping in %s.", victim->on->short_descr);
+					sprintf(message, " is here, sleeping in %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 			}
@@ -515,26 +517,26 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			}
 			break;
 		case POS_RESTING:
-			if (victim->on != nullptr)
+			if (seatedOn != nullptr)
 			{
-				if (IS_SET_OLD(victim->on->value[2], REST_AT))
+				if (IS_SET_OLD(seatedOn->value[2], REST_AT))
 				{
-					sprintf(message, " is here, resting at %s.", victim->on->short_descr);
+					sprintf(message, " is here, resting at %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], REST_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], REST_ON))
 				{
-					sprintf(message, " is here, resting on %s.", victim->on->short_descr);
+					sprintf(message, " is here, resting on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], LOUNGE_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], LOUNGE_ON))
 				{
-					sprintf(message, " is here, lounging on %s.", victim->on->short_descr);
+					sprintf(message, " is here, lounging on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 				else
 				{
-					sprintf(message, " is here, resting in %s.", victim->on->short_descr);
+					sprintf(message, " is here, resting in %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 			}
@@ -544,21 +546,21 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			}
 			break;
 		case POS_SITTING:
-			if (victim->on != nullptr)
+			if (seatedOn != nullptr)
 			{
-				if (IS_SET_OLD(victim->on->value[2], SIT_AT))
+				if (IS_SET_OLD(seatedOn->value[2], SIT_AT))
 				{
-					sprintf(message, " is here, sitting at %s.", victim->on->short_descr);
+					sprintf(message, " is here, sitting at %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], SIT_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], SIT_ON))
 				{
-					sprintf(message, " is here, sitting on %s.", victim->on->short_descr);
+					sprintf(message, " is here, sitting on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 				else
 				{
-					sprintf(message, " is here, sitting in %s.", victim->on->short_descr);
+					sprintf(message, " is here, sitting in %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 			}
@@ -568,21 +570,21 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			}
 			break;
 		case POS_STANDING:
-			if (victim->on != nullptr)
+			if (seatedOn != nullptr)
 			{
-				if (IS_SET_OLD(victim->on->value[2], STAND_AT))
+				if (IS_SET_OLD(seatedOn->value[2], STAND_AT))
 				{
-					sprintf(message, " is here, standing at %s.", victim->on->short_descr);
+					sprintf(message, " is here, standing at %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], STAND_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], STAND_ON))
 				{
-					sprintf(message, " is here, standing on %s.", victim->on->short_descr);
+					sprintf(message, " is here, standing on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 				else
 				{
-					sprintf(message, " is here, standing in %s.", victim->on->short_descr);
+					sprintf(message, " is here, standing in %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 			}

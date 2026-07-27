@@ -200,7 +200,7 @@ void get_obj(CHAR_DATA *ch, OBJ_DATA *obj, OBJ_DATA *container, bool pcheck)
 	{
 		for (gch = obj->in_room->people; gch != nullptr; gch = gch->next_in_room)
 		{
-			if (gch->on == obj)
+			if (gch->on == obj->self)
 			{
 				act("$N appears to be using $p.", ch, obj, gch, TO_CHAR);
 				return;
@@ -2814,7 +2814,7 @@ void do_sacrifice(CHAR_DATA *ch, char *argument)
 	{
 		for (gch = obj->in_room->people; gch != nullptr; gch = gch->next_in_room)
 		{
-			if (gch->on == obj)
+			if (gch->on == obj->self)
 			{
 				act("$N appears to be using $p.", ch, obj, gch, TO_CHAR);
 				return;

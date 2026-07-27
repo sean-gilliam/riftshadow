@@ -38,6 +38,7 @@
 #include <math.h>
 #include "merc.h"
 #include "act_move.h"
+#include "entity/handles.h"
 #include "handler.h"
 #include "magic.h"
 #include "recycle.h"
@@ -2125,13 +2126,13 @@ void do_stand(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (ch->on != obj && count_users(obj) >= obj->value[0])
+		if (ch->on != obj->self && count_users(obj) >= obj->value[0])
 		{
 			act_new("There's no room to stand on $p.", ch, obj, nullptr, TO_CHAR, POS_DEAD);
 			return;
 		}
 
-		ch->on = obj;
+		ch->on = obj->self;
 	}
 
 	switch (ch->position)
@@ -2236,7 +2237,7 @@ void do_rest(CHAR_DATA *ch, char *argument)
 	}
 	else
 	{
-		obj = ch->on;
+		obj = Deref(ch->on);
 	}
 
 	if (obj != nullptr)
@@ -2251,13 +2252,13 @@ void do_rest(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (obj != nullptr && ch->on != obj && count_users(obj) >= obj->value[0])
+		if (obj != nullptr && ch->on != obj->self && count_users(obj) >= obj->value[0])
 		{
 			act_new("There's no more room on $p.", ch, obj, nullptr, TO_CHAR, POS_DEAD);
 			return;
 		}
 
-		ch->on = obj;
+		ch->on = obj->self;
 	}
 
 	switch (ch->position)
@@ -2396,7 +2397,7 @@ void do_sit(CHAR_DATA *ch, char *argument)
 	}
 	else
 	{
-		obj = ch->on;
+		obj = Deref(ch->on);
 	}
 
 	if (obj != nullptr)
@@ -2409,13 +2410,13 @@ void do_sit(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (obj != nullptr && ch->on != obj && count_users(obj) >= obj->value[0])
+		if (obj != nullptr && ch->on != obj->self && count_users(obj) >= obj->value[0])
 		{
 			act_new("There's no more room on $p.", ch, obj, nullptr, TO_CHAR, POS_DEAD);
 			return;
 		}
 
-		ch->on = obj;
+		ch->on = obj->self;
 	}
 
 	switch (ch->position)
@@ -2531,7 +2532,7 @@ void do_sleep(CHAR_DATA *ch, char *argument)
 			else /* find an object and sleep on it */
 			{
 				if (argument[0] == '\0')
-					obj = ch->on;
+					obj = Deref(ch->on);
 				else
 					obj = get_obj_list(ch, argument, ch->in_room->contents);
 
@@ -2550,13 +2551,13 @@ void do_sleep(CHAR_DATA *ch, char *argument)
 					return;
 				}
 
-				if (ch->on != obj && count_users(obj) >= obj->value[0])
+				if (ch->on != obj->self && count_users(obj) >= obj->value[0])
 				{
 					act_new("There is no room on $p for you.", ch, obj, nullptr, TO_CHAR, POS_DEAD);
 					return;
 				}
 
-				ch->on = obj;
+				ch->on = obj->self;
 				if (IS_SET_OLD(obj->value[2], SLEEP_AT))
 				{
 					act("You go to sleep at $p.", ch, obj, nullptr, TO_CHAR);

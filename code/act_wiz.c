@@ -1418,7 +1418,10 @@ void do_at(CHAR_DATA *ch, char *argument)
 	char arg[MAX_INPUT_LENGTH];
 	ROOM_INDEX_DATA *location;
 	ROOM_INDEX_DATA *original;
-	OBJ_DATA *on;
+	// Held across interpret() below, which can run any command at all -- including
+	// one that destroys this object. A handle that outlives what it names simply
+	// stops resolving, where the pointer this replaced would have dangled.
+	Handle<OBJ_DATA> on;
 	CHAR_DATA *wch;
 
 	argument = one_argument(argument, arg);

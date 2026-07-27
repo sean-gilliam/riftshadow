@@ -118,7 +118,7 @@ int count_users(OBJ_DATA *obj)
 
 	for (fch = obj->in_room->people; fch != nullptr; fch = fch->next_in_room)
 	{
-		if (fch->on == obj)
+		if (fch->on == obj->self)
 			count++;
 	}
 
@@ -2030,9 +2030,13 @@ void obj_from_room(OBJ_DATA *obj)
 	if (obj->item_type == ITEM_CAMPFIRE)
 		in_room->light = std::max(in_room->light - obj->value[0], 0);
 
+	// This is not a liveness check, and it cannot be replaced by one. Most
+	// callers leave the object entirely alive -- it is being picked up, blown
+	// into the next room, or relocated. What ends is the character's use of it,
+	// because it is no longer here to sit on.
 	for (ch = in_room->people; ch != nullptr; ch = ch->next_in_room)
 	{
-		if (ch->on == obj)
+		if (ch->on == obj->self)
 			ch->on = nullptr;
 	}
 
