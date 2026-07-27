@@ -679,7 +679,6 @@ CHAR_DATA *create_mobile (MOB_INDEX_DATA *pMobIndex);
 void clone_mobile (CHAR_DATA *parent, CHAR_DATA *clone);
 OBJ_DATA *create_object (OBJ_INDEX_DATA *pObjIndex, int level);
 void clone_object (OBJ_DATA *parent, OBJ_DATA *clone);
-void clear_char(CHAR_DATA *ch);
 char *get_extra_descr (const char *name, const std::list<EXTRA_DESCR_DATA> &eds);
 MOB_INDEX_DATA *get_mob_index (int vnum);
 OBJ_INDEX_DATA *get_obj_index(int vnum);

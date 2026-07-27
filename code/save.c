@@ -921,8 +921,6 @@ bool load_char_obj(DESCRIPTOR_DATA *d, char *name)
 	int pos;
 	int i;
 
-	CHAR_DATA *charg = new CHAR_DATA;
-
 	ch = new_char();
 	ch->pcdata = new_pcdata();
 

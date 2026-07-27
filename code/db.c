@@ -2414,46 +2414,6 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 }
 
 /*
- * Clear a new character.
- */
-void clear_char(CHAR_DATA *ch)
-{
-	int i;
-
-	*ch = CHAR_DATA();
-	ch->name = &str_empty[0];
-	ch->short_descr = &str_empty[0];
-	ch->long_descr = &str_empty[0];
-	ch->description = &str_empty[0];
-	ch->prompt = &str_empty[0];
-	ch->logon = current_time;
-	ch->lines = PAGELEN;
-
-	for (i = 0; i < 4; i++)
-	{
-		ch->armor[i] = 0;
-	}
-
-	ch->position = POS_STANDING;
-	ch->hit = 20;
-	ch->max_hit = 20;
-	ch->mana = 100;
-	ch->max_mana = 100;
-	ch->move = 100;
-	ch->max_move = 100;
-	ch->last_fought = nullptr;
-	ch->last_fight_time = 0;
-	ch->last_fight_name = nullptr;
-	ch->on = nullptr;
-	ch->hometown = 0;
-	ch->arms = 2;
-	ch->legs = 2;
-	ch->balance = 0;
-	ch->regen_rate = 0;
-	ch->ghost = 0;
-}
-
-/*
  * Get an extra description from a list.
  */
 char *get_extra_descr(const char *name, const std::list<EXTRA_DESCR_DATA> &eds)

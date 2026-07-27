@@ -23,7 +23,6 @@ struct obj_data
 	OBJ_DATA *next_content;
 	OBJ_DATA *contains;
 	OBJ_DATA *in_obj;
-	OBJ_DATA *on;
 	CHAR_DATA *carried_by;
 	std::list<EXTRA_DESCR_DATA> extra_descr;
 	std::list<OBJ_APPLY_DATA> apply;
