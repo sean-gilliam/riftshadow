@@ -1800,7 +1800,7 @@ bool check_stealth(CHAR_DATA *ch, CHAR_DATA *mob)
 	if (!is_affected_by(ch, AFF_SNEAK))
 		return false;
 
-	if (mob->last_fought == ch)
+	if (Deref(mob->last_fought) == ch)
 		return false;
 
 	skill = get_skill(ch, gsn_stealth);

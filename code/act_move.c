@@ -1028,11 +1028,11 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 				CALL_IEVENT(obj, TRAP_IGREET, ch, obj);
 		}
 
-		if (is_npc(fch) && fch->last_fought == ch && number_percent() > 60)
+		if (is_npc(fch) && Deref(fch->last_fought) == ch && number_percent() > 60)
 		{
 			track_attack(fch, ch);
 		}
-		else if (is_npc(fch) && fch->last_fought == ch)
+		else if (is_npc(fch) && Deref(fch->last_fought) == ch)
 		{
 			RS.Queue.AddToQueue((number_percent() > 25) ? 1 : 2, "move_char", "track_attack", track_attack, fch, ch);
 		}

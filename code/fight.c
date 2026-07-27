@@ -139,7 +139,7 @@ void violence_update(void)
 			&& !IS_SET(ch->act, ACT_IS_HEALER)
 			&& !IS_SET(ch->act, ACT_BANKER))
 		{
-			ch->last_fought = victim;
+			ch->last_fought = victim->self;
 			ch->tracktimer = 144;
 		}
 
@@ -1685,7 +1685,7 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 	if (Deref(victim->fighting) == ch || victim == ch)
 		return false;
 
-	if (is_npc(ch) && ch->last_fought == victim)
+	if (is_npc(ch) && Deref(ch->last_fought) == victim)
 		return false;
 
 	if ((victim->ghost > 0) || is_affected(victim, gsn_ultradiffusion))
@@ -6535,7 +6535,7 @@ void do_cleave(CHAR_DATA *ch, char *argument)
 	act("$n makes an attempt to cleave $N in half.", ch, 0, victim, TO_NOTVICT);
 
 	if (is_npc(victim))
-		victim->last_fought = ch;
+		victim->last_fought = ch->self;
 
 	if (number_percent() > chance)
 	{

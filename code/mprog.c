@@ -1655,7 +1655,7 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 
 void beat_prog_barbas(CHAR_DATA *mob)
 {
-	CHAR_DATA *ch = mob->last_fought;
+	CHAR_DATA *ch = Deref(mob->last_fought);
 	ROOM_INDEX_DATA *old_room = mob->in_room;
 	char buf[MSL];
 
@@ -2601,7 +2601,7 @@ void speech_prog_notescribe(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 
 void beat_prog_law_track(CHAR_DATA *mob)
 {
-	CHAR_DATA *ch = mob->last_fought;
+	CHAR_DATA *ch = Deref(mob->last_fought);
 	char buf[MSL];
 	int min = 0, max = 0;
 
@@ -2653,12 +2653,13 @@ void beat_prog_law_track(CHAR_DATA *mob)
 
 	if (ch == nullptr)
 	{
-		mob->last_fought = check_sector(min, max);
+		CHAR_DATA *found = check_sector(min, max);
 
-		if (mob->last_fought != nullptr)
+		if (found != nullptr)
 		{
+			mob->last_fought = found->self;
 			set_aggressor_hunt(mob);
-			ch = mob->last_fought;
+			ch = found;
 		}
 		else
 		{
@@ -2706,7 +2707,7 @@ void beat_prog_law_track(CHAR_DATA *mob)
 			sprintf(buf, "%s, now you die!", ch->name);
 
 		do_yell(mob, buf);
-		multi_hit(mob, mob->last_fought, TYPE_UNDEFINED);
+		multi_hit(mob, Deref(mob->last_fought), TYPE_UNDEFINED);
 		return;
 	}
 
@@ -2763,13 +2764,14 @@ CHAR_DATA *check_sector(int min, int max)
 void set_aggressor_hunt(CHAR_DATA *mob)
 {
 	char store[MSL];
+	CHAR_DATA *quarry = Deref(mob->last_fought);
 
-	if (!can_see(mob, mob->last_fought) || mob->last_fought->ghost > 0 || is_affected(mob, gsn_gag))
+	if (!can_see(mob, quarry) || quarry->ghost > 0 || is_affected(mob, gsn_gag))
 		return;
 
-	if (mob->in_room != mob->last_fought->in_room)
+	if (mob->in_room != quarry->in_room)
 	{
-		sprintf(store, "Halt, %s, you murderous scum!  You will bleed from there to the gates!", mob->last_fought->name);
+		sprintf(store, "Halt, %s, you murderous scum!  You will bleed from there to the gates!", quarry->name);
 		do_yell(mob, store);
 	}
 

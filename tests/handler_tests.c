@@ -4,6 +4,8 @@
 #include "../code/entity/obj_data.h"
 #include "../code/entity/room_index_data.h"
 #include "../code/entity/area_data.h"
+#include "../code/entity/mob_index_data.h"
+#include "../code/macros.h"
 #include "../code/entity/handles.h"
 #include "../code/enums.h"
 #include "../code/db.h"
@@ -1021,5 +1023,167 @@ SCENARIO("a character is not left pointing at furniture that was destroyed", "[o
 				REQUIRE(SittingOn(sitter) == nullptr);
 			}
 		}
+	}
+}
+
+//
+// Deref(ch->last_fought) -- the mob hunt target, and what clears it.
+//
+// Unlike ch->on and ch->fighting, this field's scrub really is lifetime
+// machinery. The clear that matters lives inside extract_char itself, under a
+// "remove all tracking" comment, and extract_char is only ever reached when a
+// character is leaving the world for good. Every other place that clears
+// last_fought is a mob deciding to give up the hunt -- losing the trail,
+// a peace command, the quarry fleeing -- and those all leave both characters
+// alive.
+//
+// So this is the first field whose scrub loop clause can actually go. These
+// tests pin the behavior it provides, so that the handle can be shown to
+// provide the same thing.
+//
+// Tracking() is the single point that has to change if the field's type
+// changes; every assertion below is written through it and stays as-is.
+//
+
+namespace
+{
+	CHAR_DATA *Tracking(CHAR_DATA *ch)
+	{
+		return Deref(ch->last_fought);
+	}
+
+	/// extract_char takes the NPC path -- it decrements pIndexData->count and
+	/// skips the altar-room redirect that only applies to players -- so these
+	/// are mobs, with the index data that path requires.
+	CHAR_DATA *MakeTracker(ROOM_INDEX_DATA *room)
+	{
+		CHAR_DATA *mob = new_char();
+		mob->pIndexData = new mob_index_data();
+		SET_BIT(mob->act, ACT_IS_NPC);
+		mob->hit = 100;
+
+		mob->in_room = room;
+		mob->next_in_room = room->people;
+		room->people = mob;
+
+		mob->next = char_list;
+		char_list = mob;
+
+		return mob;
+	}
+
+	ROOM_INDEX_DATA *MakeTrackingRoom()
+	{
+		auto room = new room_index_data();
+		room->area = new area_data();
+
+		return room;
+	}
+
+	void ClearTrackers()
+	{
+		CHAR_DATA *next;
+
+		for (CHAR_DATA *ch = char_list; ch != nullptr; ch = next)
+		{
+			next = ch->next;
+			free_char(ch);
+		}
+
+		char_list = nullptr;
+	}
+}
+
+SCENARIO("extract_char clears every tracker's reference to the extracted character", "[last_fought]")
+{
+	GIVEN("two mobs hunting a third and one hunting someone else")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *quarry = MakeTracker(room);
+		CHAR_DATA *hunter = MakeTracker(room);
+		CHAR_DATA *secondHunter = MakeTracker(room);
+		CHAR_DATA *otherQuarry = MakeTracker(room);
+		CHAR_DATA *unrelated = MakeTracker(room);
+
+		hunter->last_fought = quarry->self;
+		secondHunter->last_fought = quarry->self;
+		unrelated->last_fought = otherQuarry->self;
+
+		WHEN("the quarry is extracted from the world")
+		{
+			extract_char(quarry, true);
+
+			THEN("nobody is left hunting it")
+			{
+				REQUIRE(Tracking(hunter) == nullptr);
+				REQUIRE(Tracking(secondHunter) == nullptr);
+			}
+
+			THEN("a mob hunting somebody else is left alone")
+			{
+				REQUIRE(Tracking(unrelated) == otherQuarry);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a mob that gives up the hunt does not disturb the quarry", "[last_fought]")
+{
+	GIVEN("a mob hunting another")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *quarry = MakeTracker(room);
+		CHAR_DATA *hunter = MakeTracker(room);
+
+		hunter->last_fought = quarry->self;
+
+		WHEN("the hunter loses interest rather than the quarry dying")
+		{
+			// The other half of the field's contract, and the reason the
+			// clears outside extract_char have to stay: this one says "stop
+			// hunting", not "the quarry is gone".
+			hunter->last_fought = nullptr;
+
+			THEN("the hunter is no longer tracking but the quarry is untouched")
+			{
+				REQUIRE(Tracking(hunter) == nullptr);
+				REQUIRE(quarry->valid);
+				REQUIRE(Deref(quarry->self) == quarry);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a hunter's reference to a freed quarry reads as nothing", "[last_fought]")
+{
+	GIVEN("a mob hunting another")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *quarry = MakeTracker(room);
+		CHAR_DATA *hunter = MakeTracker(room);
+
+		hunter->last_fought = quarry->self;
+
+		REQUIRE(Tracking(hunter) == quarry);
+
+		WHEN("the quarry is freed without extract_char's sweep running")
+		{
+			// extract_char used to clear this reference by walking char_list.
+			// The paths that never reach that walk -- its own not-found
+			// bail-out, say -- are the ones that used to leave a pointer into
+			// a character struct the free list can hand straight back out.
+			free_char(quarry);
+
+			THEN("the reference reads as nothing rather than as recycled memory")
+			{
+				REQUIRE(Tracking(hunter) == nullptr);
+			}
+		}
+
+		ClearTrackers();
 	}
 }

@@ -2247,12 +2247,11 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 			is_npc(ch) ? "Vnum is " : "Name is ",
 			is_npc(ch) ? vn : ch->name);
 	}
-	/* remove all tracking */
+	// Clears the inbound references that are still raw pointers and so cannot
+	// expire on their own. Handle-typed references to this character need no
+	// pass here: they stop resolving when free_char retires its slot.
 	for (tch = char_list; tch != nullptr; tch = tch->next)
 	{
-		if (tch->last_fought == ch)
-			tch->last_fought = nullptr;
-
 		if (!is_npc(ch) && !is_npc(tch) && tch->last_fight_name == ch->true_name)
 			tch->last_fight_name = nullptr;
 

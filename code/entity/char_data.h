@@ -43,7 +43,11 @@ public:
 	Handle<CHAR_DATA> fighting;
 	CHAR_DATA *reply;
 	CHAR_DATA *pet;
-	CHAR_DATA *last_fought;
+	// The character this mob is hunting. Non-owning, and the quarry can be
+	// extracted independently, so it is a handle rather than a pointer. The
+	// clears outside extract_char are a mob giving up the hunt -- losing the
+	// trail, a peace command -- which is about intent, not lifetime.
+	Handle<CHAR_DATA> last_fought;
 	int tracktimer;
 	time_t last_fight_time;
 	char * last_fight_name;

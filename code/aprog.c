@@ -373,7 +373,7 @@ void pulse_prog_ruins_shark(AREA_DATA *area)
 
 		if (shark->pIndexData->vnum == 20111)
 		{
-			if (!Deref(shark->fighting) && !shark->last_fought && number_percent() > 50 && shark->in_room)
+			if (!Deref(shark->fighting) && !Deref(shark->last_fought) && number_percent() > 50 && shark->in_room)
 				extract_char(shark, true);
 			else
 				count++;

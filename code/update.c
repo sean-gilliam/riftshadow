@@ -1757,7 +1757,7 @@ void track_update(void)
 		if (!is_npc(tch))
 			continue;
 
-		if (!tch->last_fought)
+		if (!Deref(tch->last_fought))
 		{
 			if (tch->position > POS_RESTING
 				&& number_range(1, 10) == 1
@@ -1776,9 +1776,19 @@ void track_update(void)
 		if (Deref(tch->fighting) || is_affected_by(tch, AFF_NOSHOW))
 			continue;
 
-		if (tch->in_room == tch->last_fought->in_room)
+		// Every Deref below re-reads the handle on purpose. Do NOT collapse
+		// them into one local: track_attack calls multi_hit and can kill the
+		// quarry outright, and smart_track/track_char move this mob into
+		// another room, which can trigger progs that do the same. Any of those
+		// can end the hunt partway through this block.
+		//
+		// A hoisted CHAR_DATA * would keep pointing at a character struct that
+		// has already gone back on the free list -- the exact failure this
+		// field stopped being a raw pointer to avoid. Re-reading costs an
+		// array index and an integer compare, and yields null instead.
+		if (tch->in_room == Deref(tch->last_fought)->in_room)
 		{
-			track_attack(tch, tch->last_fought);
+			track_attack(tch, Deref(tch->last_fought));
 			continue;
 		}
 
@@ -1786,11 +1796,11 @@ void track_update(void)
 			continue;
 
 		if (IS_SET(tch->act, ACT_SMARTTRACK))
-			smart_track(tch->last_fought, tch);
+			smart_track(Deref(tch->last_fought), tch);
 		else
-			track_char(tch->last_fought, tch);
+			track_char(Deref(tch->last_fought), tch);
 
-		track_attack(tch, tch->last_fought);
+		track_attack(tch, Deref(tch->last_fought));
 
 		if (!Deref(tch->fighting))
 			tch->tracktimer--;
@@ -1860,6 +1870,11 @@ void aggr_update(void)
 		if (is_affected_by(wch, AFF_SLOW))
 			timer--;
 
+		// Safe to read once and reuse, unlike the tracking loop above: nothing
+		// between this read and its last use can end the fight.
+		// update_pc_last_fight only assigns fields, and multi_hit is the final
+		// use rather than an intermediate one. The reads further down are
+		// after multi_hit, so those go back through the handle.
 		opponent = Deref(wch->fighting);
 
 		if (opponent &&

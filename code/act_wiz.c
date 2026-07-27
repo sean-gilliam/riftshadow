@@ -2640,10 +2640,12 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		sprintf(buf, "Short:  %-30s  ", victim->short_descr);
 		send_to_char(buf, ch);
 
-		if (victim->last_fought != nullptr)
+		CHAR_DATA *quarry = Deref(victim->last_fought);
+
+		if (quarry != nullptr)
 		{
 			sprintf(buf, "Tracking: Player %s.  Remaining Timer: %d\n\r",
-				victim->last_fought->name,
+				quarry->name,
 				victim->tracktimer);
 			send_to_char(buf, ch);
 		}
