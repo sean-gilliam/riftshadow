@@ -7,6 +7,7 @@
 #include <time.h>
 #include <ctype.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "misc.h"
 #include "magic.h"
 #include "comm.h"
@@ -613,7 +614,7 @@ void do_chess(CHAR_DATA *ch, char *argument)
 	argument = one_argument(argument, arg4);
 	arg4[2] = '\0';
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You really have more important things to worry about right now.\n\r", ch);
 		return;

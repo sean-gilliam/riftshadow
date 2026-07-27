@@ -31,6 +31,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "mprog.h"
 #include "characterClasses/ap.h"
 #include "note.h"
@@ -524,7 +525,7 @@ void pulse_prog_arangird_patrol(CHAR_DATA *mob)
 	OBJ_DATA *robes;
 	int dir_next = -1;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (!mob->in_room)
@@ -630,7 +631,7 @@ void greet_prog_ruins_spirit(CHAR_DATA *mob, CHAR_DATA *ch)
 {
 	char buf[MSL];
 
-	if (mob->fighting || is_immortal(ch))
+	if (Deref(mob->fighting) || is_immortal(ch))
 		return;
 
 	if (check_stealth(ch, mob))
@@ -823,7 +824,7 @@ void pulse_prog_formian_queen(CHAR_DATA *mob)
 	if (!mob->in_room)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (is_affected(mob, gsn_timer))
@@ -920,7 +921,7 @@ void pulse_prog_demon(CHAR_DATA *mob)
 	if (number_percent() > 50)
 		return;
 
-	if (elemental->fighting)
+	if (Deref(elemental->fighting))
 		return;
 
 	if (mob->position != POS_STANDING)
@@ -952,7 +953,7 @@ bool aggress_prog_arangird_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 		act("An invisible barrier flares around $n, protecting $m from harm.", mob, 0, attacker, TO_VICT);
 		act("An invisible barrier flares around $n as $N approaches.", mob, 0, attacker, TO_NOTVICT);
 
-		if (attacker->fighting == mob)
+		if (Deref(attacker->fighting) == mob)
 			stop_fighting(attacker, mob);
 
 		return true;
@@ -1026,7 +1027,7 @@ void pulse_prog_ilopheth_piranha(CHAR_DATA *mob)
 	if ((room = mob->in_room) == nullptr)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (mob->position <= POS_RESTING)
@@ -1081,7 +1082,7 @@ void pulse_prog_ilopheth_piranha(CHAR_DATA *mob)
 			if (adjmob->pIndexData->vnum != 9011)
 				continue;
 
-			if (adjmob->fighting)
+			if (Deref(adjmob->fighting))
 				continue;
 
 			if (number_percent() > 50)
@@ -1103,7 +1104,7 @@ void pulse_prog_ilopheth_weatherbeaten(CHAR_DATA *mob)
 	if (!mob->in_room || mob->pIndexData->vnum != 9010)
 		return;
 
-	if (mob->fighting || mob->position < POS_RESTING)
+	if (Deref(mob->fighting) || mob->position < POS_RESTING)
 		return;
 
 	if (sun == SolarPosition::Sunset && mob->in_room->vnum == 9121)
@@ -1124,7 +1125,7 @@ void pulse_prog_alstea_ehrlouge(CHAR_DATA *mob)
 {
 	ROOM_INDEX_DATA *study = get_room_index(105);
 
-	if (mob->fighting || mob->position > POS_RESTING)
+	if (Deref(mob->fighting) || mob->position > POS_RESTING)
 		return;
 
 	if (mob->in_room->vnum != 105)
@@ -1480,8 +1481,8 @@ void pulse_prog_shopkeeper(CHAR_DATA *mob)
 
 		act("$t tosses $n out of $s shop.", vch, mob->short_descr, 0, TO_ROOM);
 
-		if (mob->fighting)
-			stop_fighting(mob, mob->fighting);
+		if (Deref(mob->fighting))
+			stop_fighting(mob, Deref(mob->fighting));
 
 		do_look(vch, "auto");
 	}
@@ -1661,7 +1662,7 @@ void beat_prog_barbas(CHAR_DATA *mob)
 	if (!ch)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (ch->ghost > 0)
@@ -2270,7 +2271,7 @@ void fight_prog_geulgon(CHAR_DATA *mob, CHAR_DATA *victim)
 	CHAR_DATA *vch;
 	CHAR_DATA *vch_next;
 	CHAR_DATA *ch = mob->master;
-	if (mob->fighting == nullptr)
+	if (Deref(mob->fighting) == nullptr)
 		return;
 
 	if (!victim)
@@ -2300,7 +2301,7 @@ void fight_prog_geulgon(CHAR_DATA *mob, CHAR_DATA *victim)
 				if (ch->cabal > 0 && ch->cabal == vch->cabal)
 					continue;
 
-				if (is_safe(ch, vch) && vch->fighting != nullptr && vch->fighting != ch)
+				if (is_safe(ch, vch) && Deref(vch->fighting) != nullptr && Deref(vch->fighting) != ch)
 					continue;
 
 				spell_iceball(skill_lookup("iceball"), mob->level, mob, vch, TAR_IGNORE);
@@ -2419,7 +2420,7 @@ void fight_prog_gking(CHAR_DATA *mob, CHAR_DATA *victim)
 
 void pulse_prog_nocturnal_mob(CHAR_DATA *mob)
 {
-	if ((sun == SolarPosition::Sunrise || sun == SolarPosition::Daylight) && number_percent() < 30 && mob->fighting == nullptr)
+	if ((sun == SolarPosition::Sunrise || sun == SolarPosition::Daylight) && number_percent() < 30 && Deref(mob->fighting) == nullptr)
 	{
 		extract_char(mob, true);
 	}
@@ -2427,7 +2428,7 @@ void pulse_prog_nocturnal_mob(CHAR_DATA *mob)
 
 void pulse_prog_diurnal_mob(CHAR_DATA *mob)
 {
-	if (sun == SolarPosition::Dark && number_percent() < 30 && mob->fighting == nullptr)
+	if (sun == SolarPosition::Dark && number_percent() < 30 && Deref(mob->fighting) == nullptr)
 	{
 		extract_char(mob, true);
 	}
@@ -2677,7 +2678,7 @@ void beat_prog_law_track(CHAR_DATA *mob)
 		return;
 	}
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (ch->ghost > 0)
@@ -3247,7 +3248,7 @@ void pulse_prog_area_echo_ward(CHAR_DATA *mob)
 
 void pulse_prog_shade(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	int sn;
 	char *spell = nullptr;
 	if (!victim || number_percent() > 13)
@@ -3274,7 +3275,7 @@ void pulse_prog_shade(CHAR_DATA *mob)
 
 void pulse_prog_banshee(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	int sn, dam;
 	char *spell = nullptr;
 
@@ -3312,7 +3313,7 @@ void pulse_prog_banshee(CHAR_DATA *mob)
 
 void pulse_prog_phantasm(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	int sn = 0;
 	char *spell = nullptr;
 
@@ -3355,7 +3356,7 @@ void pulse_prog_phantasm(CHAR_DATA *mob)
 
 void pulse_prog_ravghoul(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	AFFECT_DATA af;
 
 	if (victim == nullptr || victim->in_room != mob->in_room || number_percent() > 10)
@@ -3416,7 +3417,7 @@ void pulse_prog_ravghoul(CHAR_DATA *mob)
 
 void pulse_prog_behemoth(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 
 	if (victim == nullptr || victim->in_room != mob->in_room || number_percent() > 15)
 		return;
@@ -3438,7 +3439,7 @@ void pulse_prog_behemoth(CHAR_DATA *mob)
 
 void pulse_prog_glass(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	AFFECT_DATA af, caf;
 
 	if (victim
@@ -3493,7 +3494,7 @@ void pulse_prog_night_creeps(CHAR_DATA *mob)
 
 	if ((sun == SolarPosition::Sunrise || sun == SolarPosition::Daylight) && !is_affected_by(mob, AFF_NOSHOW))
 	{
-		if (mob->fighting)
+		if (Deref(mob->fighting))
 			stop_fighting(mob, true);
 
 		act("As the first rays of the sun emerge, $n scuttles away with sickening speed.", mob, 0, 0, TO_ROOM);
@@ -3518,35 +3519,43 @@ void pulse_prog_night_creeps(CHAR_DATA *mob)
 
 		return;
 	}
-	else if (mob->fighting && mob->pIndexData->vnum == 3001)
+	else if (Deref(mob->fighting) && mob->pIndexData->vnum == 3001)
 	{
 		AFFECT_DATA af;
+		CHAR_DATA *target;
 
 		if (number_percent() < 91)
 			return;
 
-		act("With a vicious clacking noise, $n sinks its razor-sharp pincers into $N!", mob, 0, mob->fighting, TO_NOTVICT);
-		act("With a vicious clacking noise, $n sinks its razor-sharp pincers into you!", mob, 0, mob->fighting, TO_VICT);
-		damage_new(mob, mob->fighting, dice(mob->fighting->level / 3, 3), TYPE_UNDEFINED, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "pincering claws$");
+		target = Deref(mob->fighting);
+
+		act("With a vicious clacking noise, $n sinks its razor-sharp pincers into $N!", mob, 0, target, TO_NOTVICT);
+		act("With a vicious clacking noise, $n sinks its razor-sharp pincers into you!", mob, 0, target, TO_VICT);
+		damage_new(mob, target, dice(target->level / 3, 3), TYPE_UNDEFINED, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "pincering claws$");
+
+		// Re-read rather than reusing the local above: a lethal damage_new
+		// ends the fight, so the target from before the hit may no longer be
+		// the one this mob is fighting -- or there may be none at all.
+		target = Deref(mob->fighting);
 
 		init_affect(&af);
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_MALADY;
-		af.level = (short)(mob->fighting->level / 2.5);
-		af.duration = mob->fighting->level / 10;
+		af.level = (short)(target->level / 2.5);
+		af.duration = target->level / 10;
 
 		if (number_range(1, 2) == 1)
 			af.location = APPLY_STR;
 		else
 			af.location = APPLY_DEX;
 
-		af.modifier = 0 - mob->fighting->level / 11;
+		af.modifier = 0 - target->level / 11;
 		af.type = af.location == APPLY_STR ? gsn_abite : gsn_lbite;
 
-		if (!is_affected(mob->fighting, gsn_lbite) && !is_affected(mob->fighting, gsn_abite))
+		if (!is_affected(target, gsn_lbite) && !is_affected(target, gsn_abite))
 			af.tick_fun = bleeding_tick;
 
-		affect_to_char(mob->fighting, &af);
+		affect_to_char(target, &af);
 	}
 }
 
@@ -3583,7 +3592,7 @@ void greet_prog_face_sucker(CHAR_DATA *mob, CHAR_DATA *ch)
 	char buf[MSL];
 	AFFECT_DATA af;
 
-	if (mob->fighting
+	if (Deref(mob->fighting)
 		|| is_npc(ch)
 		|| mob == ch
 		|| mob->hunting == ch

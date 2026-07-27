@@ -584,15 +584,15 @@ bool iprog_unset(OBJ_INDEX_DATA *obj, const char *progtype, const char *name)
 /* ITEM FUNCTIONS */
 void fight_prog_drow_talisman(OBJ_DATA *obj, CHAR_DATA *ch)
 {
-	if (!is_worn(obj) || number_percent() > 7 || !ch->fighting)
+	if (!is_worn(obj) || number_percent() > 7 || !Deref(ch->fighting))
 		return;
 
 	act("$p pulses and glows a sickly shade of green!", ch, obj, 0, TO_ALL);
 
 	if (number_percent() > 50)
-		obj_cast_spell(skill_lookup("frost breath"), ch->level, ch, ch->fighting, obj);
+		obj_cast_spell(skill_lookup("frost breath"), ch->level, ch, Deref(ch->fighting), obj);
 	else
-		obj_cast_spell(skill_lookup("acid blast"), 60, ch, ch->fighting, obj);
+		obj_cast_spell(skill_lookup("acid blast"), 60, ch, Deref(ch->fighting), obj);
 }
 
 void fight_prog_devils_eye(OBJ_DATA *obj, CHAR_DATA *ch)
@@ -602,9 +602,9 @@ void fight_prog_devils_eye(OBJ_DATA *obj, CHAR_DATA *ch)
 
 	if (number_percent() < 5)
 	{
-		act("The Devil's Eye suddenly pivots and stares directly into $n's face!", ch, 0, ch->fighting, TO_NOTVICT);
-		act("The Devil's Eye suddenly pivots and stares directly into your face!", ch, 0, ch->fighting, TO_VICT);
-		damage_new(ch, ch->fighting, dice(12, 12), TYPE_UNDEFINED, DAM_SLASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "heartquake");
+		act("The Devil's Eye suddenly pivots and stares directly into $n's face!", ch, 0, Deref(ch->fighting), TO_NOTVICT);
+		act("The Devil's Eye suddenly pivots and stares directly into your face!", ch, 0, Deref(ch->fighting), TO_VICT);
+		damage_new(ch, Deref(ch->fighting), dice(12, 12), TYPE_UNDEFINED, DAM_SLASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "heartquake");
 	}
 }
 
@@ -619,10 +619,10 @@ void fight_prog_skean(OBJ_DATA *obj, CHAR_DATA *ch)
 	if (number_percent() < 6)
 	{
 		percent = number_percent();
-		if (ch->fighting->Class()->ctype == CLASS_COMMUNER && !is_affected(ch->fighting, gsn_severed))
+		if (Deref(ch->fighting)->Class()->ctype == CLASS_COMMUNER && !is_affected(Deref(ch->fighting), gsn_severed))
 		{
-			act("An enchanted obsidian skean blazes through the air, leaving a trail of fire!", ch, 0, ch->fighting, TO_ROOM);
-			act("Your vital ties to the gods' empowerment have been severed!", ch, 0, ch->fighting, TO_VICT);
+			act("An enchanted obsidian skean blazes through the air, leaving a trail of fire!", ch, 0, Deref(ch->fighting), TO_ROOM);
+			act("Your vital ties to the gods' empowerment have been severed!", ch, 0, Deref(ch->fighting), TO_VICT);
 
 			init_affect(&af);
 			af.where = TO_AFFECTS;
@@ -631,15 +631,15 @@ void fight_prog_skean(OBJ_DATA *obj, CHAR_DATA *ch)
 			af.level = ch->level;
 			af.modifier = 10 + dice(1, 8);
 			af.duration = dice(1, 2);
-			new_affect_to_char(ch->fighting, &af);
+			new_affect_to_char(Deref(ch->fighting), &af);
 
 			return;
 		}
 
 		if (!IS_SET(ch->affected_by, AFF_BLIND))
 		{
-			act("An enchanted obsidian skean darts toward your eyes, gouging you painfully!", ch, 0, ch->fighting, TO_VICT);
-			act("An enchanted obsidian skean darts toward $N's eyes, gouging $M painfully!", ch, 0, ch->fighting, TO_NOTVICT);
+			act("An enchanted obsidian skean darts toward your eyes, gouging you painfully!", ch, 0, Deref(ch->fighting), TO_VICT);
+			act("An enchanted obsidian skean darts toward $N's eyes, gouging $M painfully!", ch, 0, Deref(ch->fighting), TO_NOTVICT);
 
 			init_affect(&af);
 			af.where = TO_AFFECTS;
@@ -649,15 +649,15 @@ void fight_prog_skean(OBJ_DATA *obj, CHAR_DATA *ch)
 
 			SET_BIT(af.bitvector, AFF_BLIND);
 			af.duration = dice(1, 4);
-			new_affect_to_char(ch->fighting, &af);
+			new_affect_to_char(Deref(ch->fighting), &af);
 
 			return;
 		}
 
-		if (is_good(ch->fighting))
+		if (is_good(Deref(ch->fighting)))
 		{
-			act("You swoon for a moment, and the world goes slightly hazy...", ch->fighting, 0, 0, TO_CHAR);
-			WAIT_STATE(ch->fighting, PULSE_VIOLENCE * 2);
+			act("You swoon for a moment, and the world goes slightly hazy...", Deref(ch->fighting), 0, 0, TO_CHAR);
+			WAIT_STATE(Deref(ch->fighting), PULSE_VIOLENCE * 2);
 			return;
 		}
 	}
@@ -675,7 +675,7 @@ void fight_prog_cankerworm(OBJ_DATA *obj, CHAR_DATA *ch)
 		dam = dice((ch->level), 3);
 		act("The Cankerworm leaps from your hands momentarily!", ch, 0, 0, TO_CHAR);
 		act("The Cankerworm seems to leap from $n's hands momentarily!", ch, 0, 0, TO_ROOM);
-		damage_new(ch, ch->fighting, dam, TYPE_UNDEFINED, DAM_SLASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "burrowing axe");
+		damage_new(ch, Deref(ch->fighting), dam, TYPE_UNDEFINED, DAM_SLASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "burrowing axe");
 	}
 }
 
@@ -700,7 +700,7 @@ void fight_prog_axe_trelaran(OBJ_DATA *obj, CHAR_DATA *ch)
 		if (number_percent() < 6 && (crown->pIndexData->vnum == 21825))
 		{
 			act("$p suddenly shifts to the likeness of a gaping dragon head, as it spits out a blast of acid!", ch, obj, 0, TO_ALL);
-			obj_cast_spell(skill_lookup("acid blast"), ch->level, ch, ch->fighting, obj);
+			obj_cast_spell(skill_lookup("acid blast"), ch->level, ch, Deref(ch->fighting), obj);
 		}
 	}
 }
@@ -947,12 +947,12 @@ void invoke_prog_tattoo_zethus(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 	act("$n concentrates intently for a moment.", ch, 0, 0, TO_ROOM);
 	obj->value[0] -= 1;
 
-	if (!saves_spell(ch->level + dice(1, 5), ch->fighting, DAM_NEGATIVE))
+	if (!saves_spell(ch->level + dice(1, 5), Deref(ch->fighting), DAM_NEGATIVE))
 	{
-		act("A flash of darkness arcs between $n and $N, leaving $N looking hopeless!", ch, 0, ch->fighting, TO_NOTVICT);
-		act("A flash of darkness arcs between you and $N as you sever $N's link with $S god.", ch, 0, ch->fighting, TO_CHAR);
-		act("Negative energy crackles in the air around you, temporarily severing your link with your god!", ch, 0, ch->fighting, TO_VICT);
-		damage_new(ch, ch->fighting, ch->level + 15, TYPE_UNDEFINED, DAM_NEGATIVE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "energy wave");
+		act("A flash of darkness arcs between $n and $N, leaving $N looking hopeless!", ch, 0, Deref(ch->fighting), TO_NOTVICT);
+		act("A flash of darkness arcs between you and $N as you sever $N's link with $S god.", ch, 0, Deref(ch->fighting), TO_CHAR);
+		act("Negative energy crackles in the air around you, temporarily severing your link with your god!", ch, 0, Deref(ch->fighting), TO_VICT);
+		damage_new(ch, Deref(ch->fighting), ch->level + 15, TYPE_UNDEFINED, DAM_NEGATIVE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "energy wave");
 		damage_new(ch, ch, ch->level - 15, TYPE_UNDEFINED, DAM_INTERNAL, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "exertion");
 
 		init_affect(&af);
@@ -962,7 +962,7 @@ void invoke_prog_tattoo_zethus(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 		af.aftype = AFT_POWER;
 		af.location = APPLY_WIS;
 		af.modifier = -(ch->level / 5);
-		new_affect_to_char(ch->fighting, &af);
+		new_affect_to_char(Deref(ch->fighting), &af);
 	}
 
 	ch->mana = ch->mana - 50;
@@ -1075,7 +1075,7 @@ void speech_prog_ice_dragon_statue(OBJ_DATA *obj, CHAR_DATA *ch, char *speech)
 
 void fight_prog_scales(OBJ_DATA *obj, CHAR_DATA *ch)
 {
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 
 	switch (obj->value[2])
 	{
@@ -1245,7 +1245,7 @@ void greet_prog_corpse_explode(OBJ_DATA *obj, CHAR_DATA *ch)
 
 void fight_prog_horde_bull(OBJ_DATA *obj, CHAR_DATA *ch)
 {
-	if (!is_affected(ch, gsn_rage) || !ch->fighting || number_percent() > (.1 * get_skill(ch, gsn_rage)))
+	if (!is_affected(ch, gsn_rage) || !Deref(ch->fighting) || number_percent() > (.1 * get_skill(ch, gsn_rage)))
 		return;
 
 	if (ch->hit >= ch->max_hit)
@@ -1259,32 +1259,32 @@ void fight_prog_horde_bull(OBJ_DATA *obj, CHAR_DATA *ch)
 
 void fight_prog_horde_bear(OBJ_DATA *obj, CHAR_DATA *ch)
 {
-	if (!is_affected(ch, gsn_rage) || !ch->fighting || number_percent() > (.15 * get_skill(ch, gsn_rage)))
+	if (!is_affected(ch, gsn_rage) || !Deref(ch->fighting) || number_percent() > (.15 * get_skill(ch, gsn_rage)))
 		return;
 
-	act("The rage of the Bear roars through you as you charge into $N, sending $m sprawling!", ch, 0, ch->fighting, TO_CHAR);
-	act("$n gets a wild look in $s eyes, charging into you and sending you sprawling!", ch, 0, ch->fighting, TO_VICT);
-	act("$n gets a wild look in $s eyes, charging into $N and sending $m sprawling!", ch, 0, ch->fighting, TO_NOTVICT);
+	act("The rage of the Bear roars through you as you charge into $N, sending $m sprawling!", ch, 0, Deref(ch->fighting), TO_CHAR);
+	act("$n gets a wild look in $s eyes, charging into you and sending you sprawling!", ch, 0, Deref(ch->fighting), TO_VICT);
+	act("$n gets a wild look in $s eyes, charging into $N and sending $m sprawling!", ch, 0, Deref(ch->fighting), TO_NOTVICT);
 
-	WAIT_STATE(ch->fighting, (int)(PULSE_VIOLENCE * 1.9));
+	WAIT_STATE(Deref(ch->fighting), (int)(PULSE_VIOLENCE * 1.9));
 
-	damage_new(ch, ch->fighting, dice(8, 8), TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "charge");
+	damage_new(ch, Deref(ch->fighting), dice(8, 8), TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "charge");
 }
 
 void fight_prog_horde_lion(OBJ_DATA *obj, CHAR_DATA *ch)
 {
 	AFFECT_DATA af;
 
-	if (!is_affected(ch, gsn_rage) || !ch->fighting || number_percent() > (.18 * get_skill(ch, gsn_rage)))
+	if (!is_affected(ch, gsn_rage) || !Deref(ch->fighting) || number_percent() > (.18 * get_skill(ch, gsn_rage)))
 		return;
 
-	act("The spirit of the Lion surges through you as you claw at $N's flesh!", ch, 0, ch->fighting, TO_CHAR);
-	act("$n gets a wild look in $s eyes, clawing viciously at $N!", ch, 0, ch->fighting, TO_NOTVICT);
-	act("$n gets a wild look in $s eyes, clawing viciously at you!", ch, 0, ch->fighting, TO_VICT);
+	act("The spirit of the Lion surges through you as you claw at $N's flesh!", ch, 0, Deref(ch->fighting), TO_CHAR);
+	act("$n gets a wild look in $s eyes, clawing viciously at $N!", ch, 0, Deref(ch->fighting), TO_NOTVICT);
+	act("$n gets a wild look in $s eyes, clawing viciously at you!", ch, 0, Deref(ch->fighting), TO_VICT);
 
-	damage_new(ch, ch->fighting, dice(ch->level - 2, 4), TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "raking claws$");
+	damage_new(ch, Deref(ch->fighting), dice(ch->level - 2, 4), TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "raking claws$");
 
-	if (!ch->fighting || is_affected(ch->fighting, gsn_bleeding))
+	if (!Deref(ch->fighting) || is_affected(Deref(ch->fighting), gsn_bleeding))
 		return;
 
 	init_affect(&af);
@@ -1298,28 +1298,28 @@ void fight_prog_horde_lion(OBJ_DATA *obj, CHAR_DATA *ch)
 	af.owner = ch;
 	af.tick_fun = bleeding_tick;
 	af.end_fun = nullptr;
-	new_affect_to_char(ch->fighting, &af);
+	new_affect_to_char(Deref(ch->fighting), &af);
 
-	send_to_char("Blood begins to gush from your vicious wounds.\n\r", ch->fighting);
-	act("Bright red blood begins to gush from $n's wounds.", ch->fighting, 0, 0, TO_ROOM);
+	send_to_char("Blood begins to gush from your vicious wounds.\n\r", Deref(ch->fighting));
+	act("Bright red blood begins to gush from $n's wounds.", Deref(ch->fighting), 0, 0, TO_ROOM);
 }
 
 void fight_prog_horde_wolf(OBJ_DATA *obj, CHAR_DATA *ch)
 {
 	AFFECT_DATA af;
 
-	if (!is_affected(ch, gsn_rage) || !ch->fighting || number_percent() > (.18 * get_skill(ch, gsn_rage)))
+	if (!is_affected(ch, gsn_rage) || !Deref(ch->fighting) || number_percent() > (.18 * get_skill(ch, gsn_rage)))
 		return;
 
-	act("The spirit of the Wolf enrages you as you leap at $N and sink your fangs into $S throat!", ch, 0, ch->fighting, TO_CHAR);
-	act("$n gets a wild look in $s eyes and leaps at $N, sinking $s teeth into $S throat!", ch, 0, ch->fighting, TO_NOTVICT);
-	act("$n gets a wild look in $s eyes and leaps at you, sinking $s teeth into your throat!", ch, 0, ch->fighting, TO_VICT);
-	damage_new(ch, ch->fighting, dice(ch->level, 2), TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "bite");
+	act("The spirit of the Wolf enrages you as you leap at $N and sink your fangs into $S throat!", ch, 0, Deref(ch->fighting), TO_CHAR);
+	act("$n gets a wild look in $s eyes and leaps at $N, sinking $s teeth into $S throat!", ch, 0, Deref(ch->fighting), TO_NOTVICT);
+	act("$n gets a wild look in $s eyes and leaps at you, sinking $s teeth into your throat!", ch, 0, Deref(ch->fighting), TO_VICT);
+	damage_new(ch, Deref(ch->fighting), dice(ch->level, 2), TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "bite");
 
-	if (!ch->fighting)
+	if (!Deref(ch->fighting))
 		return;
 
-	if (!is_affected(ch->fighting, gsn_bleeding))
+	if (!is_affected(Deref(ch->fighting), gsn_bleeding))
 	{
 		init_affect(&af);
 		af.where = TO_AFFECTS;
@@ -1331,10 +1331,10 @@ void fight_prog_horde_wolf(OBJ_DATA *obj, CHAR_DATA *ch)
 		af.duration = ch->level / 10;
 		af.owner = ch;
 		af.end_fun = nullptr;
-		new_affect_to_char(ch->fighting, &af);
+		new_affect_to_char(Deref(ch->fighting), &af);
 	}
 
-	if (!is_affected(ch->fighting, gsn_mangled) && number_percent() < (get_skill(ch, gsn_rage) * .28))
+	if (!is_affected(Deref(ch->fighting), gsn_mangled) && number_percent() < (get_skill(ch, gsn_rage) * .28))
 	{
 		init_affect(&af);
 		af.where = TO_AFFECTS;
@@ -1346,24 +1346,24 @@ void fight_prog_horde_wolf(OBJ_DATA *obj, CHAR_DATA *ch)
 		af.duration = ch->level / 18;
 		af.owner = ch;
 		af.end_fun = nullptr;
-		new_affect_to_char(ch->fighting, &af);
+		new_affect_to_char(Deref(ch->fighting), &af);
 
-		act("You hear the satisfying crunch of bone as you tear deeply into $N's throat.", ch, 0, ch->fighting, TO_CHAR);
-		act("You hear the crunch of bone as $n tears deeply into your throat.", ch, 0, ch->fighting, TO_VICT);
-		act("You hear the crunch of bone as $n tears deeply into $N's throat.", ch, 0, ch->fighting, TO_NOTVICT);
+		act("You hear the satisfying crunch of bone as you tear deeply into $N's throat.", ch, 0, Deref(ch->fighting), TO_CHAR);
+		act("You hear the crunch of bone as $n tears deeply into your throat.", ch, 0, Deref(ch->fighting), TO_VICT);
+		act("You hear the crunch of bone as $n tears deeply into $N's throat.", ch, 0, Deref(ch->fighting), TO_NOTVICT);
 	}
 }
 
 void fight_prog_horde_hawk(OBJ_DATA *obj, CHAR_DATA *ch)
 {
-	if (!is_affected(ch, gsn_rage) || !ch->fighting || number_percent() > (.2 * get_skill(ch, gsn_rage)))
+	if (!is_affected(ch, gsn_rage) || !Deref(ch->fighting) || number_percent() > (.2 * get_skill(ch, gsn_rage)))
 		return;
 
-	act("The spirit of the Hawk flows through you as you sense a weakness in $N's defenses and strike!", ch, 0, ch->fighting, TO_CHAR);
-	act("$n pauses for a moment before unleashing a well aimed blow at you.", ch, 0, ch->fighting, TO_VICT);
-	act("$n pauses for a moment before unleashing a well aimed blow at $N.", ch, 0, ch->fighting, TO_NOTVICT);
+	act("The spirit of the Hawk flows through you as you sense a weakness in $N's defenses and strike!", ch, 0, Deref(ch->fighting), TO_CHAR);
+	act("$n pauses for a moment before unleashing a well aimed blow at you.", ch, 0, Deref(ch->fighting), TO_VICT);
+	act("$n pauses for a moment before unleashing a well aimed blow at $N.", ch, 0, Deref(ch->fighting), TO_NOTVICT);
 
-	one_hit_new(ch, ch->fighting, TYPE_TRUESTRIKE, HIT_NOSPECIALS, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
+	one_hit_new(ch, Deref(ch->fighting), TYPE_TRUESTRIKE, HIT_NOSPECIALS, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
 }
 
 void pulse_prog_horde_jackal(OBJ_DATA *obj, bool isTick)
@@ -1374,12 +1374,12 @@ void pulse_prog_horde_jackal(OBJ_DATA *obj, bool isTick)
 	if (!ch)
 		return;
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (is_affected(ch, gsn_jackal))
 		affect_strip(ch, gsn_jackal);
 
-	if (!ch->fighting || !is_affected(ch, gsn_rage))
+	if (!Deref(ch->fighting) || !is_affected(ch, gsn_rage))
 		return;
 
 	init_affect(&af);
@@ -1417,17 +1417,17 @@ bool death_prog_trophy_belt(OBJ_DATA *belt, CHAR_DATA *ch)
 
 void fight_prog_ruins_sword(OBJ_DATA *obj, CHAR_DATA *ch)
 {
-	if (!ch->fighting || number_percent() > 12)
+	if (!Deref(ch->fighting) || number_percent() > 12)
 		return;
 
 	if (!is_worn(obj))
 		return;
 
-	act("Rivulets of water suddenly flow over $p as the blade lashes out at $N!", ch, obj, ch->fighting, TO_CHAR);
-	act("Rivulets of water suddenly flow over $p as the blade lashes out at you!", ch, obj, ch->fighting, TO_VICT);
-	act("Rivulets of water suddenly flow over $p as the blade lashes out at $N!", ch, obj, ch->fighting, TO_NOTVICT);
+	act("Rivulets of water suddenly flow over $p as the blade lashes out at $N!", ch, obj, Deref(ch->fighting), TO_CHAR);
+	act("Rivulets of water suddenly flow over $p as the blade lashes out at you!", ch, obj, Deref(ch->fighting), TO_VICT);
+	act("Rivulets of water suddenly flow over $p as the blade lashes out at $N!", ch, obj, Deref(ch->fighting), TO_NOTVICT);
 
-	obj_cast_spell(skill_lookup("drown"), ch->level / 2, ch, ch->fighting, obj);
+	obj_cast_spell(skill_lookup("drown"), ch->level / 2, ch, Deref(ch->fighting), obj);
 }
 
 void verb_prog_check_bounties(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
@@ -1566,7 +1566,7 @@ void verb_prog_ilopheth_bush(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 {
 	ROOM_INDEX_DATA *room;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You're otherwise occupied right now.\n\r", ch);
 		return;
@@ -1588,7 +1588,7 @@ void verb_prog_ilopheth_climb_tree(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 {
 	ROOM_INDEX_DATA *to_room = get_room_index(4100);
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You're somewhat distracted right now.\n\r", ch);
 		return;
@@ -1615,7 +1615,7 @@ void verb_prog_antava_touch_hand(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 	if (ch->in_room->vnum != 462)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You're too busy fighting to do that!\n\r", ch);
 		return;
@@ -1662,7 +1662,7 @@ void verb_prog_sidhe_climb_vine(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You're somewhat distracted right now.\n\r", ch);
 		return;
@@ -1928,7 +1928,7 @@ void verb_prog_energize_tattoo(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (is_npc(ch->fighting))
+	if (is_npc(Deref(ch->fighting)))
 	{
 		send_to_char("You must find a purer source of power.\n\r", ch);
 		return;
@@ -1940,13 +1940,13 @@ void verb_prog_energize_tattoo(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	act("You attempt to siphon some energy from $N to power your tattoo.", ch, 0, ch->fighting, TO_CHAR);
-	act("You feel a cold sensation run through your body.", ch, 0, ch->fighting, TO_VICT);
+	act("You attempt to siphon some energy from $N to power your tattoo.", ch, 0, Deref(ch->fighting), TO_CHAR);
+	act("You feel a cold sensation run through your body.", ch, 0, Deref(ch->fighting), TO_VICT);
 
-	if (!saves_spell(ch->level, ch->fighting, DAM_NEGATIVE))
+	if (!saves_spell(ch->level, Deref(ch->fighting), DAM_NEGATIVE))
 	{
-		damage_new(ch, ch->fighting, dice(1, 10), TYPE_UNDEFINED, DAM_NEGATIVE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "energy sapping");
-		ch->fighting->mana -= (int)(2.8 * ch->level);
+		damage_new(ch, Deref(ch->fighting), dice(1, 10), TYPE_UNDEFINED, DAM_NEGATIVE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "energy sapping");
+		Deref(ch->fighting)->mana -= (int)(2.8 * ch->level);
 		obj->value[0]++;
 
 		init_affect_obj(&oaf);
@@ -2065,14 +2065,14 @@ void verb_prog_throw_net(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 
 	if (argument[0] == '\0')
 	{
-		if (!ch->fighting)
+		if (!Deref(ch->fighting))
 		{
 			send_to_char("Throw the net at who?\n\r", ch);
 			return;
 		}
 		else
 		{
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 	}
 	else
@@ -2116,7 +2116,7 @@ void verb_prog_throw_net(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 	obj_from_char(obj);
 	extract_obj(obj);
 
-	if (!ch->fighting)
+	if (!Deref(ch->fighting))
 	{
 		sprintf(buf, "Help!  %s just threw a net on me!", ch->name);
 		do_yell(victim, buf);
@@ -2132,14 +2132,14 @@ void verb_prog_fire_pistol(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 
 	if (argument[0] == '\0')
 	{
-		if (!ch->fighting)
+		if (!Deref(ch->fighting))
 		{
 			send_to_char("Bust a cap in whose ass?\n\r", ch);
 			return;
 		}
 		else
 		{
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 	}
 	else
@@ -2335,7 +2335,7 @@ void fight_prog_essence_darkness(OBJ_DATA *obj, CHAR_DATA *ch)
 	if (number_percent() > 35)
 		return;
 
-	if ((victim = ch->fighting) == nullptr)
+	if ((victim = Deref(ch->fighting)) == nullptr)
 		return;
 
 	ch->alignment = std::max(-1000, ch->alignment - 10);
@@ -2375,7 +2375,7 @@ void verb_prog_rub_talisman(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 	if (check_deny_magic(ch))
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("Nothing seems to happen.\n\r", ch);
 		return;
@@ -3596,7 +3596,7 @@ void verb_prog_roll_tablet(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 {
 	EXIT_DATA *exit = ch->in_room->exit[Directions::East];
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You're too busy fighting to roll the tablet!\n\r", ch);
 		return;
@@ -3750,7 +3750,7 @@ void verb_prog_iseldheim_lever_pull(OBJ_DATA *obj, CHAR_DATA *ch, char *argument
 
 void fight_prog_bugzapper(OBJ_DATA *obj, CHAR_DATA *ch)
 {
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 
 	if (!victim || !is_npc(victim) || victim->pIndexData->vnum < 3000 || victim->pIndexData->vnum > 3010 || !is_worn(obj))
 		return;
@@ -3764,7 +3764,7 @@ void fight_prog_bugzapper(OBJ_DATA *obj, CHAR_DATA *ch)
 void fight_prog_arms_light(OBJ_DATA *obj, CHAR_DATA *ch)
 {
 	AFFECT_DATA af;
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 
 	if (!victim)
 		return;
@@ -4064,7 +4064,7 @@ void verb_prog_fallendesert_climb_ladder(OBJ_DATA *obj, CHAR_DATA *ch, char *arg
 
 	to_room = get_room_index(vnum);
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You're somewhat distracted right now.\n\r", ch);
 		return;
@@ -4109,7 +4109,7 @@ void verb_prog_fallendesert_(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 
 	to_room = get_room_index(vnum);
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You're somewhat distracted right now.\n\r", ch);
 		return;

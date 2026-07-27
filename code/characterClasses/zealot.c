@@ -5,6 +5,7 @@
 #include <time.h>
 #include <math.h>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "zealot.h"
 #include "../comm.h"
 #include "../handler.h"
@@ -167,7 +168,7 @@ void spell_divine_malison(int sn, int level, CHAR_DATA *ch, void *vo, int target
 		return;
 	}
 
-	if (ch->fighting && saves_spell(level + 9, victim, DAM_HOLY))
+	if (Deref(ch->fighting) && saves_spell(level + 9, victim, DAM_HOLY))
 	{
 		act("A nimbus flickers briefly around $n, but dissipates.", victim, 0, 0, TO_ROOM);
 		act("A haze surrounds you briefly, but dissipates.", victim, 0, 0, TO_CHAR);

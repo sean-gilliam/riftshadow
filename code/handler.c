@@ -494,6 +494,7 @@ int get_skill(CHAR_DATA *ch, int sn)
 	AFFECT_DATA *af;
 	bool using_switched= false;
 	CHAR_DATA *original = ch;
+	CHAR_DATA *opponent;
 
 	if (is_npc(ch) && ch->desc && ch->desc->original && IS_SET(ch->comm, COMM_SWITCHSKILLS))
 		using_switched = true;
@@ -630,17 +631,19 @@ int get_skill(CHAR_DATA *ch, int sn)
 	if (is_affected_room(ch->in_room, gsn_infidels_fate) && is_good(ch))
 		skill += (int)(skill * .1);
 
-	if (ch->fighting && is_affected(ch->fighting, gsn_traitors_luck))
+	opponent = Deref(ch->fighting);
+
+	if (opponent && is_affected(opponent, gsn_traitors_luck))
 	{
-		af = affect_find(ch->fighting->affected, gsn_traitors_luck);
+		af = affect_find(opponent->affected, gsn_traitors_luck);
 
 		if (ch == af->owner)
 			skill += 20;
 	}
 
-	if (ch->fighting
-		&& (is_evil(ch) && is_affected(ch->fighting, gsn_awe))
-		&& ch->level > ch->fighting->level
+	if (opponent
+		&& (is_evil(ch) && is_affected(opponent, gsn_awe))
+		&& ch->level > opponent->level
 		&& number_percent() > 96)
 	{
 		skill = 0;
@@ -865,6 +868,7 @@ int get_trust(CHAR_DATA *ch)
 int get_curr_stat(CHAR_DATA *ch, int stat)
 {
 	AFFECT_DATA *af;
+	CHAR_DATA *opponent;
 	int max;
 	int mod = 0;
 
@@ -917,9 +921,11 @@ int get_curr_stat(CHAR_DATA *ch, int stat)
 		max = std::min(max, 25);
 	}
 
-	if (ch->fighting && is_affected(ch->fighting, gsn_traitors_luck))
+	opponent = Deref(ch->fighting);
+
+	if (opponent && is_affected(opponent, gsn_traitors_luck))
 	{
-		af = affect_find(ch->fighting->affected, gsn_traitors_luck);
+		af = affect_find(opponent->affected, gsn_traitors_luck);
 
 		if (ch == af->owner)
 			mod = 2;
@@ -2874,7 +2880,7 @@ bool can_see(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	if (is_affected_by(victim, AFF_HIDE)
 		&& !is_affected_by(ch, AFF_DETECT_HIDDEN)
-		&& victim->fighting == nullptr
+		&& Deref(victim->fighting) == nullptr
 		&& !(is_affected(ch, gsn_darksight)
 			&& (af = affect_find(ch->affected, gsn_darksight))
 			&& af->aftype == AFT_SKILL

@@ -596,17 +596,17 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 		case POS_FIGHTING:
 			strcat(buf, " is here, fighting ");
 
-			if (victim->fighting == nullptr)
+			if (Deref(victim->fighting) == nullptr)
 			{
 				strcat(buf, "thin air??");
 			}
-			else if (victim->fighting == ch)
+			else if (Deref(victim->fighting) == ch)
 			{
 				strcat(buf, "YOU!");
 			}
-			else if (victim->in_room == victim->fighting->in_room)
+			else if (victim->in_room == Deref(victim->fighting)->in_room)
 			{
-				strcat(buf, pers(victim->fighting, ch));
+				strcat(buf, pers(Deref(victim->fighting), ch));
 				strcat(buf, ".");
 			}
 			else
@@ -5216,10 +5216,12 @@ void do_xlook(CHAR_DATA *ch, char *argument)
 	if (foundIR == 0)
 		send_to_char("none.", ch);
 
-	if (victim->fighting != nullptr)
+	CHAR_DATA *opponent = Deref(victim->fighting);
+
+	if (opponent != nullptr)
 	{
 		send_to_char("\n\rFighting: ", ch);
-		send_to_char((is_npc(victim->fighting) ? victim->fighting->short_descr : victim->fighting->name), ch);
+		send_to_char((is_npc(opponent) ? opponent->short_descr : opponent->name), ch);
 	}
 	else
 	{

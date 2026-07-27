@@ -1482,7 +1482,7 @@ void spell_scathing(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (is_same_group(vch, ch) || is_safe(ch, vch) || is_same_cabal(ch, vch))
 			continue;
 
-		if (!is_npc(ch) && !is_npc(vch) && (ch->fighting == nullptr || vch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(vch) && (Deref(ch->fighting) == nullptr || Deref(vch->fighting) == nullptr))
 		{
 			std::snprintf(buf, static_cast<int>(MSL), "Die, %s you sorcerous dog!", pers(ch, vch));
 			do_myell(vch, buf, ch);
@@ -3260,9 +3260,9 @@ void spell_coagulate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	if (!str_cmp(target_name, ""))
 	{
-		if (ch->fighting != nullptr)
+		if (Deref(ch->fighting) != nullptr)
 		{
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 		else
 		{
@@ -3589,10 +3589,10 @@ void spell_enervate_agitate_helper(int sn, int level, CHAR_DATA *ch, void *vo, i
 
 	if (trusts(ch, victim) && abs(es) < 2)
 	{
-		if (ch->fighting == victim)
+		if (Deref(ch->fighting) == victim)
 			stop_fighting(ch, false);
 
-		if (victim->fighting == ch)
+		if (Deref(victim->fighting) == ch)
 			stop_fighting(victim, false);
 	}
 }
@@ -4492,7 +4492,7 @@ void spell_thunderclap(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (is_same_group(vch, ch) || is_safe(ch, vch) || is_same_cabal(ch, vch))
 			continue;
 
-		if (!is_npc(ch) && !is_npc(vch) && (ch->fighting == nullptr || vch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(vch) && (Deref(ch->fighting) == nullptr || Deref(vch->fighting) == nullptr))
 		{
 			std::snprintf(buf,static_cast<int>(MSL), "Die, %s you sorcerous dog!", pers(ch, vch));
 			do_myell(vch, buf, ch);
@@ -4871,7 +4871,7 @@ void spell_heat_earth(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (is_same_group(vch, ch) || is_safe(ch, vch) || is_same_cabal(ch, vch))
 			continue;
 
-		if (!is_npc(ch) && !is_npc(vch) && (!ch->fighting || !vch->fighting))
+		if (!is_npc(ch) && !is_npc(vch) && (!Deref(ch->fighting) || !Deref(vch->fighting)))
 		{
 			std::snprintf(buf, static_cast<int>(MSL), "Die, %s you sorcerous dog!", pers(ch, vch));
 			do_myell(vch, buf, ch);
@@ -5143,7 +5143,7 @@ void concave_shell_move(CHAR_DATA *ch, int *dirptr, ROOM_INDEX_DATA *oldroom)
 				&& ((IS_SET(wch->act, ACT_AGGRESSIVE) && wch->level >= ch->level + 5)
 					|| IS_SET(wch->off_flags, SPAM_MURDER))
 				&& is_awake(wch)
-				&& wch->fighting != nullptr
+				&& Deref(wch->fighting) != nullptr
 				&& can_see(wch, ch)
 				&& !is_affected_by(wch, AFF_CALM)
 				&& !IS_SET(ch->in_room->room_flags, ROOM_SAFE))
@@ -5745,7 +5745,7 @@ void spell_hailstorm(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (is_same_group(vch, ch) || is_safe(ch, vch) || is_same_cabal(ch, vch))
 			continue;
 
-		if (!is_npc(ch) && !is_npc(vch) && (!ch->fighting || !vch->fighting))
+		if (!is_npc(ch) && !is_npc(vch) && (!Deref(ch->fighting) || !Deref(vch->fighting)))
 		{
 			std::snprintf(buf, static_cast<size_t>(MSL), "Die, %s you sorcerous dog!", pers(ch, vch));
 			do_myell(vch, buf, ch);
@@ -7208,16 +7208,16 @@ void sphere_of_plasma_end(CHAR_DATA *ch, AFFECT_DATA *paf)
 
 void sphere_of_plasma_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 {
-	if (!ch->fighting)
+	if (!Deref(ch->fighting))
 		return;
 
 	if (number_percent() > 60)
 		return;
 
-	act("A tendril of plasma from the sphere encircling you lashes out at $N!", ch, 0, ch->fighting, TO_CHAR);
+	act("A tendril of plasma from the sphere encircling you lashes out at $N!", ch, 0, Deref(ch->fighting), TO_CHAR);
 	act("A writhing, pulsating tendril of plasma lashes out from $n's body!", ch, 0, 0, TO_ROOM);
 
-	damage_new(ch, ch->fighting, af->level, gsn_sphere_of_plasma, DAM_TRUESTRIKE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
+	damage_new(ch, Deref(ch->fighting), af->level, gsn_sphere_of_plasma, DAM_TRUESTRIKE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
 
 	if (--af->modifier <= 0)
 		affect_remove(ch, af);
@@ -7360,7 +7360,7 @@ void essence_of_plasma_pulse(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 		}
 	}
 
-	if (victim->fighting)
+	if (Deref(victim->fighting))
 		fighting = true;
 
 	if (af->modifier == 0)

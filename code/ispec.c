@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "spec.h"
 #include "tables.h"
 #include "interp.h"
@@ -38,20 +39,20 @@ END_SPEC
 	
 BEGIN_SPEC(ispec_torture_flail)
 	EVENT_IFIGHT
-		if(number_percent()>91 && ch->fighting)
+		if(number_percent()>91 && Deref(ch->fighting))
 		{
 			AFFECT_DATA af;
 			init_affect(&af);
-			act("A scream escapes your flail as a shadow tears at $N's eyes!",ch,0,ch->fighting,TO_CHAR);
-			act("A scream escapes $n's flail as a shadow tears at $N's eyes!",ch,0,ch->fighting,TO_NOTVICT);
-			act("A scream escapes $n's flail as a shadow tears at your eyes!",ch,0,ch->fighting,TO_VICT);
-			act("$n appears to be blinded.",ch->fighting,0,0,TO_ROOM);
+			act("A scream escapes your flail as a shadow tears at $N's eyes!",ch,0,Deref(ch->fighting),TO_CHAR);
+			act("A scream escapes $n's flail as a shadow tears at $N's eyes!",ch,0,Deref(ch->fighting),TO_NOTVICT);
+			act("A scream escapes $n's flail as a shadow tears at your eyes!",ch,0,Deref(ch->fighting),TO_VICT);
+			act("$n appears to be blinded.",Deref(ch->fighting),0,0,TO_ROOM);
 			af.type = gsn_blindness;
 			af.aftype = AFT_MALADY;
 			af.level = ch->level;
 			af.duration = 2;
 			SET_BIT(af.bitvector, AFF_BLIND);
-			affect_to_char(ch->fighting, &af);
+			affect_to_char(Deref(ch->fighting), &af);
 		}
 	END_EVENT
 END_SPEC
@@ -69,18 +70,18 @@ END_SPEC
 
 BEGIN_SPEC(ispec_qwhip)
 	EVENT_IONEHIT
-		if(number_percent()>96 && ch->fighting)
+		if(number_percent()>96 && Deref(ch->fighting))
 		{
-			act("Sadistic urges compel you to lash out viciously at $N!",ch,0,ch->fighting,TO_CHAR);
+			act("Sadistic urges compel you to lash out viciously at $N!",ch,0,Deref(ch->fighting),TO_CHAR);
 			//(*dam) = (int)((float)*dam * 1.3);
 			//(*dt)   = 42;
 			//ch->hit = std::min(ch->max_hit, ch->hit + ((*dam) / 4));
 		}
 	END_EVENT
 	EVENT_IFIGHT
-		if(number_percent()>97 && IS_SET(ch->fighting->parts,PART_LEGS))
+		if(number_percent()>97 && IS_SET(Deref(ch->fighting)->parts,PART_LEGS))
 		{
-			CHAR_DATA *victim = ch->fighting;
+			CHAR_DATA *victim = Deref(ch->fighting);
 			act("$n wraps $s whip around $N's legs, sending $M staggering!",ch,0,victim,TO_NOTVICT);
 			act("You wrap your whip around $N's legs, sending $M staggering.",ch,0,victim,TO_CHAR);
 			act("$n wraps $s whip around your legs, sending you staggering!",ch,0,victim,TO_VICT);

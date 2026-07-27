@@ -35,7 +35,12 @@ public:
 	CHAR_DATA *next_in_room;
 	CHAR_DATA *master;
 	CHAR_DATA *leader;
-	CHAR_DATA *fighting;
+	// The character this one is in combat with. Non-owning, and the opponent
+	// can be extracted independently, so it is a handle rather than a pointer.
+	// stop_fighting clears it for both sides -- that is about the fight
+	// ending, not about lifetime; almost every caller leaves both characters
+	// alive.
+	Handle<CHAR_DATA> fighting;
 	CHAR_DATA *reply;
 	CHAR_DATA *pet;
 	CHAR_DATA *last_fought;

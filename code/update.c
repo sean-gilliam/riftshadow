@@ -1185,14 +1185,14 @@ void char_update(void)
 			&& ch->in_room
 			&& number_percent() < 90
 			&& !is_affected_by(ch, AFF_SLEEP)
-			&& ch->fighting == nullptr)
+			&& Deref(ch->fighting) == nullptr)
 		{
 			if (IS_SET(ch->act, ACT_DIURNAL) && is_affected_by(ch, AFF_NOSHOW))
 				REMOVE_BIT(ch->affected_by, AFF_NOSHOW);
 			else if (IS_SET(ch->act, ACT_NOCTURNAL) && !is_affected_by(ch, AFF_NOSHOW))
 				SET_BIT(ch->affected_by, AFF_NOSHOW);
 		}
-		else if (is_npc(ch) && sun >= SolarPosition::Sunset && ch->in_room && number_percent() < 90 && ch->fighting == nullptr)
+		else if (is_npc(ch) && sun >= SolarPosition::Sunset && ch->in_room && number_percent() < 90 && Deref(ch->fighting) == nullptr)
 		{
 			if (IS_SET(ch->act, ACT_NOCTURNAL) && is_affected_by(ch, AFF_NOSHOW))
 				REMOVE_BIT(ch->affected_by, AFF_NOSHOW);
@@ -1330,7 +1330,7 @@ void char_update(void)
 				{
 					ch->was_in_room = ch->in_room;
 
-					if (ch->fighting != nullptr)
+					if (Deref(ch->fighting) != nullptr)
 						stop_fighting(ch, true);
 
 					act("$n disappears into the void.", ch, nullptr, nullptr, TO_ROOM);
@@ -1732,7 +1732,7 @@ instead...(Ceran)
 void track_attack(CHAR_DATA *mob, CHAR_DATA *victim)
 {
 	char buf[MSL];
-	if (mob->in_room != victim->in_room || !can_see(mob, victim) || mob->fighting || is_affected_by(mob, AFF_NOSHOW))
+	if (mob->in_room != victim->in_room || !can_see(mob, victim) || Deref(mob->fighting) || is_affected_by(mob, AFF_NOSHOW))
 		return;
 
 	if (mob->pIndexData->attack_yell)
@@ -1761,7 +1761,7 @@ void track_update(void)
 		{
 			if (tch->position > POS_RESTING
 				&& number_range(1, 10) == 1
-				&& !tch->fighting
+				&& !Deref(tch->fighting)
 				&& tch->home_room
 				&& tch->in_room != tch->home_room
 				&& (tch->in_room->vnum < tch->pIndexData->restrict_low
@@ -1773,7 +1773,7 @@ void track_update(void)
 			continue;
 		}
 
-		if (tch->fighting || is_affected_by(tch, AFF_NOSHOW))
+		if (Deref(tch->fighting) || is_affected_by(tch, AFF_NOSHOW))
 			continue;
 
 		if (tch->in_room == tch->last_fought->in_room)
@@ -1792,7 +1792,7 @@ void track_update(void)
 
 		track_attack(tch, tch->last_fought);
 
-		if (!tch->fighting)
+		if (!Deref(tch->fighting))
 			tch->tracktimer--;
 
 		if (tch->tracktimer == 0)
@@ -1823,6 +1823,7 @@ void aggr_update(void)
 	CHAR_DATA *vch;
 	CHAR_DATA *vch_next;
 	CHAR_DATA *victim;
+	CHAR_DATA *opponent;
 	int timer;
 	char buf[MAX_STRING_LENGTH];
 
@@ -1859,13 +1860,15 @@ void aggr_update(void)
 		if (is_affected_by(wch, AFF_SLOW))
 			timer--;
 
-		if (wch->fighting &&
+		opponent = Deref(wch->fighting);
+
+		if (opponent &&
 			((!is_npc(wch) && timer >= pc_race_table[wch->race].racePulse) || (is_npc(wch) && timer >= 12)))
 		{
-			update_pc_last_fight(wch, wch->fighting);
+			update_pc_last_fight(wch, opponent);
 
-			if (is_awake(wch) && wch->in_room == wch->fighting->in_room)
-				multi_hit(wch, wch->fighting, TYPE_UNDEFINED);
+			if (is_awake(wch) && wch->in_room == opponent->in_room)
+				multi_hit(wch, opponent, TYPE_UNDEFINED);
 			else
 				stop_fighting(wch, false);
 
@@ -1875,7 +1878,7 @@ void aggr_update(void)
 		if (wch->position == POS_SLEEPING && IS_SET(wch->imm_flags, IMM_SLEEP))
 			wch->position = POS_STANDING;
 
-		if (is_affected_by(wch, AFF_RAGE) && is_awake(wch) && !wch->fighting && !(wch->desc == nullptr && !is_npc(wch)))
+		if (is_affected_by(wch, AFF_RAGE) && is_awake(wch) && !Deref(wch->fighting) && !(wch->desc == nullptr && !is_npc(wch)))
 		{
 			for (vch = wch->in_room->people; vch != nullptr; vch = vch_next)
 			{
@@ -1921,7 +1924,7 @@ void aggr_update(void)
 			}
 		}
 
-		if (!is_npc(wch) && is_affected(wch, gsn_divine_frenzy) && is_awake(wch) && !wch->fighting)
+		if (!is_npc(wch) && is_affected(wch, gsn_divine_frenzy) && is_awake(wch) && !Deref(wch->fighting))
 		{
 			for (vch = wch->in_room->people; vch != nullptr; vch = vch_next)
 			{
@@ -1950,7 +1953,7 @@ void aggr_update(void)
 
 		if (is_affected(wch, gsn_mark_of_wrath)
 			&& is_awake(wch)
-			&& !wch->fighting
+			&& !Deref(wch->fighting)
 			&& !(wch->desc == nullptr && !is_npc(wch)))
 		{
 			AFFECT_DATA *paf = affect_find(wch->affected, gsn_mark_of_wrath);
@@ -2001,7 +2004,7 @@ void aggr_update(void)
 				|| IS_SET(ch->in_room->room_flags, ROOM_SAFE)
 				|| (is_npc(ch) && is_affected_by(ch, AFF_NOSHOW))
 				|| is_affected_by(ch, AFF_CALM)
-				|| ch->fighting != nullptr
+				|| Deref(ch->fighting) != nullptr
 				|| is_affected_by(ch, AFF_CHARM)
 				|| !is_awake(ch)
 				|| (IS_SET(ch->act, ACT_WIMPY) && is_awake(wch))
@@ -2834,7 +2837,7 @@ void room_affect_update(void)
 				if (is_affected(victim, gsn_airshield))
 					chance = 0;
 				if (number_percent() >= chance || (is_npc(victim) && IS_SET(victim->act, ACT_SENTINEL)) ||
-					victim->fighting || victim->invis_level > LEVEL_HERO)
+					Deref(victim->fighting) || victim->invis_level > LEVEL_HERO)
 					continue;
 				to_room = get_random_exit(room);
 
@@ -3000,7 +3003,7 @@ bool do_mob_cast(CHAR_DATA *ch)
 	short i, sn, rnd, in_room = 0, room_occupant = 0;
 	CHAR_DATA *vch, *victim;
 
-	if (!is_npc(ch) || !ch->fighting || ch->pIndexData->cast_spell[0] == nullptr)
+	if (!is_npc(ch) || !Deref(ch->fighting) || ch->pIndexData->cast_spell[0] == nullptr)
 		return false;
 
 	for (;;)
@@ -3015,14 +3018,14 @@ bool do_mob_cast(CHAR_DATA *ch)
 	if (sn < 1)
 		return false;
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 	// Share the wealth.
 	//
 	if (skill_table[sn].target == TAR_CHAR_OFFENSIVE)
 	{
 		for (victim = ch->in_room->people; victim != nullptr; victim = victim->next_in_room)
 		{
-			if (victim && !is_npc(victim) && victim->fighting && victim->fighting == ch)
+			if (victim && !is_npc(victim) && Deref(victim->fighting) && Deref(victim->fighting) == ch)
 				in_room++;
 		}
 
@@ -3030,14 +3033,14 @@ bool do_mob_cast(CHAR_DATA *ch)
 
 		for (vch = ch->in_room->people; vch != nullptr; vch = vch->next_in_room)
 		{
-			if (!is_npc(vch) && vch->fighting == ch)
+			if (!is_npc(vch) && Deref(vch->fighting) == ch)
 				room_occupant++;
 
 			if (rnd == room_occupant)
 				break;
 		}
 
-		victim = vch != nullptr ? vch : ch->fighting;
+		victim = vch != nullptr ? vch : Deref(ch->fighting);
 	}
 
 	if (skill_table[sn].target == TAR_CHAR_DEFENSIVE)

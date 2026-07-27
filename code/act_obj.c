@@ -1677,7 +1677,7 @@ void do_drink(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You're too busy fighting to drink anything.\n\r", ch);
 		return;
@@ -1789,7 +1789,7 @@ void do_eat(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You're too busy fighting to worry about food.\n\r", ch);
 		return;
@@ -2225,7 +2225,7 @@ void wear_obj(CHAR_DATA *ch, OBJ_DATA *obj, bool fReplace)
 			return;
 		}
 
-		if (obj->item_type == ITEM_POTION && ch->fighting != nullptr)
+		if (obj->item_type == ITEM_POTION && Deref(ch->fighting) != nullptr)
 		{
 			send_to_char("You can't handle a potion in the heat of combat!\n\r", ch);
 			return;
@@ -2943,7 +2943,7 @@ void do_quaff(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You're too busy fighting to quaff.\n\r", ch);
 		return;
@@ -3008,7 +3008,7 @@ void do_recite(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You're too busy fighting to recite.\n\r", ch);
 		return;
@@ -3172,7 +3172,7 @@ void do_zap(CHAR_DATA *ch, char *argument)
 
 	one_argument(argument, arg);
 
-	if (arg[0] == '\0' && ch->fighting == nullptr)
+	if (arg[0] == '\0' && Deref(ch->fighting) == nullptr)
 	{
 		send_to_char("Zap whom or what?\n\r", ch);
 		return;
@@ -3196,9 +3196,9 @@ void do_zap(CHAR_DATA *ch, char *argument)
 
 	if (arg[0] == '\0')
 	{
-		if (ch->fighting != nullptr)
+		if (Deref(ch->fighting) != nullptr)
 		{
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 		else
 		{
@@ -3304,7 +3304,7 @@ void do_steal(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	if (victim->fighting != nullptr)
+	if (Deref(victim->fighting) != nullptr)
 	{
 		send_to_char("You can't get close enough in the fray!\n\r", ch);
 		return;
@@ -4991,7 +4991,7 @@ void do_roll(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You really have more important things to worry about right now!\n\r", ch);
 		return;
@@ -5050,7 +5050,7 @@ void do_flip(CHAR_DATA *ch, char *argument)
 	char buf[MSL];
 	OBJ_DATA *coin;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You really have more important things to worry about right now!\n\r", ch);
 		return;

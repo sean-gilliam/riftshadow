@@ -37,6 +37,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "act_ente.h"
 #include "handler.h"
 #include "magic.h"
@@ -79,7 +80,7 @@ ROOM_INDEX_DATA *get_random_room(CHAR_DATA *ch)
 /* RT Enter portals */
 void do_enter(CHAR_DATA *ch, char *argument)
 {
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 		return;
 
 	/* nifty portal stuff */

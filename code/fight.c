@@ -43,6 +43,7 @@
 #include <time.h>
 #include <algorithm>
 #include "merc.h"
+#include "entity/handles.h"
 #include "fight.h"
 #include "handler.h"
 #include "interp.h"
@@ -86,6 +87,7 @@ void violence_update(void)
 	CHAR_DATA *ch;
 	CHAR_DATA *ch_next;
 	CHAR_DATA *victim;
+	CHAR_DATA *opponent;
 	int regen = 0;
 	OBJ_DATA *obj;
 	AFFECT_DATA *af;
@@ -101,9 +103,11 @@ void violence_update(void)
 				ch->hit = std::min(ch->hit - number_range(1, ch->regen_rate), (int)ch->max_hit);
 		}
 
-		if (ch->fighting != nullptr)
+		opponent = Deref(ch->fighting);
+
+		if (opponent != nullptr)
 		{
-			check_analyze(ch, ch->fighting);
+			check_analyze(ch, opponent);
 
 			if (!is_npc(ch))
 				check_style_improve(ch, ch->pcdata->style, 6);
@@ -123,30 +127,30 @@ void violence_update(void)
 				affect_strip(ch, gsn_unbalance);
 		}
 
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 
 		if (victim == nullptr || ch->in_room == nullptr)
 			continue;
 
 		if (is_npc(ch)
-			&& !is_npc(ch->fighting)
+			&& !is_npc(victim)
 			&& !IS_SET(ch->off_flags, NO_TRACK)
 			&& !is_affected_by(ch, AFF_CHARM)
 			&& !IS_SET(ch->act, ACT_IS_HEALER)
 			&& !IS_SET(ch->act, ACT_BANKER))
 		{
-			ch->last_fought = ch->fighting;
+			ch->last_fought = victim;
 			ch->tracktimer = 144;
 		}
 
-		update_pc_last_fight(ch, ch->fighting);
+		update_pc_last_fight(ch, victim);
 		/*
 		if (is_awake(ch) && ch->in_room == victim->in_room)
 			multi_hit(ch, victim, TYPE_UNDEFINED);
 		else
 			stop_fighting(ch, false);
 
-		if ((victim = ch->fighting) == nullptr)
+		if ((victim = Deref(ch->fighting)) == nullptr)
 			continue;
 		*/
 
@@ -191,7 +195,7 @@ void check_assist(CHAR_DATA *ch, CHAR_DATA *victim)
 		if (is_npc(rch) && rch->pIndexData->vnum == ACADEMY_PET && ch->ghost > 0)
 			continue;
 
-		if (is_awake(rch) && rch->fighting == nullptr)
+		if (is_awake(rch) && Deref(rch->fighting) == nullptr)
 		{
 			/* NPC assisting group (for charm, zombies, elementals..added by Ceran */
 			if (is_npc(rch) && (is_affected_by(rch, AFF_CHARM)) && is_same_group(rch, ch))
@@ -224,12 +228,12 @@ void check_assist(CHAR_DATA *ch, CHAR_DATA *victim)
 				{
 					CHAR_DATA *fch;
 
-					fch = ch->fighting;
+					fch = Deref(ch->fighting);
 
 					if (rch->defending != nullptr
 						&& rch->defending == ch
 						&& fch != nullptr
-						&& fch->fighting == ch
+						&& Deref(fch->fighting) == ch
 						&& number_percent() < get_skill(rch, gsn_defend)
 						&& number_percent() > 40
 						&& number_percent() < get_skill(rch, gsn_rescue))
@@ -420,7 +424,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	if (!noprimary)
 		one_hit(ch, victim, dt);
 
-	if (ch->fighting != victim || dt == gsn_backstab || (dt == gsn_ambush))
+	if (Deref(ch->fighting) != victim || dt == gsn_backstab || (dt == gsn_ambush))
 		return;
 
 	if (is_affected_by(ch, AFF_HASTE) && (is_npc(ch) || get_skill(ch, gsn_third_attack) > 5))
@@ -465,7 +469,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 			one_hit(ch, victim, dt);
 			check_improve(ch, gsn_second_attack, true, 5);
 
-			if (ch->fighting != victim)
+			if (Deref(ch->fighting) != victim)
 				return;
 		}
 	}
@@ -477,7 +481,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 			one_hit(ch, victim, gsn_dual_wield);
 			check_improve(ch, gsn_dual_wield, true, 3);
 
-			if (ch->fighting != victim)
+			if (Deref(ch->fighting) != victim)
 				return;
 		}
 		else
@@ -503,7 +507,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 
 			check_improve(ch, gsn_third_attack, true, 6);
 
-			if (ch->fighting != victim)
+			if (Deref(ch->fighting) != victim)
 				return;
 		}
 
@@ -519,7 +523,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 				one_hit(ch, victim, gsn_dual_wield);
 				check_improve(ch, gsn_dual_wield, true, 3);
 
-				if (ch->fighting != victim)
+				if (Deref(ch->fighting) != victim)
 					return;
 			}
 			else
@@ -546,7 +550,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 
 			check_improve(ch, gsn_fourth_attack, true, 6);
 
-			if (ch->fighting != victim)
+			if (Deref(ch->fighting) != victim)
 				return;
 		}
 
@@ -561,7 +565,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 				one_hit(ch, victim, gsn_dual_wield);
 				check_improve(ch, gsn_dual_wield, true, 6);
 
-				if (ch->fighting != victim)
+				if (Deref(ch->fighting) != victim)
 					return;
 			}
 			else
@@ -590,7 +594,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 
 				check_improve(ch, gsn_fifth_attack, true, 6);
 
-				if (ch->fighting != victim)
+				if (Deref(ch->fighting) != victim)
 					return;
 			}
 
@@ -606,7 +610,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 					one_hit(ch, victim, gsn_dual_wield);
 					check_improve(ch, gsn_dual_wield, true, 6);
 
-					if (ch->fighting != victim)
+					if (Deref(ch->fighting) != victim)
 						return;
 				}
 				else
@@ -643,7 +647,7 @@ void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 
 	one_hit(ch, victim, dt);
 
-	if (ch->fighting != victim)
+	if (Deref(ch->fighting) != victim)
 		return;
 
 	/* Area attack -- BALLS nasty! */
@@ -653,7 +657,7 @@ void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 		{
 			vch_next = vch->next;
 
-			if (vch != victim && vch->fighting == ch)
+			if (vch != victim && Deref(vch->fighting) == ch)
 				one_hit(ch, vch, dt);
 		}
 	}
@@ -661,7 +665,7 @@ void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	if (is_affected_by(ch, AFF_HASTE) || (IS_SET(ch->off_flags, OFF_FAST) && !is_affected_by(ch, AFF_SLOW)))
 		one_hit(ch, victim, dt);
 
-	if (ch->fighting != victim || dt == gsn_backstab)
+	if (Deref(ch->fighting) != victim || dt == gsn_backstab)
 		return;
 
 	chance = std::max(70, get_skill(ch, gsn_second_attack));
@@ -677,7 +681,7 @@ void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	{
 		one_hit(ch, victim, dt);
 
-		if (ch->fighting != victim)
+		if (Deref(ch->fighting) != victim)
 			return;
 	}
 
@@ -688,7 +692,7 @@ void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	{
 		one_hit(ch, victim, gsn_dual_wield);
 
-		if (ch->fighting != victim)
+		if (Deref(ch->fighting) != victim)
 			return;
 	}
 
@@ -708,7 +712,7 @@ void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	{
 		one_hit(ch, victim, dt);
 
-		if (ch->fighting != victim)
+		if (Deref(ch->fighting) != victim)
 			return;
 	}
 
@@ -716,7 +720,7 @@ void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	{
 		one_hit(ch, victim, gsn_dual_wield);
 
-		if (ch->fighting != victim)
+		if (Deref(ch->fighting) != victim)
 			return;
 	}
 
@@ -732,10 +736,10 @@ void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 			case CLASS_NONE:
 				break;
 			case CLASS_WARRIOR:
-				warrior_ai(ch, ch->fighting);
+				warrior_ai(ch, Deref(ch->fighting));
 				return;
 			case CLASS_THIEF:
-				thief_ai(ch, ch->fighting);
+				thief_ai(ch, Deref(ch->fighting));
 				return;
 			default:
 				break;
@@ -940,7 +944,7 @@ int one_hit_new(CHAR_DATA *ch, CHAR_DATA *victim, int dt, bool specials, bool bl
 
 	if (wield
 		&& ch->Class()->GetIndex() == CLASS_PALADIN
-		&& ch->fighting
+		&& Deref(ch->fighting)
 		&& dt >= TYPE_HIT
 		&& (rdt = check_arms(ch, wield, false)) > 0) // check_arms returns 0 if normal
 	{
@@ -971,7 +975,7 @@ int one_hit_new(CHAR_DATA *ch, CHAR_DATA *victim, int dt, bool specials, bool bl
 
 	if (result && wield != nullptr)
 	{
-		if (ch->fighting == victim && is_weapon_stat(wield, WEAPON_POISON))
+		if (Deref(ch->fighting) == victim && is_weapon_stat(wield, WEAPON_POISON))
 		{
 			int level = 10;
 			OBJ_AFFECT_DATA *poison;
@@ -1090,7 +1094,7 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 				&& dnoun
 				&& dnoun[strlen(dnoun) - 1] == '*'))
 		{
-			if (victim->fighting == nullptr)
+			if (Deref(victim->fighting) == nullptr)
 				set_fighting(victim, ch);
 
 			if (victim->timer <= 4)
@@ -1099,7 +1103,7 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 
 		if (victim->position > POS_STUNNED && victim != ch)
 		{
-			if (ch->fighting == nullptr
+			if (Deref(ch->fighting) == nullptr
 				&& !((is_same_group(ch, victim) || is_safe_new(ch, victim, false))
 					&& dnoun
 					&& dnoun[strlen(dnoun) - 1] == '*'))
@@ -1613,7 +1617,7 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 	if (victim->in_room == nullptr)
 		return true;
 
-	if (is_affected(ch, gsn_shroud_of_light) && !ch->fighting)
+	if (is_affected(ch, gsn_shroud_of_light) && !Deref(ch->fighting))
 	{
 		affect_strip(ch, gsn_shroud_of_light);
 		send_to_char("As you act aggressively your shroud of the light vanishes!\n\r", ch);
@@ -1640,8 +1644,8 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 		&& !is_affected_by(ch,AFF_CHARM)
 		&& !is_affected_by(victim,AFF_CHARM) && !ch->desc
 		&& !ch->hunting && !victim->hunting && victim!=ch
-		&& ch->fighting != victim
-		&& victim->fighting != ch
+		&& Deref(ch->fighting) != victim
+		&& Deref(victim->fighting) != ch
 		&& !ch->desc && !victim->desc)
 	{
 		return true;
@@ -1655,8 +1659,8 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 		&& victim->desc == nullptr
 		&& !is_npc(ch)
 		&& get_trust(ch) < 58
-		&& victim->fighting != ch
-		&& ch->fighting != victim)
+		&& Deref(victim->fighting) != ch
+		&& Deref(ch->fighting) != victim)
 	{
 		if (show)
 		{
@@ -1678,7 +1682,7 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 		return true;
 	}
 
-	if (victim->fighting == ch || victim == ch)
+	if (Deref(victim->fighting) == ch || victim == ch)
 		return false;
 
 	if (is_npc(ch) && ch->last_fought == victim)
@@ -1752,7 +1756,7 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 		if (is_npc(ch))
 		{ /* NPC doing the killing */
 			/* charmed mobs and pets cannot attack players while owned */
-			if (is_affected_by(ch, AFF_CHARM) && ch->master != nullptr && ch->master->fighting != victim)
+			if (is_affected_by(ch, AFF_CHARM) && ch->master != nullptr && Deref(ch->master->fighting) != victim)
 			{
 				send_to_char("Players are your friends!\n\r", ch);
 				return true;
@@ -1797,7 +1801,7 @@ bool is_safe_spell(CHAR_DATA *ch, CHAR_DATA *victim, bool area)
 	if (is_affected_by(victim, AFF_NOSHOW))
 		return true;
 
-	if (victim->fighting == ch || victim == ch)
+	if (Deref(victim->fighting) == ch || victim == ch)
 		return false;
 
 	if (is_immortal(ch) && ch->level > LEVEL_IMMORTAL && !area)
@@ -1834,13 +1838,13 @@ bool is_safe_spell(CHAR_DATA *ch, CHAR_DATA *victim, bool area)
 				return true;
 
 			/* legal kill? -- cannot hit mob fighting non-group member */
-			if (victim->fighting != nullptr && !is_same_group(ch, victim->fighting))
+			if (Deref(victim->fighting) != nullptr && !is_same_group(ch, Deref(victim->fighting)))
 				return true;
 		}
 		else
 		{
 			/* area effect spells do not hit other mobs */
-			if (area && !is_same_group(victim, ch->fighting))
+			if (area && !is_same_group(victim, Deref(ch->fighting)))
 				return true;
 		}
 	}
@@ -1854,7 +1858,7 @@ bool is_safe_spell(CHAR_DATA *ch, CHAR_DATA *victim, bool area)
 		if (is_npc(ch))
 		{
 			/* charmed mobs and pets cannot attack players while owned */
-			if (is_affected_by(ch, AFF_CHARM) && ch->master != nullptr && ch->master->fighting != victim)
+			if (is_affected_by(ch, AFF_CHARM) && ch->master != nullptr && Deref(ch->master->fighting) != victim)
 				return true;
 
 			/* safe room? */
@@ -1862,7 +1866,7 @@ bool is_safe_spell(CHAR_DATA *ch, CHAR_DATA *victim, bool area)
 				return true;
 
 			/* legal kill? -- mobs only hit players grouped with opponent*/
-			if (ch->fighting != nullptr && !is_same_group(ch->fighting, victim))
+			if (Deref(ch->fighting) != nullptr && !is_same_group(Deref(ch->fighting), victim))
 				return true;
 		}
 
@@ -2815,7 +2819,7 @@ void check_analyze(CHAR_DATA *ch, CHAR_DATA *victim)
 		if (victim != ch->analyzePC)
 			ch->analyze = 0;
 
-		ch->analyzePC = ch->fighting;
+		ch->analyzePC = Deref(ch->fighting);
 		if (ch->analyze < 50)
 			ch->analyze++;
 	*/
@@ -2838,7 +2842,7 @@ void check_analyze(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (victim != ch->analyzePC)
 		ch->analyze = 0;
 
-	ch->analyzePC = ch->fighting;
+	ch->analyzePC = Deref(ch->fighting);
 
 	if (is_npc(victim))
 	{
@@ -2892,7 +2896,7 @@ void set_fighting(CHAR_DATA *ch, CHAR_DATA *victim)
 {
 	char buf[MSL];
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 		return;
 
 	if (ch == victim)
@@ -2919,7 +2923,7 @@ void set_fighting(CHAR_DATA *ch, CHAR_DATA *victim)
 	un_shroud(ch, nullptr);
 	un_shroud(victim, nullptr);
 
-	ch->fighting = victim;
+	ch->fighting = victim->self;
 	ch->position = POS_FIGHTING;
 
 	if (is_npc(victim))
@@ -2943,6 +2947,14 @@ void combat_alert(CHAR_DATA *victim, int type, CHAR_DATA *ch)
 
 /*
  * Stop fights.
+ *
+ * The sweep below clears everyone attacking ch, and it stays even though
+ * fighting is a handle now. It is not lifetime bookkeeping: of this
+ * function's callers only extract_char is about death, and the rest --
+ * fleeing, disengaging, a wiznet freeze, a mob leaving the room, a spell
+ * breaking combat -- leave both characters alive. Handles expire on free and
+ * know nothing about a fight ending, so dropping the sweep would leave
+ * characters swinging at an opponent who had walked away.
  */
 void stop_fighting(CHAR_DATA *ch, bool fBoth)
 {
@@ -2950,7 +2962,7 @@ void stop_fighting(CHAR_DATA *ch, bool fBoth)
 
 	for (fch = char_list; fch != nullptr; fch = fch->next)
 	{
-		if (fch == ch || (fBoth && fch->fighting == ch))
+		if (fch == ch || (fBoth && Deref(fch->fighting) == ch))
 		{
 			fch->fighting = nullptr;
 			fch->position = POS_STANDING;
@@ -4870,7 +4882,7 @@ void thief_ai(CHAR_DATA *mob, CHAR_DATA *victim)
 				&& mobweap->value[0] == WEAPON_DAGGER)
 			|| ((mobweap = get_eq_char(mob, WEAR_DUAL_WIELD)) != nullptr
 				&& mobweap->value[0] == WEAPON_DAGGER))
-		&& victim->fighting != mob)
+		&& Deref(victim->fighting) != mob)
 	{
 		do_circle_stab(mob, "");
 	}
@@ -5086,7 +5098,7 @@ void do_bash(CHAR_DATA *ch, char *argument)
 
 	if (arg[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 
 		if (victim == nullptr)
 		{
@@ -5304,7 +5316,7 @@ void do_bash(CHAR_DATA *ch, char *argument)
 	/* level */
 	chance += (ch->level - victim->level);
 
-	if (!is_npc(ch) && !is_npc(victim) && (victim->fighting == nullptr || ch->fighting == nullptr))
+	if (!is_npc(ch) && !is_npc(victim) && (Deref(victim->fighting) == nullptr || Deref(ch->fighting) == nullptr))
 	{
 		sprintf(buf, "Help! %s is bashing me!", pers(ch, victim));
 		do_myell(victim, buf, ch);
@@ -5373,7 +5385,7 @@ void do_dirt(CHAR_DATA *ch, char *argument)
 
 	if (arg[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 		if (victim == nullptr)
 		{
 			send_to_char("But you aren't in combat!\n\r", ch);
@@ -5494,7 +5506,7 @@ void do_dirt(CHAR_DATA *ch, char *argument)
 		act("$n is blinded by the dirt in $s eyes!", victim, nullptr, nullptr, TO_ROOM);
 		act("$n kicks dirt in your eyes!", ch, nullptr, victim, TO_VICT);
 
-		if (!is_npc(ch) && !is_npc(victim) && (victim->fighting == nullptr || ch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(victim) && (Deref(victim->fighting) == nullptr || Deref(ch->fighting) == nullptr))
 			do_myell(victim, "Help! Someone just kicked dirt in my eyes!", ch);
 
 		damage(ch, victim, number_range(2, 5), gsn_dirt, DAM_NONE, true);
@@ -5522,7 +5534,7 @@ void do_dirt(CHAR_DATA *ch, char *argument)
 		/* PK yells....add these to most attacks that can initiate PKs.
 		-Ceran
 		*/
-		if (!is_npc(ch) && !is_npc(victim) && (victim->fighting == nullptr || ch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(victim) && (Deref(victim->fighting) == nullptr || Deref(ch->fighting) == nullptr))
 		{
 			switch (number_range(0, 1))
 			{
@@ -5564,7 +5576,7 @@ void do_trip(CHAR_DATA *ch, char *argument)
 
 	if (arg[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 
 		if (victim == nullptr)
 		{
@@ -5641,7 +5653,7 @@ void do_trip(CHAR_DATA *ch, char *argument)
 	/* now the attack */
 	if (number_percent() < chance)
 	{
-		if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 		{
 			sprintf(buf, "Help! %s just tripped me!", pers(ch, victim));
 			do_myell(victim, buf, ch);
@@ -5669,7 +5681,7 @@ void do_trip(CHAR_DATA *ch, char *argument)
 	}
 	else
 	{
-		if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 		{
 			sprintf(buf, "Help! %s just tried to trip me!", pers(ch, victim));
 			do_myell(victim, buf, ch);
@@ -5719,19 +5731,19 @@ void do_hit(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->fighting != ch)
+	if (Deref(victim->fighting) != ch)
 	{
 		send_to_char("That person isn't fighting you.\n\r", ch);
 		return;
 	}
 
-	if (victim == ch->fighting)
+	if (victim == Deref(ch->fighting))
 	{
 		send_to_char("You're trying as hard as you can!\n\r", ch);
 		return;
 	}
 
-	ch->fighting = victim;
+	ch->fighting = victim->self;
 	ch->batter = 0;
 }
 
@@ -5942,7 +5954,7 @@ void do_ambush(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("But you're still fighting!\n\r", ch);
 		return;
@@ -5975,20 +5987,20 @@ void do_ambush(CHAR_DATA *ch, char *argument)
 
 	chance = get_skill(ch, gsn_moving_ambush);
 
-	if (victim->fighting != nullptr &&
+	if (Deref(victim->fighting) != nullptr &&
 		(chance < 3 || ch->level < skill_table[gsn_moving_ambush].skill_level[ch->Class()->GetIndex()]))
 	{
 		send_to_char("They are moving around too much to ambush.\n\r", ch);
 		return;
 	}
 
-	if (victim->fighting != nullptr && number_percent() >= chance)
+	if (Deref(victim->fighting) != nullptr && number_percent() >= chance)
 	{
 		send_to_char("You can't quite pin them down for your ambush.\n\r", ch);
 		return;
 	}
 
-	if (!is_npc(ch) && !is_npc(victim) && victim->fighting == nullptr)
+	if (!is_npc(ch) && !is_npc(victim) && Deref(victim->fighting) == nullptr)
 	{
 		sprintf(buf, "Help! I've been ambushed by %s!", pers(ch, victim));
 		do_myell(victim, buf, ch);
@@ -6042,7 +6054,7 @@ void do_rescue(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	fch = victim->fighting;
+	fch = Deref(victim->fighting);
 
 	if (fch == nullptr)
 	{
@@ -6050,7 +6062,7 @@ void do_rescue(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (is_safe(ch, victim->fighting))
+	if (is_safe(ch, Deref(victim->fighting)))
 		return;
 
 	WAIT_STATE(ch, skill_table[gsn_rescue].beats);
@@ -6088,7 +6100,7 @@ void do_kick(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -6161,7 +6173,7 @@ void do_disarm(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -6235,7 +6247,7 @@ void do_disarm(CHAR_DATA *ch, char *argument)
 
 void do_surrender(CHAR_DATA *ch, char *argument)
 {
-	CHAR_DATA *mob = ch->fighting;
+	CHAR_DATA *mob = Deref(ch->fighting);
 
 	if (mob == nullptr)
 	{
@@ -6466,7 +6478,7 @@ void do_cleave(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->fighting != nullptr)
+	if (Deref(victim->fighting) != nullptr)
 	{
 		send_to_char("They are moving too much to cleave.\n\r", ch);
 		return;
@@ -6609,7 +6621,7 @@ void do_tail(CHAR_DATA *ch, char *argument)
 
 	if (arg[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 
 		if (victim == nullptr)
 		{
@@ -6679,7 +6691,7 @@ void do_throw(CHAR_DATA *ch, char *argument)
 	one_argument(argument, arg);
 
 	if (arg[0] == '\0')
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 	else
 		victim = get_char_room(ch, arg);
 
@@ -6695,7 +6707,7 @@ void do_throw(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if ((victim->fighting != ch) && (ch->fighting != victim))
+	if ((Deref(victim->fighting) != ch) && (Deref(ch->fighting) != victim))
 	{
 		send_to_char("But you aren't engaged in combat with them.\n\r", ch);
 		return;
@@ -6868,7 +6880,7 @@ void do_throw(CHAR_DATA *ch, char *argument)
 	damage_old(ch, victim, dam, gsn_throw, DAM_BASH, true);
 	WAIT_STATE(ch, 2 * PULSE_VIOLENCE);
 
-	if (ch->fighting == victim)
+	if (Deref(ch->fighting) == victim)
 		check_ground_control(ch, victim, chance, dam);
 }
 
@@ -6892,7 +6904,7 @@ void do_nerve(CHAR_DATA *ch, char *argument)
 	one_argument(argument, arg);
 
 	if (arg[0] == '\0')
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 	else
 		victim = get_char_room(ch, arg);
 
@@ -6952,13 +6964,13 @@ void do_nerve(CHAR_DATA *ch, char *argument)
 		WAIT_STATE(ch, PULSE_VIOLENCE);
 	}
 
-	if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+	if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 	{
 		sprintf(buf, "Help, %s is attacking me!", pers(ch, victim));
 		do_myell(victim, buf, ch);
 	}
 
-	if (victim->fighting == nullptr)
+	if (Deref(victim->fighting) == nullptr)
 	{
 		multi_hit(victim, ch, TYPE_UNDEFINED);
 	}
@@ -7049,7 +7061,7 @@ void do_blindness_dust(CHAR_DATA *ch, char *argument)
 	send_to_char("You throw a handful of blindness dust into the room!\n\r", ch);
 	check_improve(ch, gsn_blindness_dust, true, 2);
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 		fighting = true;
 
 	init_affect(&af);
@@ -7085,13 +7097,13 @@ void do_blindness_dust(CHAR_DATA *ch, char *argument)
 			affect_to_char(vch, &af);
 		}
 
-		if (!is_npc(vch) && !is_npc(ch) && (vch->fighting == nullptr || (!fighting)))
+		if (!is_npc(vch) && !is_npc(ch) && (Deref(vch->fighting) == nullptr || (!fighting)))
 		{
 			sprintf(buf, "Help! %s just threw dust in my eyes!", pers(ch, vch));
 			do_myell(vch, buf, ch);
 		}
 
-		if (vch->fighting == nullptr)
+		if (Deref(vch->fighting) == nullptr)
 			multi_hit(vch, ch, TYPE_UNDEFINED);
 	}
 }
@@ -7135,7 +7147,7 @@ void do_poison_dust(CHAR_DATA *ch, char *argument)
 	send_to_char("You throw a handful of poison dust into the room!\n\r", ch);
 	check_improve(ch, gsn_poison_dust, true, 2);
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 		fighting = true;
 
 	af.aftype = AFT_SKILL;
@@ -7173,14 +7185,14 @@ void do_poison_dust(CHAR_DATA *ch, char *argument)
 			affect_to_char(vch, &af);
 		}
 
-		if (!is_npc(vch) && !is_npc(ch) && (vch->fighting == nullptr || (!fighting)))
+		if (!is_npc(vch) && !is_npc(ch) && (Deref(vch->fighting) == nullptr || (!fighting)))
 		{
 			sprintf(buf, "Help! %s just threw dust in my eyes!", pers(ch, vch));
 			do_myell(vch, buf, ch);
 		}
 	return;
 
-		if (vch->fighting == nullptr)
+		if (Deref(vch->fighting) == nullptr)
 			multi_hit(vch, ch, TYPE_UNDEFINED);
 	}
 }
@@ -7484,7 +7496,7 @@ void do_tame(CHAR_DATA *ch, char *argument)
 	one_argument(argument, arg);
 
 	if (arg[0] == '\0')
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 	else
 		victim = get_char_room(ch, arg);
 
@@ -7601,7 +7613,7 @@ void do_shield_cleave(CHAR_DATA *ch, char *argument)
 	one_argument(argument, arg);
 
 	if (arg[0] == '\0')
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 	else
 		victim = get_char_room(ch, arg);
 
@@ -7655,7 +7667,7 @@ void do_shield_cleave(CHAR_DATA *ch, char *argument)
 	if (!using_primary)
 		chance -= 15;
 
-	if (!is_npc(victim) && ch->fighting != victim)
+	if (!is_npc(victim) && Deref(ch->fighting) != victim)
 	{
 		sprintf(buf, "Help! %s just shield cleaved me!", pers(ch, victim));
 		do_myell(victim, buf, ch);
@@ -7900,7 +7912,7 @@ void do_intimidate(CHAR_DATA *ch, char *argument)
 	one_argument(argument, arg);
 
 	if (arg[0] == '\0')
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 	else
 		victim = get_char_room(ch, arg);
 
@@ -7964,7 +7976,7 @@ void do_flee(CHAR_DATA *ch, char *argument)
 	int attempt, chance, dir;
 	bool pounced = false;
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -8035,7 +8047,7 @@ void do_flee(CHAR_DATA *ch, char *argument)
 		if (!is_npc(panther)
 			&& is_affected(panther, gsn_rage)
 			&& panther->pcdata->tribe == TRIBE_PANTHER
-			&& panther->fighting == ch)
+			&& Deref(panther->fighting) == ch)
 		{
 			break;
 		}
@@ -8186,7 +8198,7 @@ void do_assassinate(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->fighting != nullptr || victim->position == POS_FIGHTING)
+	if (Deref(victim->fighting) != nullptr || victim->position == POS_FIGHTING)
 	{
 		send_to_char("They are moving around too much to get in close for the kill.\n\r", ch);
 		return;
@@ -8322,7 +8334,7 @@ void do_lash(CHAR_DATA *ch, char *argument)
 
 	if (arg[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 
 		if (victim == nullptr)
 		{
@@ -8376,7 +8388,7 @@ void do_lash(CHAR_DATA *ch, char *argument)
 	if (is_npc(victim))
 		chance += (ch->level - victim->level) * 3;
 
-	if (!is_npc(ch) && !is_npc(victim) && (victim->fighting == nullptr || ch->fighting == nullptr))
+	if (!is_npc(ch) && !is_npc(victim) && (Deref(victim->fighting) == nullptr || Deref(ch->fighting) == nullptr))
 	{
 		sprintf(buf, "Help! %s is lashing me!", pers(ch, victim));
 		do_myell(victim, buf, ch);
@@ -8389,7 +8401,7 @@ void do_lash(CHAR_DATA *ch, char *argument)
 		act("You lash at $N's legs but miss.", ch, 0, victim, TO_CHAR);
 		check_improve(ch, gsn_lash, false, 1);
 
-		if (ch->fighting == nullptr)
+		if (Deref(ch->fighting) == nullptr)
 			set_fighting(ch, victim);
 
 		WAIT_STATE(ch, PULSE_VIOLENCE * 2);
@@ -8406,7 +8418,7 @@ void do_lash(CHAR_DATA *ch, char *argument)
 
 	damage_old(ch, victim, dice(2, 7), gsn_lash, DAM_BASH, true);
 
-	if (ch->fighting == nullptr)
+	if (Deref(ch->fighting) == nullptr)
 		multi_hit(victim, ch, TYPE_UNDEFINED);
 
 	victim->position = POS_RESTING;
@@ -8434,7 +8446,7 @@ void do_pugil(CHAR_DATA *ch, char *argument)
 
 	if (arg[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 
 		if (victim == nullptr)
 		{
@@ -8453,7 +8465,7 @@ void do_pugil(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	if (ch->fighting == nullptr)
+	if (Deref(ch->fighting) == nullptr)
 	{
 		send_to_char("You can't pugil someone like that.\n\r", ch);
 		return;
@@ -8553,7 +8565,7 @@ void do_call_to_arms(CHAR_DATA *ch, char *arguement)
 		return;
 	}
 
-	if (ch->fighting == nullptr)
+	if (Deref(ch->fighting) == nullptr)
 	{
 		send_to_char("You give a stirring call to arms, but alas there is nobody to fight.\n\r", ch);
 		act("$n cries out to nobody in particular to fight nobody in particular.", ch, nullptr, nullptr, TO_ROOM);
@@ -8600,7 +8612,7 @@ void do_call_to_arms(CHAR_DATA *ch, char *arguement)
 		if (ch->mana < 15)
 			continue;
 
-		if (ch->fighting == nullptr)
+		if (Deref(ch->fighting) == nullptr)
 			continue;
 
 		if (target->level > (ch->level + 12))
@@ -8619,9 +8631,9 @@ void do_call_to_arms(CHAR_DATA *ch, char *arguement)
 		ch->mana -= 15;
 
 		act("$N rallies to your call!", ch, nullptr, target, TO_CHAR);
-		act("$n screams and rushes to attack $N!", target, nullptr, ch->fighting, TO_NOTVICT);
-		act("$n screams and rushes forwards to attack you!", target, nullptr, ch->fighting, TO_VICT);
-		multi_hit(target, ch->fighting, TYPE_UNDEFINED);
+		act("$n screams and rushes to attack $N!", target, nullptr, Deref(ch->fighting), TO_NOTVICT);
+		act("$n screams and rushes forwards to attack you!", target, nullptr, Deref(ch->fighting), TO_VICT);
+		multi_hit(target, Deref(ch->fighting), TYPE_UNDEFINED);
 		continue;
 	}
 
@@ -8785,6 +8797,7 @@ bool check_maneuvering(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	int chance, count = 0;
 	bool ableth = false;
 	CHAR_DATA *vch, *vch_next;
+	CHAR_DATA *tank;
 	char buf1[MAX_STRING_LENGTH], buf2[MAX_STRING_LENGTH];
 
 	if (!is_npc(victim))
@@ -8814,7 +8827,7 @@ bool check_maneuvering(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 		person he is tanking..get to be maneuvered around */
 		if (vch != victim)
 		{
-			if (vch->fighting == victim && victim->fighting != vch)
+			if (Deref(vch->fighting) == victim && Deref(victim->fighting) != vch)
 				count++;
 
 			if (vch == ch && count < 3)
@@ -8825,8 +8838,10 @@ bool check_maneuvering(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	/* Mob level difference */
 	chance -= ch->level - victim->level;
 
+	tank = Deref(victim->fighting);
+
 	/* Can't be fighting directly */
-	if (ch == victim->fighting || !ableth)
+	if (ch == tank || !ableth)
 		return false;
 
 	/* Skill % * 65% chance of it happening */
@@ -8838,7 +8853,7 @@ bool check_maneuvering(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 
 	/* Echo the messages to the relative people */
 	sprintf(buf1, "You position yourself on the far side of %s, keeping %s at bay.\n\r",
-			is_npc(victim->fighting) ? victim->fighting->short_descr : victim->fighting->name,
+			is_npc(tank) ? tank->short_descr : tank->name,
 			is_npc(ch) ? ch->short_descr : ch->name);
 	send_to_char(buf1, victim);
 
@@ -9083,7 +9098,7 @@ bool check_sidestep(CHAR_DATA *ch, CHAR_DATA *victim, int skill, int mod)
 		chance = (int)(chance * ((float)mod / 100));
 	}
 
-	if (victim->fighting)
+	if (Deref(victim->fighting))
 		return false;
 
 	if (!can_see(victim, ch))
@@ -9192,7 +9207,7 @@ void do_gore(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You can't gore in combat!\n\r", ch);
 		return;
@@ -9292,7 +9307,7 @@ void do_headbutt(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -9383,21 +9398,25 @@ void do_headbutt(CHAR_DATA *ch, char *argument)
 
 void do_disengage(CHAR_DATA *ch, char *argument)
 {
-	if (!ch->fighting)
+	CHAR_DATA *opponent;
+
+	opponent = Deref(ch->fighting);
+
+	if (opponent == nullptr)
 	{
 		send_to_char("You aren't fighting anyone!\n\r", ch);
 		return;
 	}
 
-	if (ch->fighting->fighting == ch)
+	if (Deref(opponent->fighting) == ch)
 	{
 		send_to_char("It's called fleeing.  Look into it.\n\r", ch);
 		return;
 	}
 
-	act("You cease attacking $N.", ch, 0, ch->fighting, TO_CHAR);
-	act("$n ceases attacking you.", ch, 0, ch->fighting, TO_VICT);
-	act("$n ceases attacking $N.", ch, 0, ch->fighting, TO_NOTVICT);
+	act("You cease attacking $N.", ch, 0, opponent, TO_CHAR);
+	act("$n ceases attacking you.", ch, 0, opponent, TO_VICT);
+	act("$n ceases attacking $N.", ch, 0, opponent, TO_NOTVICT);
 
 	stop_fighting(ch, false);
 

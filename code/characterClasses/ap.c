@@ -311,7 +311,7 @@ void lust_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 	char buf[MSL];
 	int skill;
 
-	if (ch->fighting || !is_awake(ch))
+	if (Deref(ch->fighting) || !is_awake(ch))
 		return;
 
 	skill = (int)(get_skill(ch, skill_lookup("steal")) * 0.8);
@@ -509,7 +509,7 @@ void check_baals_mastery(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (!is_affected(ch, gsn_baals_mastery))
 		return;
 
-	if (victim != ch->fighting)
+	if (victim != Deref(ch->fighting))
 		return;
 
 	if (!(af = affect_find(ch->affected, gsn_baals_mastery)))
@@ -840,7 +840,7 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 		return;
 	}
 
-	if (!ch->fighting && af->modifier == 0)
+	if (!Deref(ch->fighting) && af->modifier == 0)
 	{
 		if (number_percent() < 4 && af->location == APPLY_DAMROLL)
 		{
@@ -874,7 +874,7 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 		}
 	}
 
-	if (!ch->fighting && number_percent() <= 33)
+	if (!Deref(ch->fighting) && number_percent() <= 33)
 	{
 		OBJ_AFFECT_DATA af2;
 		af2.where = af->where;
@@ -895,7 +895,7 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 
 		return;
 	}
-	else if (!ch->fighting)
+	else if (!Deref(ch->fighting))
 	{
 		return;
 	}
@@ -903,7 +903,7 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	if (!(obj->wear_loc == WEAR_WIELD || obj->wear_loc == WEAR_DUAL_WIELD))
 		return;
 
-	if (is_npc(ch->fighting) && number_percent() > 5)
+	if (is_npc(Deref(ch->fighting)) && number_percent() > 5)
 		return;
 
 	OBJ_AFFECT_DATA af2;
@@ -919,12 +919,12 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	af2.pulse_fun = af->pulse_fun;
 	affect_remove_obj(obj, af, false);
 
-	if (is_npc(ch->fighting) && af2.modifier <= 15)
+	if (is_npc(Deref(ch->fighting)) && af2.modifier <= 15)
 	{
 		af2.modifier++;
 		af2.modifier = std::min((int)af2.modifier, 15);
 	}
-	else if (is_npc(ch->fighting))
+	else if (is_npc(Deref(ch->fighting)))
 	{
 		af2.modifier -= 2;
 	}
@@ -1795,7 +1795,7 @@ void insanity_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 	if (number_percent() < 5)
 		return;
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		insanity_fight(ch);
 		return;
@@ -1807,7 +1807,7 @@ void insanity_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 
 	for (victim = ch->in_room->people; victim != nullptr; victim = victim->next_in_room)
 	{
-		if (ch->fighting != nullptr)
+		if (Deref(ch->fighting) != nullptr)
 			return;
 
 		if ((victim == ch) || (is_safe_new(ch, victim, false)) || (number_percent() > 95))
@@ -1944,7 +1944,7 @@ void insanity_end(CHAR_DATA *ch, AFFECT_DATA *af)
 
 void insanity_fight(CHAR_DATA *ch)
 {
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 		return;
@@ -2122,9 +2122,9 @@ void do_breath_mephisto(CHAR_DATA *ch, char *argument)
 
 	if (argument[0] == '\0')
 	{
-		if (ch->fighting)
+		if (Deref(ch->fighting))
 		{
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 		else
 		{
@@ -2160,7 +2160,7 @@ void mephisto_two(CHAR_DATA *ch, CHAR_DATA *victim, char *argument)
 {
 	AFFECT_DATA af;
 
-	if (!(ch->fighting) && !(get_char_room(ch, argument)))
+	if (!(Deref(ch->fighting)) && !(get_char_room(ch, argument)))
 	{
 		act("You let the intense cold dissipate, your target having escaped.", ch, 0, 0, TO_CHAR);
 		return;
@@ -2196,9 +2196,9 @@ void do_touch(CHAR_DATA *ch, char *argument)
 
 	if (argument[0] == '\0')
 	{
-		if (ch->fighting)
+		if (Deref(ch->fighting))
 		{
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 		else
 		{
@@ -2228,7 +2228,7 @@ void do_touch(CHAR_DATA *ch, char *argument)
 	if (is_safe_new(ch, victim, true))
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 		chance -= 20;
 
 	if (victim->position == POS_SLEEPING)

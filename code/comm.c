@@ -57,6 +57,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include "merc.h"
+#include "entity/handles.h"
 #include "comm.h"
 #include "recycle.h"
 #include "tables.h"
@@ -815,7 +816,7 @@ bool process_output(DESCRIPTOR_DATA *d, bool fPrompt)
 		ch = d->character;
 
 		/* battle prompt */
-		if ((victim = ch->fighting) != nullptr)
+		if ((victim = Deref(ch->fighting)) != nullptr)
 		{
 			int percent;
 			char wound[100];

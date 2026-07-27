@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "necro.h"
 #include "../comm.h"
 #include "../act_comm.h"
@@ -417,7 +418,7 @@ void animate_two(CHAR_DATA *ch, OBJ_DATA *corpse)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		act("The interruption disrupts your concentration, and $p crumbles to dust.", ch, corpse, nullptr, TO_CHAR);
 		act("$n is unable to continue the animation process, and $p crumbles to dust.", ch, corpse, nullptr, TO_ROOM);
@@ -447,7 +448,7 @@ void animate_three(CHAR_DATA *ch, OBJ_DATA *corpse)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		act("The interruption disrupts your concentration, and $p crumbles to dust.", ch, corpse, nullptr, TO_CHAR);
 		act("$n is unable to continue the animation process, and $p crumbles to dust.", ch, corpse, nullptr, TO_ROOM);
@@ -687,7 +688,7 @@ void spell_visceral(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void visceral_two(CHAR_DATA *ch)
 {
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The profane ritual disrupted, the magicks dissipate harmlessly.\n\r", ch);
 		ch->disrupted = true;
@@ -705,7 +706,7 @@ void visceral_three(CHAR_DATA *ch)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The dark powers are furious at the disruption of the unholy orgy!\n\r", ch);
 
@@ -731,7 +732,7 @@ void visceral_four(CHAR_DATA *ch)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unseen dark powers howl in fury at the disruption!\n\r", ch);
 		send_to_char("Invisible claws rend at your flesh as they seek to sate their bloodthirst!\n\r", ch);
@@ -811,7 +812,7 @@ void ritual_two(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unholy ritual disrupted, the harnessed energy dissipates harmlessly.\n\r", ch);
 
@@ -830,7 +831,7 @@ void ritual_three(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unholy ritual disrupted, the harnessed energy dissipates harmlessly.\n\r", ch);
 
@@ -856,7 +857,7 @@ void ritual_four(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The Dark Gods are angered at the disruption, and unleash their fury upon you!\n\r", ch);
 		act("A swirling black cloud coalesces above and lashes out at $n!", ch, nullptr, nullptr, TO_ROOM);
@@ -936,7 +937,7 @@ void spell_ritual_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void flesh_two(CHAR_DATA *ch, CHAR_DATA *victim)
 {
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unholy ritual disrupted, the harnessed energy dissipates harmlessly.\n\r", ch);
 		ch->disrupted = true;
@@ -954,7 +955,7 @@ void flesh_three(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unholy ritual disrupted, the harnessed energy dissipates harmlessly.\n\r", ch);
 		ch->disrupted = true;
@@ -978,7 +979,7 @@ void flesh_four(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The Dark Gods are angered at the disruption, and unleash their fury upon you!\n\r", ch);
 		act("A swirling black cloud coalesces above and lashes out at $n!", ch, nullptr, nullptr, TO_ROOM);
@@ -1129,7 +1130,7 @@ void spell_corrupt_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		do_myell(victim, buf, ch);
 		obj_from_char(obj);
 
-		if (ch->fighting == nullptr)
+		if (Deref(ch->fighting) == nullptr)
 			one_hit(victim, ch, TYPE_HIT);
 	}
 

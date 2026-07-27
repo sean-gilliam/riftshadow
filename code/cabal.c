@@ -34,6 +34,7 @@
 #include <iterator>
 #include <algorithm>
 #include "merc.h"
+#include "entity/handles.h"
 #include "cabal.h"
 #include "recycle.h"
 #include "tables.h"
@@ -631,7 +632,7 @@ void spell_scourge(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (is_same_group(vch, ch) || is_safe(ch, vch) || is_same_cabal(ch, vch))
 			continue;
 
-		if (!is_npc(ch) && !is_npc(vch) && (ch->fighting == nullptr || vch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(vch) && (Deref(ch->fighting) == nullptr || Deref(vch->fighting) == nullptr))
 		{
 			sprintf(buf, "Die, %s you scourging dog!", pers(ch, vch));
 			do_myell(vch, buf, ch);
@@ -1018,7 +1019,7 @@ void do_howl(CHAR_DATA *ch, char *argument)
 		ch->mana -= 30;
 	}
 
-	if (!ch->fighting)
+	if (!Deref(ch->fighting))
 	{
 		send_to_char("You must be fighting to howl!\n\r", ch);
 		return;
@@ -1048,7 +1049,7 @@ void do_howl(CHAR_DATA *ch, char *argument)
 			vch_next = vch->next_in_room;
 			if (vch != ch
 				&& !check_leadership_save(vch, gsn_howl)
-				&& vch->fighting == ch
+				&& Deref(vch->fighting) == ch
 				&& (!is_npc(vch) || (is_npc(vch) && !IS_SET(vch->act, ACT_SENTINEL))))
 			{
 				act("$n looks frightened and tries to run!", vch, 0, 0, TO_ROOM);
@@ -1575,7 +1576,7 @@ void spell_shroud_of_light(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You are not able to shroud yourself while you fight.\n\r", ch);
 		return;
@@ -1598,7 +1599,7 @@ void spell_shroud_of_light(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 
 void spell_crimson_martyr(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
-	CHAR_DATA *victim = ch->fighting, *vch, *vch_next;
+	CHAR_DATA *victim = Deref(ch->fighting), *vch, *vch_next;
 	AFFECT_DATA af;
 
 	for (vch = ch->in_room->people; vch; vch = vch->next_in_room)

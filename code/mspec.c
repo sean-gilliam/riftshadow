@@ -5,6 +5,7 @@
 #include <time.h>
 #include <algorithm>
 #include "merc.h"
+#include "entity/handles.h"
 #include "mspec.h"
 #include "handler.h"
 #include "spec.h"
@@ -386,7 +387,7 @@ BEGIN_SPEC(mspec_academy_pet)
 
 		if (ch->in_room != ch->leader->in_room)
 		{
-			if (ch->fighting)
+			if (Deref(ch->fighting))
 			{
 				act("$n seems to fade into the shadows.", ch, 0, 0, TO_ROOM);
 				stop_fighting(ch, true);
@@ -408,7 +409,7 @@ BEGIN_SPEC(mspec_academy_pet)
 			return 0;
 		}
 
-		if (number_percent() > 96 && !ch->fighting && !IS_SET(ch->comm, COMM_NOGOSSIP))
+		if (number_percent() > 96 && !Deref(ch->fighting) && !IS_SET(ch->comm, COMM_NOGOSSIP))
 		{
 			char *msg;
 

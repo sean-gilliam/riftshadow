@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "aprog.h"
 #include "weather_enums.h"
 #include "comm.h"
@@ -167,7 +168,7 @@ void tick_prog_academy_reset(AREA_DATA *area)
 
 	for (ch = char_list; ch; ch = ch->next)
 	{
-		if (!is_npc(ch) && ch->in_room->area == area && ch->level > 10 && !ch->fighting && !is_immortal(ch))
+		if (!is_npc(ch) && ch->in_room->area == area && ch->level > 10 && !Deref(ch->fighting) && !is_immortal(ch))
 		{
 			char buf[MSL];
 
@@ -372,7 +373,7 @@ void pulse_prog_ruins_shark(AREA_DATA *area)
 
 		if (shark->pIndexData->vnum == 20111)
 		{
-			if (!shark->fighting && !shark->last_fought && number_percent() > 50 && shark->in_room)
+			if (!Deref(shark->fighting) && !shark->last_fought && number_percent() > 50 && shark->in_room)
 				extract_char(shark, true);
 			else
 				count++;

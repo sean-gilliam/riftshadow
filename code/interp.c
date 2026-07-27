@@ -38,6 +38,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "interp.h"
 #include "ban.h"
 #include "handler.h"
@@ -1003,7 +1004,7 @@ void interpret(CHAR_DATA *ch, char *argument)
 			case TAR_CHAR_OFFENSIVE:
 				if (argument[0] == '\0')
 				{
-					if ((victim = ch->fighting) == nullptr)
+					if ((victim = Deref(ch->fighting)) == nullptr)
 					{
 						send_to_char("Do that to who?\n\r", ch);
 						return;
@@ -1112,7 +1113,7 @@ void interpret(CHAR_DATA *ch, char *argument)
 		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE
 			&& victim
 			&& victim != ch
-			&& !victim->fighting
+			&& !Deref(victim->fighting)
 			&& victim->master != ch)
 		{
 			multi_hit(victim, ch, TYPE_UNDEFINED);

@@ -587,7 +587,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		add_tracks(in_room, ch, door);
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 		stop_fighting(ch, true);
 
 	char_from_room(ch);
@@ -3235,7 +3235,7 @@ void do_recall(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	auto victim = ch->fighting;
+	auto victim = Deref(ch->fighting);
 	if (victim != nullptr)
 	{
 		char buf[MAX_STRING_LENGTH];
@@ -3797,7 +3797,7 @@ void smart_track(CHAR_DATA *ch, CHAR_DATA *mob)
 	if (ch->in_room->area != mob->in_room->area)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	mob->path = nullptr;
@@ -3875,7 +3875,7 @@ void walk_to_room(CHAR_DATA *mob, ROOM_INDEX_DATA *goal)
 	if (mob->in_room->area != goal->area)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	mob->path = nullptr;

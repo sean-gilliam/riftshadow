@@ -5,6 +5,7 @@
 #include <time.h>
 #include <math.h>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "paladin.h"
 #include "../interp.h"
 #include "../tables.h"
@@ -255,7 +256,7 @@ bool check_intercept(CHAR_DATA *ch, CHAR_DATA *victim, CHAR_DATA *paladin, int d
 	if (!is_awake(paladin))
 		return false;
 
-	if (paladin->fighting != ch)
+	if (Deref(paladin->fighting) != ch)
 		return false;
 
 	if (!is_npc(ch) && (!can_pk(ch, paladin) || !can_pk(paladin, ch)))
@@ -370,7 +371,7 @@ void spell_blinding_orb(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		char buf2[MSL];
 		sprintf(buf2, "Die, %s, you sorcerous dog!", pers(ch, victim));
 
-		if (!victim->fighting && !is_npc(victim))
+		if (!Deref(victim->fighting) && !is_npc(victim))
 			do_myell(victim, buf2, ch);
 
 		damage_new(ch, victim, dam, sn, DAM_LIGHT, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
@@ -718,7 +719,7 @@ void spell_arms_of_judgement(int sn, int level, CHAR_DATA *ch, void *vo, int tar
 void do_strike_of_virtue(CHAR_DATA *ch, char *argument)
 {
 	OBJ_DATA *weapon;
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 
 	weapon = get_eq_char(ch, WEAR_WIELD);
 
@@ -787,7 +788,7 @@ void do_group_retreat(CHAR_DATA *ch, char *argument)
 	char arg[MAX_INPUT_LENGTH];
 	CHAR_DATA *to = nullptr;
 	CHAR_DATA *vch, *vch_next;
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 	ROOM_INDEX_DATA *to_room = nullptr;
 	char buf[MAX_INPUT_LENGTH];
 	EXIT_DATA *pexit;
@@ -797,7 +798,7 @@ void do_group_retreat(CHAR_DATA *ch, char *argument)
 
 	one_argument(argument, arg);
 
-	if (!ch->fighting)
+	if (!Deref(ch->fighting))
 	{
 		send_to_char("You aren't fighting!\n\r", ch);
 		return;
@@ -1069,7 +1070,7 @@ void spell_holy_shroud(int level, int sn, CHAR_DATA *ch, void *vo, int target)
 
 int check_arms(CHAR_DATA *ch, OBJ_DATA *wield, bool bOncePerRound)
 {
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 	AFFECT_DATA af;
 
 	if (is_affected_obj(wield, gsn_arms_of_light))
@@ -1262,8 +1263,8 @@ void ispirit_beat(CHAR_DATA *ch, AFFECT_DATA *af)
 			act("$n's body collapses under the strain of $s spiritual exertion!", ch, 0, 0, TO_ROOM);
 			act("$n is DEAD!!", ch, 0, 0, TO_ROOM);
 
-			if (ch->fighting)
-				raw_kill(ch->fighting, ch);
+			if (Deref(ch->fighting))
+				raw_kill(Deref(ch->fighting), ch);
 			else
 				raw_kill(ch, ch);
 		}

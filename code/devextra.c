@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <iterator>
 #include "merc.h"
+#include "entity/handles.h"
 #include "devextra.h"
 #include "rift.h"
 #include "stdlibs/cfilesystem.h"
@@ -1124,7 +1125,7 @@ bool check_volley(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	skill = get_skill(victim, gsn_volley);
 
-	if (!skill || victim->fighting || !is_awake(victim) || victim == ch)
+	if (!skill || Deref(victim->fighting) || !is_awake(victim) || victim == ch)
 		return false;
 
 	if (get_trust(victim) == MAX_LEVEL)
@@ -2246,7 +2247,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		case TAR_CHAR_OFFENSIVE:
 			if (arg2[0] == '\0')
 			{
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 
 				if (victim == nullptr)
 				{
@@ -2332,7 +2333,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		case TAR_OBJ_CHAR_OFF:
 			if (arg2[0] == '\0')
 			{
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 
 				if (victim == nullptr)
 				{
@@ -2442,7 +2443,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 
 		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE)
 		{
-			if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+			if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 			{
 				switch (number_range(0, 2))
 				{
@@ -2524,7 +2525,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		for (vch = ch->in_room->people; vch; vch = vch_next)
 		{
 			vch_next = vch->next_in_room;
-			if (victim == vch && victim->fighting == nullptr)
+			if (victim == vch && Deref(victim->fighting) == nullptr)
 			{
 				multi_hit(victim, ch, TYPE_UNDEFINED);
 				break;
@@ -2606,7 +2607,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 		case TAR_CHAR_OFFENSIVE:
 			if (arg2[0] == '\0')
 			{
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 
 				if (victim == nullptr)
 				{
@@ -2682,7 +2683,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 		case TAR_OBJ_CHAR_OFF:
 			if (arg2[0] == '\0')
 			{
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 
 				if (victim == nullptr)
 				{
@@ -2789,7 +2790,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 
 		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE)
 		{
-			if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+			if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 			{
 				switch (number_range(0, 2))
 				{
@@ -2833,7 +2834,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 		{
 			vch_next = vch->next_in_room;
 
-			if (victim == vch && victim->fighting == nullptr)
+			if (victim == vch && Deref(victim->fighting) == nullptr)
 			{
 				multi_hit(victim, ch, TYPE_UNDEFINED);
 				break;

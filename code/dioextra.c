@@ -1713,10 +1713,10 @@ void do_damage(CHAR_DATA *ch, char *argument)
 
 	damage_new(ch, victim, dam, TYPE_UNDEFINED, DAM_OTHER, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, argument);
 
-	if (ch->fighting == victim)
+	if (Deref(ch->fighting) == victim)
 		stop_fighting(ch, false);
 
-	if (victim->fighting == ch)
+	if (Deref(victim->fighting) == ch)
 		stop_fighting(victim, false);
 }
 

@@ -9,6 +9,7 @@
 #include <math.h>
 #include <iterator>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "warrior.h"
 #include "sorcerer.h"
 #include "../act_comm.h"
@@ -152,7 +153,7 @@ void do_style(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		skill = get_skill(ch, gsn_integrate);
 
@@ -197,7 +198,7 @@ void do_entrap(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -424,7 +425,7 @@ void do_hobble(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -705,7 +706,7 @@ void do_crippling_blow(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -968,7 +969,7 @@ void do_gouge(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -1135,7 +1136,7 @@ void do_bleed(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -1368,7 +1369,7 @@ void do_unbalance(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -1428,7 +1429,7 @@ void do_unbalance(CHAR_DATA *ch, char *argument)
 void do_uppercut(CHAR_DATA *ch, char *argument)
 {
 	int success = 0, skill, special = 100, duration = ch->level;
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 	AFFECT_DATA af;
 	OBJ_DATA *weapon;
 	char ch1[MSL], chspecial[MSL], vict1[MSL], victspecial[MSL], nv1[MSL], nvspecial[MSL];
@@ -1581,7 +1582,7 @@ void do_dart(CHAR_DATA *ch, char *argument)
 {
 	OBJ_DATA *weapon;
 	AFFECT_DATA af;
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 	char cha[MSL], vict[MSL], nv[MSL];
 	int skill = get_skill(ch, gsn_dart);
 
@@ -1703,7 +1704,7 @@ void do_impale(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -1760,7 +1761,7 @@ void do_impale(CHAR_DATA *ch, char *argument)
 			break;
 	}
 
-	if (!is_npc(victim) && !is_npc(ch) && (!ch->fighting || !victim->fighting))
+	if (!is_npc(victim) && !is_npc(ch) && (!Deref(ch->fighting) || !Deref(victim->fighting)))
 	{
 		sprintf(buf, "Help! %s is impaling me!", pers(ch, victim));
 		do_myell(victim, buf, ch);
@@ -1977,7 +1978,7 @@ void do_hurl(CHAR_DATA *ch, char *argument)
 		sprintf(buf, "A %s comes hurtling in from the %s, flipping end over end!", weapon_name_lookup(weapon->value[0]), dirname);
 		act(buf, victim, 0, 0, TO_ALL);
 
-		if (!is_npc(victim) && victim->fighting == nullptr)
+		if (!is_npc(victim) && Deref(victim->fighting) == nullptr)
 		{
 			sprintf(buf, "Help! %s is hurling a weapon at me!", pers(ch, victim));
 			do_myell(victim, buf, ch);
@@ -2012,7 +2013,7 @@ void do_hurl(CHAR_DATA *ch, char *argument)
 		act("With a flick of $s wrist, $n hurls $S $t at you!", ch, weapon_name_lookup(weapon->value[0]), victim, TO_VICT);
 		act("With a flick of $s wrist, $n hurls $S $t at $N!", ch, weapon_name_lookup(weapon->value[0]), victim, TO_NOTVICT);
 
-		if (!is_npc(victim) && victim->fighting == nullptr)
+		if (!is_npc(victim) && Deref(victim->fighting) == nullptr)
 		{
 			sprintf(buf, "Help! %s is hurling a weapon at me!", pers(ch, victim));
 			do_myell(victim, buf, ch);
@@ -2080,7 +2081,7 @@ void do_overhead(CHAR_DATA *ch, char *argument)
 
 	if (argument[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 		if (victim == nullptr)
 		{
 			send_to_char("Overhead who?\n\r", ch);
@@ -2127,7 +2128,7 @@ void do_overhead(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting == nullptr && is_affected(victim, gsn_overhead))
+	if (Deref(ch->fighting) == nullptr && is_affected(victim, gsn_overhead))
 	{
 		send_to_char("They are guarding their head too well right now.\n\r", ch);
 		return;
@@ -2169,7 +2170,7 @@ void do_overhead(CHAR_DATA *ch, char *argument)
 
 	if (number_percent() < .7 * skill)
 	{
-		if (ch->fighting == nullptr)
+		if (Deref(ch->fighting) == nullptr)
 		{
 			if (number_percent() < .3 * special)
 			{
@@ -2297,7 +2298,7 @@ void do_overhead(CHAR_DATA *ch, char *argument)
 			}
 		}
 
-		if (!is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+		if (!is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 		{
 			if (!can_see(victim, ch))
 			{
@@ -2361,7 +2362,7 @@ void do_exchange(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!ch->fighting)
+	if (!Deref(ch->fighting))
 	{
 		send_to_char("You must be fighting to exchange blows!\n\r", ch);
 		return;
@@ -2375,7 +2376,7 @@ void do_exchange(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -2454,7 +2455,7 @@ void do_charge(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You can't charge while in combat.\n\r", ch);
 		return;
@@ -2588,7 +2589,7 @@ void do_shieldbash(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -2670,7 +2671,7 @@ void do_brace(CHAR_DATA *ch, char *arg)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 	{
@@ -2725,7 +2726,7 @@ void do_shatter(CHAR_DATA *ch, char *argument)
 {
 	float skill;
 	float chance = 100;
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 	OBJ_DATA *weapon, *wield, *handone, *handtwo, *secondary;
 	char chsuc[MSL], chfail[MSL], victsuc[MSL], victfail[MSL], nvictsuc[MSL], nvictfail[MSL];
 	bool isprimary = false;
@@ -3200,7 +3201,7 @@ void do_whirlwind(CHAR_DATA *ch, char *argument)
 
 	if (argument[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 		if (victim == nullptr)
 		{
 			send_to_char("Who are you trying to whirlwind?\n\r", ch);
@@ -3243,7 +3244,7 @@ void do_whirlwind(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!is_npc(victim) && ((ch->fighting == nullptr) || (victim->fighting == nullptr)))
+	if (!is_npc(victim) && ((Deref(ch->fighting) == nullptr) || (Deref(victim->fighting) == nullptr)))
 	{
 		sprintf(buf, "Help! %s is whirling into me!", pers(ch, victim));
 		do_myell(victim, buf, ch);
@@ -3264,7 +3265,7 @@ void do_whirlwind(CHAR_DATA *ch, char *argument)
 		vch_next = vch->next_in_room;
 		if (number_percent() < skill)
 		{
-			if ((vch != ch && is_same_group(vch, victim) && ((can_see(ch, vch) || vch->fighting != nullptr))))
+			if ((vch != ch && is_same_group(vch, victim) && ((can_see(ch, vch) || Deref(vch->fighting) != nullptr))))
 			{
 				one_hit_new(ch, vch, TYPE_UNDEFINED, HIT_NOSPECIALS, HIT_UNBLOCKABLE, HIT_NOADD, 100, nullptr);
 			}
@@ -3281,7 +3282,7 @@ void do_whirlwind(CHAR_DATA *ch, char *argument)
 		}
 		else
 		{
-			if ((vch != ch && is_same_group(vch, victim) && ((can_see(ch, vch) || vch->fighting != nullptr))))
+			if ((vch != ch && is_same_group(vch, victim) && ((can_see(ch, vch) || Deref(vch->fighting) != nullptr))))
 			{
 				one_hit_new(ch, vch, TYPE_UNDEFINED, HIT_NOSPECIALS, HIT_UNBLOCKABLE, HIT_NOADD, 100, nullptr);
 			}
@@ -3363,7 +3364,7 @@ void do_entwine(CHAR_DATA *ch, char *argument)
 
 	argument = one_argument(argument, arg1);
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 	if (victim == nullptr)
 	{
 		if (arg1[0] == '\0')
@@ -3456,7 +3457,7 @@ void do_entwine(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+	if (!is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 	{
 		sprintf(buf, "Help! %s is entwining me!", pers(ch, victim));
 		do_myell(victim, buf, ch);
@@ -3511,7 +3512,7 @@ void do_entwine(CHAR_DATA *ch, char *argument)
 		check_improve(ch, gsn_entwine, false, 1);
 	}
 
-	if (!ch->fighting && !victim->fighting)
+	if (!Deref(ch->fighting) && !Deref(victim->fighting))
 	{
 		set_fighting(ch, victim);
 		multi_hit(victim, ch, TYPE_UNDEFINED);
@@ -3745,7 +3746,7 @@ void do_pull(CHAR_DATA *ch, char *argument)
 				direction = flag_name_lookup(reverse_d(dir), direction_table);
 				act("$n enters from $t, pulling along a tightly-entwined $N with him!", ch, direction, guy, TO_NOTVICT);
 
-				if (guy->in_room == ch->in_room && !ch->fighting && !guy->fighting)
+				if (guy->in_room == ch->in_room && !Deref(ch->fighting) && !Deref(guy->fighting))
 				{
 					set_fighting(ch, guy);
 					multi_hit(guy, ch, TYPE_UNDEFINED);
@@ -3824,7 +3825,7 @@ void do_assess(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 	if (argument[0] == '\0' && !victim)
 	{
 		send_to_char("Assess who?\n\r", ch);
@@ -3988,7 +3989,7 @@ void do_exploit(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 	if (victim == nullptr)
 	{
 		send_to_char("You aren't fighting anyone.\n\r", ch);
@@ -4187,7 +4188,7 @@ void do_offhand(CHAR_DATA *ch, char *arg)
 	int chance;
 	OBJ_DATA *wield, *offhand;
 	bool found;
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 
 	chance = get_skill(ch, skill_lookup("offhand disarm"));
 
@@ -4312,7 +4313,7 @@ void do_drive(CHAR_DATA *ch, char *argument)
 	}
 
 	/* Check to see if they are fighting */
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		where = direction_lookup(argument);
 		if (where == -1)
@@ -4341,7 +4342,7 @@ void do_drive(CHAR_DATA *ch, char *argument)
 		else
 		{
 			sprintf(dir, "%s", argument);
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 	}
 	else
@@ -4404,7 +4405,7 @@ void do_drive(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+	if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 	{
 		sprintf(store, "Help! %s is pushing me around!", pers(ch, victim));
 		do_myell(victim, store, ch);
@@ -4454,7 +4455,7 @@ void do_drive(CHAR_DATA *ch, char *argument)
 		check_improve(ch, gsn_drive, false, 1);
 	}
 
-	if (victim->in_room == ch->in_room && !ch->fighting && !victim->fighting)
+	if (victim->in_room == ch->in_room && !Deref(ch->fighting) && !Deref(victim->fighting))
 		set_fighting(ch, victim);
 
 	one_hit(victim, ch, TYPE_HIT);
@@ -4485,7 +4486,7 @@ void do_dash(CHAR_DATA *ch, char *argument)
 	}
 
 	/* Check to see if they are fighting */
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You can't dash while you are fighting!\n\r", ch);
 		return;
@@ -4588,13 +4589,13 @@ void do_concuss(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!ch->fighting)
+	if (!Deref(ch->fighting))
 	{
 		send_to_char("You must in combat to do that!\n\r", ch);
 		return;
 	}
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (is_wielded(ch, WEAPON_AXE, WIELD_ONE)
 		|| is_wielded(ch, WEAPON_WHIP, WIELD_ONE)
@@ -4706,7 +4707,7 @@ void do_retreat(CHAR_DATA *ch, char *arg)
 		return;
 	}
 
-	if (!ch->fighting)
+	if (!Deref(ch->fighting))
 	{
 		send_to_char("You must be fighting to retreat!\n\r", ch);
 		return;
@@ -4772,7 +4773,7 @@ void do_disrupt_formation(CHAR_DATA *ch, char *arg)
 
 	if (arg[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 		if (victim == nullptr)
 		{
 			send_to_char("But you aren't fighting anyone!\n\r", ch);
@@ -4796,7 +4797,7 @@ void do_disrupt_formation(CHAR_DATA *ch, char *arg)
 		return;
 	}
 
-	if (ch->fighting && !is_npc(ch))
+	if (Deref(ch->fighting) && !is_npc(ch))
 	{
 		send_to_char("You have other things to worry about at the moment.\n\r", ch);
 		return;

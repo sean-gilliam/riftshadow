@@ -1396,7 +1396,7 @@ void do_transfer(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->fighting != nullptr)
+	if (Deref(victim->fighting) != nullptr)
 		stop_fighting(victim, true);
 
 	act("$n disappears in a mushroom cloud.", victim, nullptr, nullptr, TO_ROOM);
@@ -1515,7 +1515,7 @@ void do_goto(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 		stop_fighting(ch, true);
 
 	for (rch = ch->in_room->people; rch != nullptr; rch = rch->next_in_room)
@@ -1577,7 +1577,7 @@ void do_violate(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 		stop_fighting(ch, true);
 
 	for (rch = ch->in_room->people; rch != nullptr; rch = rch->next_in_room)
@@ -2514,6 +2514,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	char cred[MSL], tbuf[MSL];
 	char arg[MAX_INPUT_LENGTH];
 	CHAR_DATA *victim;
+	CHAR_DATA *opponent;
 	ROOM_INDEX_DATA *barred;
 	int i, x;
 
@@ -2601,11 +2602,13 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		position_table[victim->position].name);
 	send_to_char(buf, ch);
 
+	opponent = Deref(victim->fighting);
+
 	sprintf(buf, "Saves:  %-11d Dammod: %-8.4f%%   Hunt:   %-10s Fight: %-11s\n\r",
 		victim->saving_throw,
 		victim->dam_mod,
 		!victim->hunting ? "(none)" : victim->hunting->name,
-		!victim->fighting ? "(none)" : victim->fighting->name);
+		!opponent ? "(none)" : opponent->name);
 	send_to_char(buf, ch);
 
 	sprintf(buf, "Master: %-11s Leader: %-10s  Pet:    %-10s Reply: %s\n\r",
@@ -4623,7 +4626,7 @@ void do_peace(CHAR_DATA *ch, char *argument)
 {
 	for (CHAR_DATA *rch = ch->in_room->people; rch != nullptr; rch = rch->next_in_room)
 	{
-		if (rch->fighting != nullptr)
+		if (Deref(rch->fighting) != nullptr)
 			stop_fighting(rch, true);
 
 		if (is_npc(rch) && IS_SET(rch->act, ACT_AGGRESSIVE))
