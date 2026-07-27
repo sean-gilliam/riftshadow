@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "act_comm.h"
 #include "rift.h"
 #include "recycle.h"
@@ -1268,7 +1269,7 @@ void do_tell(CHAR_DATA *ch, char *argument)
 	if (is_affected(victim, gsn_word_of_command) && strstr(argument, victim->pcdata->command[0]))
 		command_execute(victim);
 
-	victim->reply = ch;
+	victim->reply = ch->self;
 
 	if (deaf)
 		free_pstring(argument);
@@ -1285,7 +1286,7 @@ void do_noreply(CHAR_DATA *ch, char *argument)
 
 	for (auto vch = char_list; vch; vch = vch->next)
 	{
-		if (!is_npc(vch) && vch->reply == ch)
+		if (!is_npc(vch) && Deref(vch->reply) == ch)
 			vch->reply = nullptr;
 	}
 }
@@ -1298,7 +1299,7 @@ void do_reply(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	auto victim = ch->reply;
+	auto victim = Deref(ch->reply);
 	if (victim == nullptr)
 	{
 		send_to_char("They aren't here.\n\r", ch);
@@ -1372,7 +1373,7 @@ void do_reply(CHAR_DATA *ch, char *argument)
 	if (IS_SET(victim->progtypes, MPROG_SPEECH) && victim != ch)
 		victim->pIndexData->mprogs->speech_prog(victim, ch, argument);
 
-	victim->reply = ch;
+	victim->reply = ch->self;
 
 	if (deaf)
 		free_pstring(argument);

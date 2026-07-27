@@ -2515,6 +2515,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	char arg[MAX_INPUT_LENGTH];
 	CHAR_DATA *victim;
 	CHAR_DATA *opponent;
+	CHAR_DATA *replyTo;
 	ROOM_INDEX_DATA *barred;
 	int i, x;
 
@@ -2611,9 +2612,11 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		!opponent ? "(none)" : opponent->name);
 	send_to_char(buf, ch);
 
+	replyTo = Deref(victim->reply);
+
 	sprintf(buf, "Master: %-11s Leader: %-10s  Pet:    %-10s Reply: %s\n\r",
 		victim->master ? victim->master->name : "(none)", victim->leader ? victim->leader->name : "(none)",
-		victim->pet ? victim->pet->name : "(none)", victim->reply ? victim->reply->name : "(none)");
+		victim->pet ? victim->pet->name : "(none)", replyTo ? replyTo->name : "(none)");
 	send_to_char(buf, ch);
 
 	sprintf(buf, "Pierce: %-10d  Bash:   %-8d    Slash:  %-8d   Exotic: %-10d\n\r",

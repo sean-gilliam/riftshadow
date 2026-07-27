@@ -2233,7 +2233,6 @@ void delay_extract(CHAR_DATA *ch)
  */
 void extract_char(CHAR_DATA *ch, bool fPull)
 {
-	CHAR_DATA *wch;
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
 	CHAR_DATA *tch;
@@ -2311,12 +2310,6 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 	{
 		do_return(ch, "");
 		ch->desc = nullptr;
-	}
-
-	for (wch = char_list; wch != nullptr; wch = wch->next)
-	{
-		if (wch->reply == ch)
-			wch->reply = nullptr;
 	}
 
 	for (room = top_affected_room; room; room = room->aff_next)

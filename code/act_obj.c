@@ -3853,7 +3853,7 @@ void do_buy(CHAR_DATA *ch, char *argument)
 			if (count < number)
 			{
 				act("$n tells you 'I don't have that many in stock.", keeper, nullptr, ch, TO_VICT);
-				ch->reply = keeper;
+				ch->reply = keeper->self;
 				return;
 			}
 		}
@@ -3865,14 +3865,14 @@ void do_buy(CHAR_DATA *ch, char *argument)
 			else
 				act("$n tells you 'You can't afford to buy $p'.", keeper, obj, ch, TO_VICT);
 
-			ch->reply = keeper;
+			ch->reply = keeper->self;
 			return;
 		}
 
 		if (obj->level > ch->level)
 		{
 			act("$n tells you 'You can't use $p yet'.", keeper, obj, ch, TO_VICT);
-			ch->reply = keeper;
+			ch->reply = keeper->self;
 			return;
 		}
 
@@ -4195,7 +4195,7 @@ void do_value(CHAR_DATA *ch, char *argument)
 	if (obj == nullptr)
 	{
 		act("$n tells you 'You don't have that item'.", keeper, nullptr, ch, TO_VICT);
-		ch->reply = keeper;
+		ch->reply = keeper->self;
 		return;
 	}
 
@@ -4222,7 +4222,7 @@ void do_value(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "$n tells you 'I'll give you %d gold coins for $p.'", cost / 100);
 	act(buf, keeper, obj, ch, TO_VICT);
 
-	ch->reply = keeper;
+	ch->reply = keeper->self;
 }
 
 void do_request(CHAR_DATA *ch, char *argument)

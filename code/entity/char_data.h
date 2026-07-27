@@ -41,7 +41,11 @@ public:
 	// ending, not about lifetime; almost every caller leaves both characters
 	// alive.
 	Handle<CHAR_DATA> fighting;
-	CHAR_DATA *reply;
+	// Who `reply` answers. Non-owning, and the other party can be extracted
+	// independently, so it is a handle rather than a pointer. The clears
+	// outside extract_char -- do_noreply, and cloaking with invis/incog -- are
+	// a player closing the channel, not a lifetime event.
+	Handle<CHAR_DATA> reply;
 	CHAR_DATA *pet;
 	// The character this mob is hunting. Non-owning, and the quarry can be
 	// extracted independently, so it is a handle rather than a pointer. The

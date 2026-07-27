@@ -1187,3 +1187,118 @@ SCENARIO("a hunter's reference to a freed quarry reads as nothing", "[last_fough
 		ClearTrackers();
 	}
 }
+
+//
+// Deref(ch->reply) -- who `reply` answers, and what clears it.
+//
+// Like last_fought, this field's expiry is genuine lifetime machinery: the
+// clear is a char_list pass written inline in extract_char, and that pass does
+// nothing else. The other two places that clear reply are game rules that
+// leave both characters alive -- do_noreply, where a player deliberately
+// closes their ears, and the wizard invis/incog commands, where cloaking drops
+// your own pending reply.
+//
+// Replying() is the single point that has to change if the field's type
+// changes; every assertion below is written through it and stays as-is.
+//
+
+namespace
+{
+	CHAR_DATA *Replying(CHAR_DATA *ch)
+	{
+		return Deref(ch->reply);
+	}
+}
+
+SCENARIO("extract_char clears every pending reply aimed at the extracted character", "[reply]")
+{
+	GIVEN("two characters holding a reply to a third and one replying elsewhere")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *speaker = MakeTracker(room);
+		CHAR_DATA *listener = MakeTracker(room);
+		CHAR_DATA *secondListener = MakeTracker(room);
+		CHAR_DATA *someoneElse = MakeTracker(room);
+		CHAR_DATA *unrelated = MakeTracker(room);
+
+		listener->reply = speaker->self;
+		secondListener->reply = speaker->self;
+		unrelated->reply = someoneElse->self;
+
+		WHEN("the speaker is extracted from the world")
+		{
+			extract_char(speaker, true);
+
+			THEN("nobody is left holding a reply to it")
+			{
+				REQUIRE(Replying(listener) == nullptr);
+				REQUIRE(Replying(secondListener) == nullptr);
+			}
+
+			THEN("a reply aimed at somebody else is left alone")
+			{
+				REQUIRE(Replying(unrelated) == someoneElse);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("the reply sweep does not disturb the character being replied to", "[reply]")
+{
+	GIVEN("one character holding a reply to another")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *speaker = MakeTracker(room);
+		CHAR_DATA *listener = MakeTracker(room);
+
+		listener->reply = speaker->self;
+
+		WHEN("the listener drops the reply rather than the speaker dying")
+		{
+			// The other half of the contract, and the reason the clears
+			// outside extract_char stay: this one says "stop answering them",
+			// not "they are gone".
+			listener->reply = nullptr;
+
+			THEN("the listener has no reply but the speaker is untouched")
+			{
+				REQUIRE(Replying(listener) == nullptr);
+				REQUIRE(speaker->valid);
+				REQUIRE(Deref(speaker->self) == speaker);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a reply to a freed character reads as nothing", "[reply]")
+{
+	GIVEN("one character holding a reply to another")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *speaker = MakeTracker(room);
+		CHAR_DATA *listener = MakeTracker(room);
+
+		listener->reply = speaker->self;
+
+		REQUIRE(Replying(listener) == speaker);
+
+		WHEN("the speaker is freed without extract_char's sweep running")
+		{
+			// That sweep is gone now, so this is the only thing standing
+			// between `reply` and a pointer into a character struct the free
+			// list can hand straight back out to the next new_char.
+			free_char(speaker);
+
+			THEN("the reference reads as nothing rather than as recycled memory")
+			{
+				REQUIRE(Replying(listener) == nullptr);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
