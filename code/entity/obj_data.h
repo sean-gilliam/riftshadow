@@ -7,6 +7,7 @@
 #include "limits.h"
 #include "extra_descr.h"
 #include "affect_data.h"		// OBJ_APPLY_DATA held by value
+#include "../stdlibs/handle.h"	// self, and the handle-typed cross-references
 
 //
 // One object.
@@ -14,6 +15,10 @@
 
 struct obj_data
 {
+	// A handle naming this object, issued by new_obj and retired by free_obj.
+	// It is how another entity refers to this one without risking a pointer
+	// into a recycled slot; null for an object that never came from new_obj.
+	Handle<OBJ_DATA> self;
 	OBJ_DATA *next;
 	OBJ_DATA *next_content;
 	OBJ_DATA *contains;

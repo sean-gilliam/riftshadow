@@ -2,8 +2,10 @@
 #include "../code/handler.h"
 #include "../code/entity/char_data.h"
 #include "../code/entity/obj_data.h"
+#include "../code/entity/handles.h"
 #include "../code/enums.h"
 #include "../code/db.h"
+#include "../code/recycle.h"
 
 // TEST_CASE("Test capitalization", "[string]" )
 // {
@@ -735,6 +737,110 @@ SCENARIO("affect_strip removes all affects of a type but leaves others", "[affec
 				REQUIRE(affect_find(ch->affected, 100) == nullptr);
 				REQUIRE(is_affected(ch, 101) == true);
 			}
+		}
+	}
+}
+
+//
+// The entity slot maps. These exercise the real new_char/free_char and
+// new_obj/free_obj rather than a stand-in, because the property that matters
+// is the interaction with the free lists: those functions hand the same
+// address back out, and the whole point of a handle is that reuse of an
+// address must not resurrect a reference to the thing that used to live there.
+//
+// (Handle and SlotMap are covered on their own terms in handle_tests.c; these
+// are about the wiring.)
+//
+
+SCENARIO("new_char registers a character and free_char expires it", "[handles]")
+{
+	GIVEN("a character from new_char")
+	{
+		CHAR_DATA *ch = new_char();
+
+		THEN("it has a live self handle that derefs back to itself")
+		{
+			REQUIRE(!ch->self.IsNull());
+			REQUIRE(Deref(ch->self) == ch);
+		}
+
+		WHEN("it is freed")
+		{
+			Handle<CHAR_DATA> stale = ch->self;
+			free_char(ch);
+
+			THEN("handles taken before the free no longer resolve")
+			{
+				REQUIRE(Deref(stale) == nullptr);
+			}
+		}
+	}
+}
+
+SCENARIO("a recycled character address does not resurrect an old handle", "[handles]")
+{
+	GIVEN("a character that has been freed back onto the free list")
+	{
+		CHAR_DATA *first = new_char();
+		Handle<CHAR_DATA> stale = first->self;
+		free_char(first);
+
+		WHEN("a new character is allocated, reusing that address")
+		{
+			CHAR_DATA *second = new_char();
+
+			THEN("the old handle stays expired even though the address matches")
+			{
+				// The free list really did hand back the same memory -- if it
+				// ever stops doing so this test is still correct, just less
+				// pointed, so it is asserted rather than assumed.
+				REQUIRE(second == first);
+
+				REQUIRE(Deref(stale) == nullptr);
+				REQUIRE(stale != second->self);
+				REQUIRE(Deref(second->self) == second);
+			}
+
+			free_char(second);
+		}
+	}
+}
+
+SCENARIO("new_obj registers an object and free_obj expires it", "[handles]")
+{
+	GIVEN("an object from new_obj")
+	{
+		OBJ_DATA *obj = new_obj();
+
+		THEN("it has a live self handle that derefs back to itself")
+		{
+			REQUIRE(!obj->self.IsNull());
+			REQUIRE(Deref(obj->self) == obj);
+		}
+
+		WHEN("it is freed")
+		{
+			Handle<OBJ_DATA> stale = obj->self;
+			free_obj(obj);
+
+			THEN("handles taken before the free no longer resolve")
+			{
+				REQUIRE(Deref(stale) == nullptr);
+			}
+		}
+	}
+}
+
+SCENARIO("an entity that never came from new_char is safe by default", "[handles]")
+{
+	GIVEN("a bare character built without new_char, as the tests do")
+	{
+		auto ch = new char_data();
+
+		THEN("its self handle is null and derefs to nothing rather than to junk")
+		{
+			REQUIRE(ch->self.IsNull());
+			REQUIRE(Deref(ch->self) == nullptr);
 		}
 	}
 }

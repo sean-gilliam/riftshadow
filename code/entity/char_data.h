@@ -14,6 +14,7 @@
 #include "gen_data.h"					// GEN_DATA held by unique_ptr in ch->gen_data
 #include "mem_data.h"					// MEM_DATA held by value in ch->memory
 #include "affect_data.h"				// AFFECT_DATA held by value in ch->affected
+#include "../stdlibs/handle.h"			// self, and the handle-typed cross-references
 
 //
 // One character (PC or NPC).
@@ -25,6 +26,11 @@ extern CProficiencies prof_none; //empty proficiencies for jackasses who are goi
 class	char_data
 {
 public:
+	// A handle naming this character, issued by new_char and retired by
+	// free_char. It is how another entity refers to this one without risking a
+	// pointer into a recycled slot; null for a character that never came from
+	// new_char.
+	Handle<CHAR_DATA> self;
 	CHAR_DATA *next;
 	CHAR_DATA *next_in_room;
 	CHAR_DATA *master;

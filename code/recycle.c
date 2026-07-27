@@ -46,6 +46,7 @@
 #include "recycle.h"
 #include "comm.h"
 #include "db.h"
+#include "entity/handles.h"
 #include "handler.h"
 #include "newmem.h"
 #include "misc.h"
@@ -448,6 +449,10 @@ OBJ_DATA *new_obj(void)
 	*obj = obj_zero;
 
 	obj->valid = true;
+
+	// After the reset, which zeroes the old handle along with everything else.
+	obj->self = objectHandles.Add(obj);
+
 	return obj;
 }
 
@@ -467,6 +472,12 @@ void free_obj(OBJ_DATA *obj)
 
 	// free_pstring( obj->owner     );
 	obj->valid = false;
+
+	// Expires every handle to this object. Must happen before it goes on the
+	// free list, since new_obj can hand the same address straight back out.
+	objectHandles.Remove(obj->self);
+	obj->self = nullptr;
+
 	obj->next = obj_free;
 	obj_free = obj;
 }
@@ -497,6 +508,9 @@ CHAR_DATA *new_char(void)
 	*ch = CHAR_DATA();
 
 	ch->valid = true;
+
+	// After the reset, which zeroes the old handle along with everything else.
+	ch->self = charHandles.Add(ch);
 
 	ch->name = &str_empty[0];
 	ch->short_descr = &str_empty[0];
@@ -579,6 +593,11 @@ void free_char(CHAR_DATA *ch)
 
 	ch->pcdata.reset();
 	ch->gen_data.reset();
+
+	// Expires every handle to this character. Must happen before it goes on the
+	// free list, since new_char can hand the same address straight back out.
+	charHandles.Remove(ch->self);
+	ch->self = nullptr;
 
 	ch->next = char_free;
 	char_free = ch;

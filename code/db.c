@@ -45,6 +45,7 @@
 #include "merc.h"
 #include "db.h"
 #include "db2.h"
+#include "entity/handles.h"
 #include "rift.h"
 #include "recycle.h"
 #include "lookup.h"
@@ -85,6 +86,10 @@ SHOP_DATA *shop_last;
 
 char bug_buf[2 * MAX_INPUT_LENGTH];
 CHAR_DATA *char_list;
+// The same entities as char_list/object_list, indexed so a cross-reference can
+// be checked for liveness instead of trusted. See entity/handles.h.
+SlotMap<CHAR_DATA> charHandles;
+SlotMap<OBJ_DATA> objectHandles;
 char *help_greeting;
 char log_buf[2 * MAX_INPUT_LENGTH];
 KILL_DATA kill_table[MAX_LEVEL];
