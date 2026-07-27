@@ -29,6 +29,7 @@ set(TEST_SRC_FILES act_obj_tests.c
 	sitecomment_tests.c
 	sitetracker_tests.c
 	graveyard_tests.c
+	handle_tests.c
 	player_tests.c
 	prof_tests.c
 	queue_tests.c
