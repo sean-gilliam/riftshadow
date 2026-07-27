@@ -341,6 +341,16 @@ void check_assist(CHAR_DATA *ch, CHAR_DATA *victim)
 
 /*
  * Do one group of attacks.
+ *
+ * The `Deref(ch->fighting) != victim` test repeated after each attack below is
+ * the guard that stops the rest of the round when the fight is already over --
+ * the victim died and stop_fighting cleared the field, or the attacker was
+ * switched onto someone else. It has to re-read the handle every time, because
+ * the thing it is checking for is caused by the one_hit immediately above it.
+ *
+ * Do NOT hoist these into a local. A cached opponent from before the first
+ * swing compares equal forever, the guard never fires, and every remaining
+ * attack in the round lands on a character that may already be freed.
  */
 void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 {
@@ -639,6 +649,11 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 
 /* procedure for all mobile attacks */
 
+/*
+ * Same rule as multi_hit above: the repeated `Deref(ch->fighting) != victim`
+ * checks are the round's abort condition and must re-read the handle after
+ * every swing. Caching the opponent defeats them.
+ */
 void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 {
 	int chance, number;
@@ -975,6 +990,10 @@ int one_hit_new(CHAR_DATA *ch, CHAR_DATA *victim, int dt, bool specials, bool bl
 
 	if (result && wield != nullptr)
 	{
+		// Re-read rather than reusing anything from before the damage_new
+		// above: this test is asking whether the victim survived the hit and
+		// is still the one being fought, so it only means something if it goes
+		// back through the handle.
 		if (Deref(ch->fighting) == victim && is_weapon_stat(wield, WEAPON_POISON))
 		{
 			int level = 10;

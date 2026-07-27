@@ -582,6 +582,23 @@ bool iprog_unset(OBJ_INDEX_DATA *obj, const char *progtype, const char *name)
 }
 
 /* ITEM FUNCTIONS */
+
+//
+// The progs below read `Deref(ch->fighting)` several times each rather than
+// once into a local. That is deliberate throughout this file -- do NOT
+// collapse it.
+//
+// These run in the middle of a fight, and most of them deal damage. Once
+// damage_new or obj_cast_spell has run, the opponent may be dead and freed:
+// extract_char clears the field, free_char retires the slot, and the next
+// new_char can hand the same address straight back out. Re-reading the handle
+// yields null at that point, which every site here already handles. A hoisted
+// CHAR_DATA * would instead keep pointing at a recycled character struct.
+//
+// Read once into a local only where nothing in between can end the fight; see
+// entity/handles.h for the rule in full.
+//
+
 void fight_prog_drow_talisman(OBJ_DATA *obj, CHAR_DATA *ch)
 {
 	if (!is_worn(obj) || number_percent() > 7 || !Deref(ch->fighting))
