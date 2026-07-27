@@ -5,6 +5,7 @@
 #include <time.h>
 #include <math.h>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "thief.h"
 #include "../comm.h"
 #include "../devextra.h"
@@ -1715,10 +1716,10 @@ void do_counterfeit(CHAR_DATA *ch, char *argument)
 void counterfeit_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
 
-	if (obj->carried_by)
+	if (CHAR_DATA *carrier = Deref(obj->carried_by))
 	{
 		act("You suddenly realize that $p is counterfeit, and really $T!",
-			obj->carried_by,
+			carrier,
 			obj,
 			obj->pIndexData->short_descr,
 			TO_CHAR);
@@ -1727,7 +1728,7 @@ void counterfeit_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	if (obj->in_room && obj->in_room->people)
 	{
 		act("You suddenly realize that $p is counterfeit, and really $T!",
-			obj->carried_by,
+			Deref(obj->carried_by),
 			obj,
 			obj->pIndexData->short_descr,
 			TO_ALL);

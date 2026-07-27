@@ -3522,7 +3522,7 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 			|| is_obj_stat(obj, ITEM_NOLOCATE)
 			|| number_percent() > level
 			|| ch->level < obj->level
-			|| (obj->carried_by && is_immortal(obj->carried_by)))
+			|| (Deref(obj->carried_by) && is_immortal(Deref(obj->carried_by))))
 		{
 			continue;
 		}
@@ -3534,11 +3534,13 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		while (OBJ_DATA *outer = Deref(in_obj->in_obj))
 			in_obj = outer;
 
-		if (in_obj->carried_by != nullptr)
+		CHAR_DATA *carrier = Deref(in_obj->carried_by);
+
+		if (carrier != nullptr)
 		{
-			if (!is_affected(in_obj->carried_by, gsn_shadow_cloak))
+			if (!is_affected(carrier, gsn_shadow_cloak))
 			{
-				sprintf(buf, "%s is carried by %s.\n\r", obj->short_descr, pers(in_obj->carried_by, ch));
+				sprintf(buf, "%s is carried by %s.\n\r", obj->short_descr, pers(carrier, ch));
 			}
 			else
 			{
@@ -3549,7 +3551,9 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		}
 		else if (in_obj->in_room != nullptr)
 		{
-			if (is_affected(in_obj->carried_by, gsn_stash))
+			// carrier is null on this branch -- the object is in a room, not held.
+			// Preserved as found; is_affected tolerates null and returns false.
+			if (is_affected(carrier, gsn_stash))
 				sprintf(buf, "%s's location is blurry, you have a hard time trying to locate it.\n\r", obj->short_descr);
 			else
 				sprintf(buf, "%s is in %s.\n\r", obj->short_descr, get_room_name(in_obj->in_room));

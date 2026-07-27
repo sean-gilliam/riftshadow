@@ -3823,7 +3823,7 @@ void do_llimit(CHAR_DATA *ch, char *argument)
 
 	for (obj = object_list; obj != nullptr; obj = obj->next)
 	{
-		carrier = obj->carried_by;
+		carrier = Deref(obj->carried_by);
 
 		if (carrier != nullptr && !is_npc(carrier))
 			continue;

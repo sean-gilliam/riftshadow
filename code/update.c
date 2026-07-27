@@ -292,7 +292,9 @@ int hit_gain(CHAR_DATA *ch)
 			gain /= 2;
 	}
 
-	if (OBJ_DATA *seatedOn = Deref(ch->on); seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
+	OBJ_DATA *seatedOn = Deref(ch->on);
+
+	if (seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
 		gain = (gain * 7 / 5);
 
 	if (is_affected(ch, gsn_bleeding))
@@ -425,7 +427,9 @@ int mana_gain(CHAR_DATA *ch)
 			gain /= 2;
 	}
 
-	if (OBJ_DATA *seatedOn = Deref(ch->on); seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
+	OBJ_DATA *seatedOn = Deref(ch->on);
+
+	if (seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
 		gain = gain * 7 / 5;
 
 	if (is_affected_by(ch, AFF_POISON))
@@ -501,7 +505,9 @@ int move_gain(CHAR_DATA *ch)
 
 	gain *= ch->in_room->heal_rate / 100;
 
-	if (OBJ_DATA *seatedOn = Deref(ch->on); seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
+	OBJ_DATA *seatedOn = Deref(ch->on);
+
+	if (seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
 		gain = gain * 6 / 5;
 
 	if (is_affected_by(ch, AFF_POISON))
@@ -1483,6 +1489,11 @@ void obj_update(void)
 	for (obj = object_list; obj != nullptr; obj = obj_next)
 	{
 		CHAR_DATA *rch;
+		// Re-read from obj->carried_by before each use below, never cached across
+		// them: the cabal-item branch calls obj_from_char/obj_to_char, which move
+		// the object to a different carrier. A value read earlier in the iteration
+		// is stale from that point on.
+		CHAR_DATA *carrier;
 		char *message;
 
 		obj_next = obj->next;
@@ -1490,14 +1501,16 @@ void obj_update(void)
 		if (obj->moved)
 			obj->moved= false;
 
+		carrier = Deref(obj->carried_by);
+
 		if ((is_affected_by(obj, AFF_OBJ_BURNING)
-				&& (obj->carried_by
-					&& (obj->carried_by->in_room->sector_type == SECT_WATER
-						||  obj->carried_by->in_room->sector_type == SECT_UNDERWATER)))
+				&& (carrier
+					&& (carrier->in_room->sector_type == SECT_WATER
+						||  carrier->in_room->sector_type == SECT_UNDERWATER)))
 			|| (obj->in_room
 				&& (obj->in_room->sector_type == SECT_WATER || obj->in_room->sector_type == SECT_UNDERWATER)))
 		{
-			act("The water extinguishes $p.", obj->carried_by, obj, 0, TO_CHAR);
+			act("The water extinguishes $p.", carrier, obj, 0, TO_CHAR);
 
 			if (is_affected_obj(obj, gsn_immolate))
 				affect_strip_obj(obj, gsn_immolate);
@@ -1586,14 +1599,16 @@ void obj_update(void)
 		}
 
 		/* Check explosives */
-		if (obj && obj->pIndexData->vnum == OBJ_EXPLOSIVES && obj->carried_by)
+		carrier = Deref(obj->carried_by);
+
+		if (obj && obj->pIndexData->vnum == OBJ_EXPLOSIVES && carrier)
 		{
-			bag_explode(obj->carried_by, obj, 1);
+			bag_explode(carrier, obj, 1);
 			continue;
 		}
 
 		/* Alright. Is this a cabal item? */
-		if (isCabalItem(obj) && is_npc(obj->carried_by))
+		if (isCabalItem(obj) && is_npc(Deref(obj->carried_by)))
 		{
 			obj->timer = 0;
 			continue;
@@ -1611,25 +1626,30 @@ void obj_update(void)
 				continue;
 			}
 
-			act(message, obj->carried_by, obj, nullptr, TO_CHAR);
+			// Told to whoever is holding it now, before the handover below --
+			// these two calls are what makes `carrier` unsafe to cache across
+			// the iteration.
+			act(message, Deref(obj->carried_by), obj, nullptr, TO_CHAR);
 			obj_from_char(obj);
 			obj_to_char(obj, cguard);
 			obj->timer = 0;
 			continue;
 		}
 
-		if (obj->carried_by != nullptr)
+		carrier = Deref(obj->carried_by);
+
+		if (carrier != nullptr)
 		{
-			if (is_npc(obj->carried_by) && obj->carried_by->pIndexData->pShop != nullptr)
+			if (is_npc(carrier) && carrier->pIndexData->pShop != nullptr)
 			{
-				obj->carried_by->gold++;
+				carrier->gold++;
 			}
 			else
 			{
-				act(message, obj->carried_by, obj, nullptr, TO_CHAR);
+				act(message, carrier, obj, nullptr, TO_CHAR);
 
 				if (obj->wear_loc == WEAR_FLOAT)
-					act(message, obj->carried_by, obj, nullptr, TO_ROOM);
+					act(message, carrier, obj, nullptr, TO_ROOM);
 			}
 		}
 		else if (obj->in_room != nullptr && (rch = obj->in_room->people) != nullptr)
@@ -2961,8 +2981,10 @@ void iprog_pulse_update(bool isTick)
 			}
 		}
 
+		CHAR_DATA *carrier = Deref(obj->carried_by);
+
 		if ((obj->in_room != nullptr && obj->in_room->area->nplayer > 0)
-		|| (obj->carried_by && obj->carried_by->in_room && obj->carried_by->in_room->area->nplayer > 0))
+		|| (carrier && carrier->in_room && carrier->in_room->area->nplayer > 0))
 		{
 			if (IS_SET(obj->progtypes, IPROG_PULSE))
 				(obj->pIndexData->iprogs->pulse_prog)(obj, isTick);

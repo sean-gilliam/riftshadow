@@ -2809,7 +2809,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				for (obj = object_list; obj != nullptr; obj = obj_next)
 				{
 					obj_next = obj->next;
-					if (obj->carried_by == ch)
+					if (obj->carried_by == ch->self)
 					{
 						if (isCabalItem(obj))
 						{

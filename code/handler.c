@@ -1720,7 +1720,7 @@ void obj_to_char(OBJ_DATA *obj, CHAR_DATA *ch)
 {
 	obj->next_content = ch->carrying;
 	ch->carrying = obj;
-	obj->carried_by = ch;
+	obj->carried_by = ch->self;
 	obj->in_room = nullptr;
 	obj->in_obj = nullptr;
 	ch->carry_number += get_obj_number(obj);
@@ -1734,7 +1734,7 @@ void obj_from_char(OBJ_DATA *obj)
 {
 	CHAR_DATA *ch;
 
-	if ((ch = obj->carried_by) == nullptr)
+	if ((ch = Deref(obj->carried_by)) == nullptr)
 	{
 		RS.Logger.Debug("Obj_from_char: null ch.");
 		return;
@@ -1950,9 +1950,11 @@ void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 		return;
 	}
 
-	if (obj->wear_loc == WEAR_WIELD && check_entwine(obj->carried_by, 0))
+	CHAR_DATA *carrier = Deref(obj->carried_by);
+
+	if (obj->wear_loc == WEAR_WIELD && check_entwine(carrier, 0))
 	{
-		do_uncoil(obj->carried_by, "automagic");
+		do_uncoil(carrier, "automagic");
 	}
 
 	obj->wear_loc = -1;
@@ -2106,9 +2108,9 @@ void obj_to_obj(OBJ_DATA *obj, OBJ_DATA *obj_to)
 
 	for (; obj_to != nullptr; obj_to = Deref(obj_to->in_obj))
 	{
-		if (obj_to->carried_by != nullptr)
+		if (CHAR_DATA *carrier = Deref(obj_to->carried_by))
 		{
-			obj_to->carried_by->carry_weight += get_obj_weight(obj);
+			carrier->carry_weight += get_obj_weight(obj);
 		}
 	}
 }
@@ -2155,9 +2157,9 @@ void obj_from_obj(OBJ_DATA *obj)
 
 	for (; obj_from != nullptr; obj_from = Deref(obj_from->in_obj))
 	{
-		if (obj_from->carried_by != nullptr)
+		if (CHAR_DATA *carrier = Deref(obj_from->carried_by))
 		{
-			obj_from->carried_by->carry_weight -= get_obj_weight(obj);
+			carrier->carry_weight -= get_obj_weight(obj);
 		}
 	}
 }
@@ -4256,7 +4258,7 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 				BITWISE_OR(obj->affected_by, paf->bitvector);
 				break;
 			case TO_OBJ_APPLY:
-				ch = obj->carried_by;
+				ch = Deref(obj->carried_by);
 				wear = obj->wear_loc;
 
 				if (ch && (wear != WEAR_NONE))
@@ -4282,7 +4284,7 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 			BITWISE_XAND(obj->affected_by, paf->bitvector);
 			break;
 		case TO_OBJ_APPLY:
-			ch = obj->carried_by;
+			ch = Deref(obj->carried_by);
 			wear = obj->wear_loc;
 
 			if (ch && (wear != WEAR_NONE))

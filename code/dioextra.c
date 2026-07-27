@@ -40,6 +40,7 @@
 #include <iterator>
 #include <filesystem>
 #include "merc.h"
+#include "entity/handles.h"
 #include "dioextra.h"
 #include "handler.h"
 #include "stdlibs/cfilesystem.h"
@@ -894,11 +895,11 @@ void report_cabal_items(CHAR_DATA *ch, char *argument)
 			if (obj->pIndexData->cabal != guardian->cabal)
 				continue;
 
-			if (obj->carried_by != nullptr)
+			if (CHAR_DATA *carrier = Deref(obj->carried_by))
 			{
 				sprintf(pbuf, "%s is carried by %s.",
 					obj->short_descr,
-					is_npc(obj->carried_by) ? obj->carried_by->short_descr : obj->carried_by->name);
+					is_npc(carrier) ? carrier->short_descr : carrier->name);
 				break;
 			}
 		}

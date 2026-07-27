@@ -26,7 +26,7 @@ struct obj_data
 	// and carried_by by the obj_to_*/obj_from_* pair -- an object is in exactly
 	// one of the three at a time.
 	Handle<OBJ_DATA> in_obj;
-	CHAR_DATA *carried_by;
+	Handle<CHAR_DATA> carried_by;
 	std::list<EXTRA_DESCR_DATA> extra_descr;
 	std::list<OBJ_APPLY_DATA> apply;
 	std::list<OBJ_AFFECT_DATA> affected;

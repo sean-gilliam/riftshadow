@@ -7,6 +7,7 @@
 #include <time.h>
 #include <math.h>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "ap.h"
 #include "../interp.h"
 #include "../tables.h"
@@ -815,7 +816,7 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	char buf[MSL];
 	CHAR_DATA *ch;
 
-	if ((ch = obj->carried_by) == nullptr)
+	if ((ch = Deref(obj->carried_by)) == nullptr)
 		return;
 
 	if (ch != af->owner)
@@ -957,10 +958,12 @@ void living_blade_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	if (af->location == APPLY_HITROLL)
 		return;
 
-	if (!obj->carried_by)
+	CHAR_DATA *carrier = Deref(obj->carried_by);
+
+	if (carrier == nullptr)
 		return;
 
-	act("$p ceases its slight writhing and seems less animated.", obj->carried_by, obj, 0, TO_CHAR);
+	act("$p ceases its slight writhing and seems less animated.", carrier, obj, 0, TO_CHAR);
 }
 
 void traitor_pulse(CHAR_DATA *ch, AFFECT_DATA *af)

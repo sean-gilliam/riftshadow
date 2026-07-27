@@ -37,6 +37,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "effects.h"
 #include "handler.h"
 #include "recycle.h"
@@ -131,8 +132,8 @@ void acid_effect(void *vo, int level, int dam, int target)
 		if (number_percent() > chance)
 			return;
 
-		if (obj->carried_by != nullptr)
-			act(msg, obj->carried_by, obj, nullptr, TO_ALL);
+		if (CHAR_DATA *carrier = Deref(obj->carried_by))
+			act(msg, carrier, obj, nullptr, TO_ALL);
 		else if (obj->in_room != nullptr && obj->in_room->people != nullptr)
 			act(msg, obj->in_room->people, obj, nullptr, TO_ALL);
 
@@ -166,11 +167,13 @@ void acid_effect(void *vo, int level, int dam, int target)
 				obj->affected.push_front(paf);
 			}
 
-			if (obj->carried_by != nullptr && obj->wear_loc != WEAR_NONE)
+			CHAR_DATA *carrier = Deref(obj->carried_by);
+
+			if (carrier != nullptr && obj->wear_loc != WEAR_NONE)
 			{
 				for (i = 0; i < 4; i++)
 				{
-					obj->carried_by->armor[i] += 1;
+					carrier->armor[i] += 1;
 				}
 			}
 
@@ -189,9 +192,9 @@ void acid_effect(void *vo, int level, int dam, int target)
 				{
 					obj_to_room(t_obj, obj->in_room);
 				}
-				else if (obj->carried_by != nullptr)
+				else if (CHAR_DATA *carrier = Deref(obj->carried_by))
 				{
-					obj_to_room(t_obj, obj->carried_by->in_room);
+					obj_to_room(t_obj, carrier->in_room);
 				}
 				else
 				{
@@ -300,8 +303,8 @@ void cold_effect(void *vo, int level, int dam, int target)
 		if (number_percent() > chance)
 			return;
 
-		if (obj->carried_by != nullptr)
-			act(msg, obj->carried_by, obj, nullptr, TO_ALL);
+		if (CHAR_DATA *carrier = Deref(obj->carried_by))
+			act(msg, carrier, obj, nullptr, TO_ALL);
 		else if (obj->in_room != nullptr && obj->in_room->people != nullptr)
 			act(msg, obj->in_room->people, obj, nullptr, TO_ALL);
 
@@ -421,8 +424,8 @@ void fire_effect(void *vo, int level, int dam, int target)
 		if (number_percent() > chance)
 			return;
 
-		if (obj->carried_by != nullptr)
-			act(msg, obj->carried_by, obj, nullptr, TO_ALL);
+		if (CHAR_DATA *carrier = Deref(obj->carried_by))
+			act(msg, carrier, obj, nullptr, TO_ALL);
 		else if (obj->in_room != nullptr && obj->in_room->people != nullptr)
 			act(msg, obj->in_room->people, obj, nullptr, TO_ALL);
 
@@ -439,9 +442,9 @@ void fire_effect(void *vo, int level, int dam, int target)
 				{
 					obj_to_room(t_obj, obj->in_room);
 				}
-				else if (obj->carried_by != nullptr)
+				else if (CHAR_DATA *carrier = Deref(obj->carried_by))
 				{
-					obj_to_room(t_obj, obj->carried_by->in_room);
+					obj_to_room(t_obj, carrier->in_room);
 				}
 				else
 				{
@@ -619,8 +622,8 @@ void shock_effect(void *vo, int level, int dam, int target)
 		if (number_percent() > chance)
 			return;
 
-		if (obj->carried_by != nullptr)
-			act(msg, obj->carried_by, obj, nullptr, TO_ALL);
+		if (CHAR_DATA *carrier = Deref(obj->carried_by))
+			act(msg, carrier, obj, nullptr, TO_ALL);
 		else if (obj->in_room != nullptr && obj->in_room->people != nullptr)
 			act(msg, obj->in_room->people, obj, nullptr, TO_ALL);
 

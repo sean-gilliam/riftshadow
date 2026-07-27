@@ -1845,7 +1845,9 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 
 	obj = get_obj_world(ch, argument);
 
-	if (obj == nullptr || (obj && obj->carried_by && !can_see(ch, obj->carried_by)))
+	CHAR_DATA *objCarrier = obj != nullptr ? Deref(obj->carried_by) : nullptr;
+
+	if (obj == nullptr || (objCarrier && !can_see(ch, objCarrier)))
 	{
 		send_to_char("Nothing like that in hell, earth, or heaven.\n\r", ch);
 		return;
@@ -1896,7 +1898,7 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "In room: %d  In object: %s  Carried by: %s  Wear_loc: %d\n\r",
 		obj->in_room == nullptr ? 0 : obj->in_room->vnum,
 		container == nullptr ? "(none)" : container->short_descr,
-		obj->carried_by == nullptr ? "(none)" : can_see(ch, obj->carried_by) ? obj->carried_by->name : "someone",
+		objCarrier == nullptr ? "(none)" : can_see(ch, objCarrier) ? objCarrier->name : "someone",
 		obj->wear_loc);
 	send_to_char(buf, ch);
 
@@ -3252,12 +3254,14 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 		while (OBJ_DATA *outer = Deref(in_obj->in_obj))
 			in_obj = outer;
 
-		if (in_obj->carried_by != nullptr && can_see(ch, in_obj->carried_by) && in_obj->carried_by->in_room != nullptr)
+		CHAR_DATA *carrier = Deref(in_obj->carried_by);
+
+		if (carrier != nullptr && can_see(ch, carrier) && carrier->in_room != nullptr)
 		{
 			sprintf(buf, "%3d) %s is carried by %s [Room %d]\n\r",
 				number, obj->short_descr,
-				pers(in_obj->carried_by, ch),
-				in_obj->carried_by->in_room->vnum);
+				pers(carrier, ch),
+				carrier->in_room->vnum);
 		}
 		else if (in_obj->in_room != nullptr && can_see_room(ch, in_obj->in_room))
 		{

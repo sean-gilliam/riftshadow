@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "../code/entity/handles.h"
 #include "../code/mprog.h"
 #include "../code/handler.h"
 #include "../code/entity/char_data.h"
@@ -20,6 +21,10 @@ static room_index_data* CreateTestRoom()
 static obj_data* CreateTestItem()
 {
 	auto item = new obj_data();
+	// Registered the way new_obj would, so handle-typed references to it
+	// resolve. Without this its self handle stays null and every reference
+	// to it would read as "nothing", passing the assertions vacuously.
+	item->self = objectHandles.Add(item);
 	item->name = "test_trinket";
 	item->description = "A test item";
 	item->wear_loc = -1;
@@ -30,6 +35,7 @@ static obj_data* CreateTestItem()
 static char_data* CreateTestChar(char *name, room_index_data *room)
 {
 	auto ch = new char_data();
+	ch->self = charHandles.Add(ch);	// as new_char would
 	ch->name = name;
 	char_to_room(ch, room);
 
@@ -61,7 +67,7 @@ SCENARIO("Testing a mob handing an object to a character", "[mprog_give]")
 
 			THEN("the object leaves the mob and is carried by the character")
 			{
-				REQUIRE(obj->carried_by == ch);
+				REQUIRE(Deref(obj->carried_by) == ch);
 				REQUIRE(ch->carrying == obj);
 				REQUIRE(mob->carrying == nullptr);
 			}

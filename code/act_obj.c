@@ -187,7 +187,7 @@ void get_obj(CHAR_DATA *ch, OBJ_DATA *obj, OBJ_DATA *container, bool pcheck)
 	// Distinct from the `container` parameter above: that is where the object is
 	// being taken from, this is where the object currently reports itself to be.
 	OBJ_DATA *heldIn = Deref(obj->in_obj);
-	if ((!heldIn || heldIn->carried_by != ch)
+	if ((!heldIn || heldIn->carried_by != ch->self)
 		&& (get_carry_weight(ch) + get_obj_weight(obj) > can_carry_w(ch)))
 	{
 		act("$p: you can't carry that much weight.", ch, obj, 0, TO_CHAR);
@@ -3617,7 +3617,7 @@ void obj_to_keeper(OBJ_DATA *obj, CHAR_DATA *ch)
 		t_obj->next_content = obj;
 	}
 
-	obj->carried_by = ch;
+	obj->carried_by = ch->self;
 	obj->in_room = nullptr;
 	obj->in_obj = nullptr;
 	ch->carry_number += get_obj_number(obj);
@@ -4521,10 +4521,12 @@ bool cabal_down_new(CHAR_DATA *ch, int cabal, bool show)
 			break;
 	}
 
-	if (!obj || !obj->carried_by || !is_npc(obj->carried_by))
+	CHAR_DATA *carrier = obj != nullptr ? Deref(obj->carried_by) : nullptr;
+
+	if (!obj || !carrier || !is_npc(carrier))
 		return false;
 
-	if (obj->carried_by->cabal && obj->carried_by->cabal != cabal)
+	if (carrier->cabal && carrier->cabal != cabal)
 		is_down = true;
 
 	if (is_down)
@@ -4939,10 +4941,12 @@ void save_cabal_items(void)
 		{
 			if (obj->pIndexData->vnum == vnum)
 			{
+				CHAR_DATA *carrier = Deref(obj->carried_by);
+
 				fprintf(fp, "%i %i\n",
 					i,
-					(obj->carried_by && is_npc(obj->carried_by) && is_cabal_guard(obj->carried_by))
-						? obj->carried_by->pIndexData->vnum
+					(carrier && is_npc(carrier) && is_cabal_guard(carrier))
+						? carrier->pIndexData->vnum
 						: 0);
 			}
 		}

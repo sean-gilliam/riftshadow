@@ -1446,8 +1446,8 @@ void spell_immolate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void immolate_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
-	if (obj->carried_by)
-		act("$p stops burning.", obj->carried_by, obj, 0, TO_CHAR);
+	if (CHAR_DATA *carrier = Deref(obj->carried_by))
+		act("$p stops burning.", carrier, obj, 0, TO_CHAR);
 
 	if (obj->in_room && obj->in_room->people)
 		act("$p stops burning.", obj->in_room->people, obj, 0, TO_ALL);
@@ -4064,14 +4064,17 @@ void spell_acid_vein(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void acid_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
-	if (obj->carried_by)
-		act("$p is dissolved by the acid coating it.", obj->carried_by, obj, 0, TO_CHAR);
+	if (CHAR_DATA *carrier = Deref(obj->carried_by))
+		act("$p is dissolved by the acid coating it.", carrier, obj, 0, TO_CHAR);
 
 	if (obj->in_room && obj->in_room->people)
 		act("$p is dissolved by the acid coating it.", obj->in_room->people, obj, 0, TO_ALL);
 
-	if (OBJ_DATA *container = Deref(obj->in_obj); container && container->carried_by)
-		act("You hear a faint hissing sound coming from $p.", container->carried_by, container, 0, TO_CHAR);
+	OBJ_DATA *container = Deref(obj->in_obj);
+	CHAR_DATA *containerCarrier = container != nullptr ? Deref(container->carried_by) : nullptr;
+
+	if (containerCarrier != nullptr)
+		act("You hear a faint hissing sound coming from $p.", containerCarrier, container, 0, TO_CHAR);
 
 	extract_obj(obj);
 }
@@ -5849,8 +5852,8 @@ void spell_ice_blast(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void container_defrost(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
-	if (obj->carried_by)
-		act("The ice sealing $p melts.", obj->carried_by, obj, 0, TO_CHAR);
+	if (CHAR_DATA *carrier = Deref(obj->carried_by))
+		act("The ice sealing $p melts.", carrier, obj, 0, TO_CHAR);
 }
 
 void spell_icy_carapace(int sn, int level, CHAR_DATA *ch, void *vo, int target)
@@ -5982,8 +5985,8 @@ void spell_sheath_of_ice(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void ice_sheath_melt(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
-	if (obj->carried_by)
-		act("The ice surrounding $p melts.", obj->carried_by, obj, 0, TO_CHAR);
+	if (CHAR_DATA *carrier = Deref(obj->carried_by))
+		act("The ice surrounding $p melts.", carrier, obj, 0, TO_CHAR);
 }
 
 void spell_ironskin(int sn, int level, CHAR_DATA *ch, void *vo, int target)
@@ -7742,8 +7745,8 @@ void crystal_tick(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 
 	if (af->modifier <= 0)
 	{
-		if (obj->carried_by)
-			act("$p crumbles to dust as the energy contained within dissipates.", obj->carried_by, obj, 0, TO_CHAR);
+		if (CHAR_DATA *carrier = Deref(obj->carried_by))
+			act("$p crumbles to dust as the energy contained within dissipates.", carrier, obj, 0, TO_CHAR);
 
 		extract_obj(obj);
 	}

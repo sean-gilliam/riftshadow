@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "quest.h"
 #include "comm.h"
 #include "update.h"
@@ -736,10 +737,10 @@ void pulse_prog_talismanic_page(OBJ_DATA *obj, bool isTick)
 	OBJ_DATA *scrap;
 	CHAR_DATA *ch;
 
-	if (!obj->carried_by)
-		return;
+	ch = Deref(obj->carried_by);
 
-	ch = obj->carried_by;
+	if (ch == nullptr)
+		return;
 
 	if (is_npc(ch))
 		return;
@@ -760,10 +761,10 @@ void pulse_prog_talismanic_scrap(OBJ_DATA *obj, bool isTick)
 	OBJ_DATA *page;
 	CHAR_DATA *ch;
 
-	if (!obj->carried_by)
-		return;
+	ch = Deref(obj->carried_by);
 
-	ch = obj->carried_by;
+	if (ch == nullptr)
+		return;
 
 	if (is_npc(ch))
 		return;

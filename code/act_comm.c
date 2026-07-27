@@ -1791,7 +1791,7 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 		{
 			if (isCabalItem(obj))
 			{
-				if (obj->carried_by != nullptr && obj->carried_by == ch)
+				if (obj->carried_by == ch->self)
 				{
 					act("You cannot quit with cabal items in your inventory!", ch, 0, 0, TO_CHAR);
 					return;
@@ -1846,12 +1846,12 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 		obj_next = obj->next;
 		if (isCabalItem(obj))
 		{
-			if (obj->carried_by != nullptr && obj->carried_by == ch)
+			if (obj->carried_by == ch->self)
 				extract_obj(obj);
 		}
 		else if (obj->pIndexData->limtotal != 0 && ch->level < 10)
 		{
-			if (obj->carried_by == ch)
+			if (obj->carried_by == ch->self)
 				extract_obj(obj);
 		}
 	}

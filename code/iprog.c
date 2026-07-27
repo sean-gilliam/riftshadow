@@ -39,6 +39,7 @@
 #include <algorithm>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "iprog.h"
 #include "magic.h"
 #include "interp.h"
@@ -716,7 +717,7 @@ void fight_prog_cure_critical(OBJ_DATA *obj, CHAR_DATA *ch)
 
 void pulse_prog_steal(OBJ_DATA *obj, bool isTick)
 {
-	CHAR_DATA *vch, *ch = obj->carried_by;
+	CHAR_DATA *vch, *ch = Deref(obj->carried_by);
 	OBJ_DATA *stolen = nullptr;
 	bool dbreak= false;
 	int invnum = number_range(0, 5), i = 0;
@@ -977,8 +978,8 @@ void entry_prog_explosives(OBJ_DATA *obj)
 	if (obj->timer == 0)
 		return;
 
-	if (obj->carried_by != nullptr)
-		act("You hear soft ticking from somewhere.", obj->carried_by, nullptr, nullptr, TO_ROOM);
+	if (CHAR_DATA *carrier = Deref(obj->carried_by))
+		act("You hear soft ticking from somewhere.", carrier, nullptr, nullptr, TO_ROOM);
 }
 
 bool death_prog_explosives(OBJ_DATA *obj, CHAR_DATA *ch)
@@ -1367,7 +1368,7 @@ void fight_prog_horde_hawk(OBJ_DATA *obj, CHAR_DATA *ch)
 
 void pulse_prog_horde_jackal(OBJ_DATA *obj, bool isTick)
 {
-	CHAR_DATA *victim, *ch = obj->carried_by;
+	CHAR_DATA *victim, *ch = Deref(obj->carried_by);
 	AFFECT_DATA af;
 
 	if (!ch)
@@ -3128,7 +3129,7 @@ void communion_handler(CHAR_DATA *ch)
 
 void pulse_prog_cimar_babies(OBJ_DATA *obj, bool isTick)
 {
-	CHAR_DATA *ch = obj->carried_by;
+	CHAR_DATA *ch = Deref(obj->carried_by);
 
 	if (ch == nullptr || is_npc(ch))
 		return;
@@ -3194,7 +3195,7 @@ void verb_prog_feed_baby(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 
 void baby_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
-	CHAR_DATA *ch = obj->carried_by;
+	CHAR_DATA *ch = Deref(obj->carried_by);
 
 	if (ch == nullptr)
 		return;
@@ -3205,7 +3206,7 @@ void baby_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 
 void baby_burp(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
-	CHAR_DATA *ch = obj->carried_by;
+	CHAR_DATA *ch = Deref(obj->carried_by);
 
 	if (ch == nullptr)
 		return;
@@ -3351,7 +3352,7 @@ void verb_prog_pour_wine(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 
 void wine_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
-	CHAR_DATA *ch = obj->carried_by;
+	CHAR_DATA *ch = Deref(obj->carried_by);
 
 	if (obj->value[1] == 0)
 	{
