@@ -1863,9 +1863,6 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 	{
 		wch_next = wch->next;
 
-		if (wch->defending != nullptr && wch->defending == ch)
-			wch->defending = nullptr;
-
 		if (is_affected(wch, gsn_empathy))
 		{
 			AFFECT_DATA *laf = nullptr;

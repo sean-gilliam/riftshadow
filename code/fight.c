@@ -224,14 +224,16 @@ void check_assist(CHAR_DATA *ch, CHAR_DATA *victim)
 			if (!is_npc(ch) || is_affected_by(ch, AFF_CHARM))
 			{
 				/* First check defending */
-				if (rch->defending != nullptr)
+				CHAR_DATA *guarded = Deref(rch->defending);
+
+				if (guarded != nullptr)
 				{
 					CHAR_DATA *fch;
 
 					fch = Deref(ch->fighting);
 
-					if (rch->defending != nullptr
-						&& rch->defending == ch
+					if (guarded != nullptr
+						&& guarded == ch
 						&& fch != nullptr
 						&& Deref(fch->fighting) == ch
 						&& number_percent() < get_skill(rch, gsn_defend)
@@ -2135,7 +2137,7 @@ bool check_parry(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	chance -= ch->batter;
 	chance -= ch->analyze;
 
-	if (victim->analyzePC == ch)
+	if (Deref(victim->analyzePC) == ch)
 		chance += victim->analyze;
 
 	if (!is_npc(victim) && IS_SET(victim->act, PLR_MORON))
@@ -2257,7 +2259,7 @@ bool check_shield_block(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	chance -= ch->batter;
 	chance -= ch->analyze;
 
-	if (victim->analyzePC == ch)
+	if (Deref(victim->analyzePC) == ch)
 		chance += victim->analyze;
 
 	if (check_entwine(victim, 1))
@@ -2420,7 +2422,7 @@ bool check_dodge(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	chance += ch->balance;
 	chance -= ch->analyze;
 
-	if (victim->analyzePC == ch)
+	if (Deref(victim->analyzePC) == ch)
 		chance += victim->analyze;
 
 	if (!is_npc(victim) && style_check(gsn_evasion, victim->pcdata->style))
@@ -2546,7 +2548,7 @@ bool check_avoid(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 
 	chance -= ch->analyze;
 
-	if (victim->analyzePC == ch)
+	if (Deref(victim->analyzePC) == ch)
 		chance += victim->analyze;
 
 	if (!is_npc(victim))
@@ -2707,7 +2709,7 @@ bool check_fend(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	if (ch->size > victim->size + 1)
 		skill /= pow(2, (ch->size - (victim->size - 1)));
 
-	if (victim->analyzePC == ch)
+	if (Deref(victim->analyzePC) == ch)
 		skill += victim->analyze;
 
 	skill = URANGE(5, skill, 85);
@@ -2780,7 +2782,7 @@ bool check_deflect(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	chance -= victim->balance;
 	chance += ch->balance;
 
-	if (victim->analyzePC == ch)
+	if (Deref(victim->analyzePC) == ch)
 		chance += victim->analyze;
 
 	if (chance > 95)
@@ -2839,10 +2841,10 @@ void check_analyze(CHAR_DATA *ch, CHAR_DATA *victim)
 		if (number_percent () > (skill - 125 + (5 * get_curr_stat(ch,STAT_INT))))
 			return;
 
-		if (victim != ch->analyzePC)
+		if (victim != Deref(ch->analyzePC))
 			ch->analyze = 0;
 
-		ch->analyzePC = Deref(ch->fighting);
+		ch->analyzePC = ch->fighting;		// handle to handle; no lookup needed
 		if (ch->analyze < 50)
 			ch->analyze++;
 	*/
@@ -2862,10 +2864,10 @@ void check_analyze(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (number_percent() > (skill - 125 + (5 * intel)))
 		return;
 
-	if (victim != ch->analyzePC)
+	if (victim != Deref(ch->analyzePC))
 		ch->analyze = 0;
 
-	ch->analyzePC = Deref(ch->fighting);
+	ch->analyzePC = ch->fighting;		// handle to handle; no lookup needed
 
 	if (is_npc(victim))
 	{
@@ -7871,6 +7873,7 @@ void do_defend(CHAR_DATA *ch, char *argument)
 	CHAR_DATA *victim;
 	char arg[MAX_STRING_LENGTH];
 	char buf[MAX_STRING_LENGTH];
+	CHAR_DATA *ward;
 
 	one_argument(argument, arg);
 	if (get_skill(ch, gsn_defend) == 0 || ch->level < skill_table[gsn_defend].skill_level[ch->Class()->GetIndex()])
@@ -7879,12 +7882,14 @@ void do_defend(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
+	ward = Deref(ch->defending);
+
 	if (arg[0] == '\0')
 	{
-		if (ch->defending == nullptr)
+		if (ward == nullptr)
 			sprintf(buf, "You aren't defending anyone right now.\n\r");
 		else
-			sprintf(buf, "You are defending %s.\n\r", ch->defending->name);
+			sprintf(buf, "You are defending %s.\n\r", ward->name);
 
 		send_to_char(buf, ch);
 		return;
@@ -7911,14 +7916,14 @@ void do_defend(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->defending != nullptr)
+	if (ward != nullptr)
 	{
-		act("You stop defending $N.", ch, 0, ch->defending, TO_CHAR);
-		act("$n stops defending you.", ch, 0, ch->defending, TO_VICT);
+		act("You stop defending $N.", ch, 0, ward, TO_CHAR);
+		act("$n stops defending you.", ch, 0, ward, TO_VICT);
 	}
 
 	act("You start defending $N.\n\r", ch, 0, victim, TO_CHAR);
-	ch->defending = victim;
+	ch->defending = victim->self;
 	act("$n is now defending you.", ch, 0, victim, TO_VICT);
 }
 

@@ -70,7 +70,12 @@ public:
 	time_t last_fight_time;
 	char * last_fight_name;
 	CHAR_DATA *hunting;
-	CHAR_DATA *defending;
+	// The character this one is guarding, and the one it is analyzing. Both
+	// non-owning, both able to outlive their target, so both are handles.
+	// Nothing scrubs either on extract -- `defending` is cleared only when a
+	// player quits or stops defending, `analyzePC` never -- so before these
+	// were handles they simply dangled on any other death.
+	Handle<CHAR_DATA> defending;
 	std::list<MEM_DATA> memory;
 	GAME_FUN *game_fun;
 	MOB_INDEX_DATA *pIndexData;
@@ -201,7 +206,7 @@ public:
 	short legs;
 	short balance;
 	short batter;
-	CHAR_DATA *analyzePC;
+	Handle<CHAR_DATA> analyzePC;
 	int analyze;
 	short pulseTimer;					// counter for racial combat pulse
 	char *backup_true_name;				// Dev's SUPAR CLEVAR CORRUPTION FIX!!!

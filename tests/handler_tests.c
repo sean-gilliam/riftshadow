@@ -1547,3 +1547,106 @@ SCENARIO("a secret trailer does not outlive the master it was trailing", "[follo
 		ClearTrackers();
 	}
 }
+
+//
+// Deref(ch->defending) / Deref(ch->analyzePC).
+//
+// Neither is cleared by extract_char. `defending` is scrubbed only on the
+// voluntary-quit path (do_quit_new, just before it extracts the quitter) and
+// by do_defend when a character stops defending; `analyzePC` is never cleared
+// anywhere. So on any death that is not a quit -- which is most of them --
+// both were left pointing into a character struct the free list can hand
+// straight back out.
+//
+// That makes these the thinnest scrub story of any field in the graph: there
+// is almost nothing to characterize, because there was almost nothing there.
+// What is pinned below is the part that must not change (the reference is
+// scoped to its own target and unrelated deaths leave it alone) and the part
+// that does (it now expires).
+//
+
+namespace
+{
+	CHAR_DATA *Defending(CHAR_DATA *ch)
+	{
+		return Deref(ch->defending);
+	}
+
+	CHAR_DATA *Analyzing(CHAR_DATA *ch)
+	{
+		return Deref(ch->analyzePC);
+	}
+}
+
+SCENARIO("an unrelated death leaves defending and analyzePC alone", "[defending]")
+{
+	GIVEN("a defender and an analyzer, plus a bystander who dies")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *protector = MakeTracker(room);
+		CHAR_DATA *ward = MakeTracker(room);
+		CHAR_DATA *analyzer = MakeTracker(room);
+		CHAR_DATA *studied = MakeTracker(room);
+		CHAR_DATA *bystander = MakeTracker(room);
+
+		protector->defending = ward->self;
+		analyzer->analyzePC = studied->self;
+
+		WHEN("somebody else entirely is extracted")
+		{
+			extract_char(bystander, true);
+
+			THEN("both references are untouched")
+			{
+				REQUIRE(Defending(protector) == ward);
+				REQUIRE(Analyzing(analyzer) == studied);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("defending and analyzePC do not outlive their target", "[defending]")
+{
+	GIVEN("a defender and an analyzer pointed at one character")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *protector = MakeTracker(room);
+		CHAR_DATA *analyzer = MakeTracker(room);
+		CHAR_DATA *target = MakeTracker(room);
+
+		protector->defending = target->self;
+		analyzer->analyzePC = target->self;
+
+		REQUIRE(Defending(protector) == target);
+		REQUIRE(Analyzing(analyzer) == target);
+
+		WHEN("the target dies")
+		{
+			// extract_char clears neither field -- it never did -- so before
+			// these became handles both references survived into a recycled
+			// character struct. analyzePC is the quieter of the two: every one
+			// of its uses is an identity compare, so a recycled address does
+			// not crash, it silently matches the wrong character.
+			extract_char(target, true);
+
+			THEN("both references read as nothing")
+			{
+				REQUIRE(Defending(protector) == nullptr);
+				REQUIRE(Analyzing(analyzer) == nullptr);
+			}
+
+			THEN("they stay nothing even once the address is reissued")
+			{
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == target);
+				REQUIRE(Defending(protector) == nullptr);
+				REQUIRE(Analyzing(analyzer) == nullptr);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
