@@ -39,6 +39,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "act_obj.h"
+#include "entity/handles.h"
 #include "rift.h"
 #include "handler.h"
 #include "magic.h"
@@ -183,7 +184,10 @@ void get_obj(CHAR_DATA *ch, OBJ_DATA *obj, OBJ_DATA *container, bool pcheck)
 		return;
 	}
 
-	if ((!obj->in_obj || obj->in_obj->carried_by != ch)
+	// Distinct from the `container` parameter above: that is where the object is
+	// being taken from, this is where the object currently reports itself to be.
+	OBJ_DATA *heldIn = Deref(obj->in_obj);
+	if ((!heldIn || heldIn->carried_by != ch)
 		&& (get_carry_weight(ch) + get_obj_weight(obj) > can_carry_w(ch)))
 	{
 		act("$p: you can't carry that much weight.", ch, obj, 0, TO_CHAR);

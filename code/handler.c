@@ -39,6 +39,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "handler.h"
+#include "entity/handles.h"
 #include "magic.h"
 #include "recycle.h"
 #include "tables.h"
@@ -2096,14 +2097,14 @@ void obj_to_obj(OBJ_DATA *obj, OBJ_DATA *obj_to)
 
 	obj->next_content = obj_to->contains;
 	obj_to->contains = obj;
-	obj->in_obj = obj_to;
+	obj->in_obj = obj_to->self;
 	obj->in_room = nullptr;
 	obj->carried_by = nullptr;
 
 	if (obj_to->pIndexData->vnum == OBJ_VNUM_PIT)
 		obj->cost = 0;
 
-	for (; obj_to != nullptr; obj_to = obj_to->in_obj)
+	for (; obj_to != nullptr; obj_to = Deref(obj_to->in_obj))
 	{
 		if (obj_to->carried_by != nullptr)
 		{
@@ -2119,7 +2120,7 @@ void obj_from_obj(OBJ_DATA *obj)
 {
 	OBJ_DATA *obj_from;
 
-	if ((obj_from = obj->in_obj) == nullptr)
+	if ((obj_from = Deref(obj->in_obj)) == nullptr)
 	{
 		RS.Logger.Debug("Obj_from_obj: null obj_from.");
 		return;
@@ -2152,7 +2153,7 @@ void obj_from_obj(OBJ_DATA *obj)
 	obj->next_content = nullptr;
 	obj->in_obj = nullptr;
 
-	for (; obj_from != nullptr; obj_from = obj_from->in_obj)
+	for (; obj_from != nullptr; obj_from = Deref(obj_from->in_obj))
 	{
 		if (obj_from->carried_by != nullptr)
 		{

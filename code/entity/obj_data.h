@@ -22,7 +22,10 @@ struct obj_data
 	OBJ_DATA *next;
 	OBJ_DATA *next_content;
 	OBJ_DATA *contains;
-	OBJ_DATA *in_obj;
+	// The container this object sits inside, if any. Kept in step with in_room
+	// and carried_by by the obj_to_*/obj_from_* pair -- an object is in exactly
+	// one of the three at a time.
+	Handle<OBJ_DATA> in_obj;
 	CHAR_DATA *carried_by;
 	std::list<EXTRA_DESCR_DATA> extra_descr;
 	std::list<OBJ_APPLY_DATA> apply;

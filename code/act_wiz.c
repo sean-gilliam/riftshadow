@@ -40,6 +40,7 @@
 #include <iterator>
 #include "merc.h"
 #include "act_wiz.h"
+#include "entity/handles.h"
 #include "rift.h"
 #include "prof.h"
 #include "weather_enums.h"
@@ -1891,9 +1892,10 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 		obj->timer);
 	send_to_char(buf, ch);
 
+	OBJ_DATA *container = Deref(obj->in_obj);
 	sprintf(buf, "In room: %d  In object: %s  Carried by: %s  Wear_loc: %d\n\r",
 		obj->in_room == nullptr ? 0 : obj->in_room->vnum,
-		obj->in_obj == nullptr ? "(none)" : obj->in_obj->short_descr,
+		container == nullptr ? "(none)" : container->short_descr,
 		obj->carried_by == nullptr ? "(none)" : can_see(ch, obj->carried_by) ? obj->carried_by->name : "someone",
 		obj->wear_loc);
 	send_to_char(buf, ch);
@@ -3246,8 +3248,9 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 
 		number++;
 
-		for (in_obj = obj; in_obj->in_obj != nullptr; in_obj = in_obj->in_obj)
-			;
+		in_obj = obj;
+		while (OBJ_DATA *outer = Deref(in_obj->in_obj))
+			in_obj = outer;
 
 		if (in_obj->carried_by != nullptr && can_see(ch, in_obj->carried_by) && in_obj->carried_by->in_room != nullptr)
 		{

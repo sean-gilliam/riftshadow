@@ -10,6 +10,7 @@
 #include <iterator>
 #include <algorithm>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "sorcerer.h"
 #include "../weather_enums.h"
 #include "../act_info.h"
@@ -4069,8 +4070,8 @@ void acid_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	if (obj->in_room && obj->in_room->people)
 		act("$p is dissolved by the acid coating it.", obj->in_room->people, obj, 0, TO_ALL);
 
-	if (obj->in_obj && obj->in_obj->carried_by)
-		act("You hear a faint hissing sound coming from $p.", obj->in_obj->carried_by, obj->in_obj, 0, TO_CHAR);
+	if (OBJ_DATA *container = Deref(obj->in_obj); container && container->carried_by)
+		act("You hear a faint hissing sound coming from $p.", container->carried_by, container, 0, TO_CHAR);
 
 	extract_obj(obj);
 }

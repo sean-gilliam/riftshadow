@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "magic.h"
+#include "entity/handles.h"
 #include "characterClasses/necro.h"
 #include "recycle.h"
 #include "tables.h"
@@ -3529,8 +3530,9 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		found = true;
 		number++;
 
-		for (in_obj = obj; in_obj->in_obj != nullptr; in_obj = in_obj->in_obj)
-			;
+		in_obj = obj;
+		while (OBJ_DATA *outer = Deref(in_obj->in_obj))
+			in_obj = outer;
 
 		if (in_obj->carried_by != nullptr)
 		{

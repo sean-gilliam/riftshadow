@@ -1634,7 +1634,8 @@ void obj_update(void)
 		}
 		else if (obj->in_room != nullptr && (rch = obj->in_room->people) != nullptr)
 		{
-			if (!(obj->in_obj && obj->in_obj->pIndexData->vnum == OBJ_VNUM_PIT && !can_wear(obj->in_obj, ITEM_TAKE)))
+			OBJ_DATA *container = Deref(obj->in_obj);
+			if (!(container && container->pIndexData->vnum == OBJ_VNUM_PIT && !can_wear(container, ITEM_TAKE)))
 			{
 				act(message, rch, obj, nullptr, TO_ROOM);
 				act(message, rch, obj, nullptr, TO_CHAR);
