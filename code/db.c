@@ -1745,7 +1745,7 @@ void reset_room(ROOM_INDEX_DATA *pRoom)
 					break;
 
 				add_follower(LastMob, rch);
-				LastMob->leader = rch;
+				LastMob->leader = rch->self;
 				break;
 			case 'D':
 				pRoomIndex = get_room_index(pReset->arg1);

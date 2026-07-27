@@ -33,8 +33,19 @@ public:
 	Handle<CHAR_DATA> self;
 	CHAR_DATA *next;
 	CHAR_DATA *next_in_room;
-	CHAR_DATA *master;
-	CHAR_DATA *leader;
+	// The follower graph. All non-owning, and any of the three can be
+	// extracted independently of the others, so they are handles rather than
+	// pointers. The sweeps in stop_follower/die_follower stay: they run mostly
+	// for reasons nobody died of -- setting nofollow, switching who you
+	// follow, a spell breaking a group -- so they are about who follows whom,
+	// not about lifetime.
+	//
+	// Two deliberate rules live here. A follower whose leader is shed becomes
+	// its OWN leader, so a handle to self is normal and must keep resolving.
+	// And a follower affected by gsn_trail is exempt from the sweep on
+	// purpose: the point of the skill is that the target cannot shake them.
+	Handle<CHAR_DATA> master;
+	Handle<CHAR_DATA> leader;
 	// The character this one is in combat with. Non-owning, and the opponent
 	// can be extracted independently, so it is a handle rather than a pointer.
 	// stop_fighting clears it for both sides -- that is about the fight
@@ -46,7 +57,10 @@ public:
 	// outside extract_char -- do_noreply, and cloaking with invis/incog -- are
 	// a player closing the channel, not a lifetime event.
 	Handle<CHAR_DATA> reply;
-	CHAR_DATA *pet;
+	// The charmed pet this character owns. Non-owning -- nuke_pets extracts it
+	// rather than this field doing so -- and cleared by stop_follower when the
+	// pet is dismissed, which leaves both alive.
+	Handle<CHAR_DATA> pet;
 	// The character this mob is hunting. Non-owning, and the quarry can be
 	// extracted independently, so it is a handle rather than a pointer. The
 	// clears outside extract_char are a mob giving up the hunt -- losing the

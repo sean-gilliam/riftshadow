@@ -850,7 +850,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 				}
 			}
 
-			if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+			if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 			{
 				send_to_char("You can't do that on your own master.\n\r", ch);
 				return;
@@ -926,7 +926,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 
 			if (target == TARGET_CHAR) /* check the sanity of the attack */
 			{
-				if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+				if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 				{
 					send_to_char("You can't do that on your own follower.\n\r", ch);
 					return;
@@ -1104,7 +1104,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 
 	if ((targtype == TAR_CHAR_OFFENSIVE || (targtype == TAR_OBJ_CHAR_OFF && target == TARGET_CHAR))
 		&& victim != ch
-		&& victim->master != ch
+		&& Deref(victim->master) != ch
 		&& !(is_affected(victim, gsn_bind_feet) && sn == gsn_bind_feet))
 	{
 		CHAR_DATA *vch, *vch_next;
@@ -1274,7 +1274,7 @@ void obj_cast_spell(int sn, int level, CHAR_DATA *ch, CHAR_DATA *victim, OBJ_DAT
 			|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF && target == TARGET_CHAR)
 			|| (skill_table[sn].target == TAR_CHAR_AMBIGUOUS && (!trusts(ch, victim) && !is_safe(ch, victim))))
 		&& victim != ch
-		&& victim->master != ch)
+		&& Deref(victim->master) != ch)
 	{
 		CHAR_DATA *vch;
 		CHAR_DATA *vch_next;
@@ -1505,7 +1505,7 @@ void spell_cancellation(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	if (arg2[0] == '\0')
 	{
-		if ((!is_npc(ch) && is_npc(victim) && !(is_affected_by(ch, AFF_CHARM) && ch->master == victim))
+		if ((!is_npc(ch) && is_npc(victim) && !(is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim))
 			|| (is_npc(ch) && !is_npc(victim)))
 		{
 			send_to_char("You failed.\n\r", ch);
@@ -1727,7 +1727,7 @@ void spell_charm_person(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	for (check = char_list; check != nullptr; check = check->next)
 	{
-		if (check->leader == ch && is_affected_by(check, AFF_CHARM))
+		if (Deref(check->leader) == ch && is_affected_by(check, AFF_CHARM))
 			count++;
 	}
 
@@ -1737,12 +1737,12 @@ void spell_charm_person(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	if (victim->master)
+	if (Deref(victim->master))
 		stop_follower(victim);
 
 	add_follower(victim, ch);
 
-	victim->leader = ch;
+	victim->leader = ch->self;
 
 	init_affect(&af);
 	af.where = TO_AFFECTS;
@@ -3043,7 +3043,7 @@ void spell_gate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	if (ch->pet != nullptr && ch->in_room == ch->pet->in_room)
+	if (Deref(ch->pet) != nullptr && ch->in_room == Deref(ch->pet)->in_room)
 		gate_pet = true;
 	else
 		gate_pet = false;
@@ -3062,14 +3062,14 @@ void spell_gate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	if (gate_pet)
 	{
-		act("$n steps through a gate and vanishes.", ch->pet, nullptr, nullptr, TO_ROOM);
-		send_to_char("You step through a gate and vanish.\n\r", ch->pet);
+		act("$n steps through a gate and vanishes.", Deref(ch->pet), nullptr, nullptr, TO_ROOM);
+		send_to_char("You step through a gate and vanish.\n\r", Deref(ch->pet));
 
-		char_from_room(ch->pet);
-		char_to_room(ch->pet, victim->in_room);
+		char_from_room(Deref(ch->pet));
+		char_to_room(Deref(ch->pet), victim->in_room);
 
-		act("$n has arrived through a gate.", ch->pet, nullptr, nullptr, TO_ROOM);
-		do_look(ch->pet, "auto");
+		act("$n has arrived through a gate.", Deref(ch->pet), nullptr, nullptr, TO_ROOM);
+		do_look(Deref(ch->pet), "auto");
 	}
 }
 
@@ -4546,7 +4546,7 @@ void spell_turn_undead(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	{
 		for (follower = char_list; follower != nullptr; follower = follower->next)
 		{
-			if (follower->master == ch && IS_SET(follower->act, ACT_UNDEAD) && follower != ch)
+			if (Deref(follower->master) == ch && IS_SET(follower->act, ACT_UNDEAD) && follower != ch)
 			{
 				num++;
 				count += follower->level;
@@ -4579,8 +4579,8 @@ void spell_turn_undead(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 				act("$n stares in hatred for a moment then suddenly becomes very subdued.", victim, 0, 0, TO_NOTVICT);
 				stop_fighting(victim, true);
 
-				victim->master = ch;
-				victim->leader = ch;
+				victim->master = ch->self;
+				victim->leader = ch->self;
 
 				SET_BIT(victim->affected_by, AFF_CHARM);
 				REMOVE_BIT(victim->act, ACT_AGGRESSIVE);

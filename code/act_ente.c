@@ -204,10 +204,10 @@ void do_enter(CHAR_DATA *ch, char *argument)
 		if (portal == nullptr || portal->value[0] == 0)
 			continue;
 
-		if (fch->master == ch && is_affected_by(fch, AFF_CHARM) && fch->position < POS_STANDING)
+		if (Deref(fch->master) == ch && is_affected_by(fch, AFF_CHARM) && fch->position < POS_STANDING)
 			do_stand(fch, "");
 
-		if (fch->master == ch && fch->position == POS_STANDING)
+		if (Deref(fch->master) == ch && fch->position == POS_STANDING)
 		{
 			if (IS_SET(ch->in_room->room_flags, ROOM_LAW) && (is_npc(fch) && IS_SET(fch->act, ACT_AGGRESSIVE)))
 			{

@@ -2846,10 +2846,10 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 					RS.Logger.Warn("Failed to record login for [{}]", ch->true_name);
 			}
 
-			if (ch->pet != nullptr)
+			if (Deref(ch->pet) != nullptr)
 			{
-				char_to_room(ch->pet, ch->in_room);
-				act("$n awakens into the world of Shalar.", ch->pet, nullptr, nullptr, TO_ROOM);
+				char_to_room(Deref(ch->pet), ch->in_room);
+				act("$n awakens into the world of Shalar.", Deref(ch->pet), nullptr, nullptr, TO_ROOM);
 			}
 
 			if (ch->cabal != 0)
@@ -2979,7 +2979,7 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 					fch_next = fch->next;
 					if (is_npc(fch)
 						&& (is_affected(fch, gsn_animate_dead) || is_affected_by(fch, AFF_CHARM))
-						&& fch->master == d->character)
+						&& Deref(fch->master) == d->character)
 					{
 						extract_char(fch, true);
 					}

@@ -1134,7 +1134,7 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 		/*
 		 * More charm stuff.
 		 */
-		if (victim->master == ch && !(dnoun && dnoun[strlen(dnoun) - 1] == '*'))
+		if (Deref(victim->master) == ch && !(dnoun && dnoun[strlen(dnoun) - 1] == '*'))
 			stop_follower(victim);
 	}
 
@@ -1568,8 +1568,8 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 				&& number_bits(2) == 0
 				&& victim->hit < victim->max_hit / 5))
 			|| ((is_affected_by(victim, AFF_CHARM)
-					&& victim->master != nullptr
-					&& victim->master->in_room != victim->in_room)
+					&& Deref(victim->master) != nullptr
+					&& Deref(victim->master)->in_room != victim->in_room)
 				&& dt != gsn_parting_blow))
 		{
 			do_flee(victim, "");
@@ -1733,7 +1733,7 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 			return true;
 		}
 
-		if (is_affected_by(victim, AFF_CHARM) && victim->master != nullptr && !is_npc(victim->master))
+		if (is_affected_by(victim, AFF_CHARM) && Deref(victim->master) != nullptr && !is_npc(Deref(victim->master)))
 		{
 			if (show)
 			{
@@ -1752,7 +1752,7 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 		if (!is_npc(ch))
 		{
 			/* no charmed creatures unless in pk of master */
-			if (is_affected_by(victim, AFF_CHARM) && victim->master && !can_pk(ch, victim->master))
+			if (is_affected_by(victim, AFF_CHARM) && Deref(victim->master) && !can_pk(ch, Deref(victim->master)))
 			{
 				if (show)
 				{
@@ -1766,7 +1766,7 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 		}
 		else
 		{
-			if (is_affected_by(ch, AFF_CHARM) && is_affected_by(victim, AFF_CHARM) && !can_pk(ch->master, victim->master))
+			if (is_affected_by(ch, AFF_CHARM) && is_affected_by(victim, AFF_CHARM) && !can_pk(Deref(ch->master), Deref(victim->master)))
 				return true;
 		}
 	}
@@ -1775,7 +1775,9 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 		if (is_npc(ch))
 		{ /* NPC doing the killing */
 			/* charmed mobs and pets cannot attack players while owned */
-			if (is_affected_by(ch, AFF_CHARM) && ch->master != nullptr && Deref(ch->master->fighting) != victim)
+			CHAR_DATA *owner = Deref(ch->master);
+
+			if (is_affected_by(ch, AFF_CHARM) && owner != nullptr && Deref(owner->fighting) != victim)
 			{
 				send_to_char("Players are your friends!\n\r", ch);
 				return true;
@@ -1853,7 +1855,7 @@ bool is_safe_spell(CHAR_DATA *ch, CHAR_DATA *victim, bool area)
 				return true;
 
 			/* no charmed creatures unless owner */
-			if (is_affected_by(victim, AFF_CHARM) && (area || ch != victim->master))
+			if (is_affected_by(victim, AFF_CHARM) && (area || ch != Deref(victim->master)))
 				return true;
 
 			/* legal kill? -- cannot hit mob fighting non-group member */
@@ -1877,7 +1879,9 @@ bool is_safe_spell(CHAR_DATA *ch, CHAR_DATA *victim, bool area)
 		if (is_npc(ch))
 		{
 			/* charmed mobs and pets cannot attack players while owned */
-			if (is_affected_by(ch, AFF_CHARM) && ch->master != nullptr && Deref(ch->master->fighting) != victim)
+			CHAR_DATA *owner = Deref(ch->master);
+
+			if (is_affected_by(ch, AFF_CHARM) && owner != nullptr && Deref(owner->fighting) != victim)
 				return true;
 
 			/* safe room? */
@@ -3356,11 +3360,11 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	if (is_npc(ch)
 		&& is_affected_by(ch, AFF_CHARM)
-		&& ch->master
-		&& ch->master->in_room
-		&& ch->master->in_room == ch->in_room)
+		&& Deref(ch->master)
+		&& Deref(ch->master)->in_room
+		&& Deref(ch->master)->in_room == ch->in_room)
 	{
-		ch = ch->master;
+		ch = Deref(ch->master);
 	}
 
 	if (IS_SET(victim->progtypes, MPROG_DEATH))
@@ -3413,7 +3417,7 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 	{
 		gch_next = gch->next;
 
-		if (is_npc(gch) && gch->master == victim && gch->pIndexData->vnum != ACADEMY_PET && !is_npc(victim))
+		if (is_npc(gch) && Deref(gch->master) == victim && gch->pIndexData->vnum != ACADEMY_PET && !is_npc(victim))
 			extract_char(gch, true);
 	}
 
@@ -3547,8 +3551,8 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 			send_to_char("The banshee wails as you feel closer to a permanent death.\n\r", victim);
 	}
 
-	if (is_npc(ch) && is_affected_by(ch, AFF_CHARM) && ch->master)
-		ch = ch->master;
+	if (is_npc(ch) && is_affected_by(ch, AFF_CHARM) && Deref(ch->master))
+		ch = Deref(ch->master);
 
 	if (infidels == true)
 	{
@@ -3728,7 +3732,7 @@ void group_gain(CHAR_DATA *ch, CHAR_DATA *victim)
 		{
 			// if(!is_npc(gch))
 			members++;
-			group_levels += (is_npc(gch) && gch->master) ? gch->master->level : gch->level;
+			group_levels += (is_npc(gch) && Deref(gch->master)) ? Deref(gch->master)->level : gch->level;
 			// note: the preceding code skews the group average a bit in favor of the group leader if there's npcs in
 			// the group but i don't really care
 		}
@@ -3737,7 +3741,7 @@ void group_gain(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (members == 0)
 		members = 1;
 
-	lch = (ch->leader != nullptr) ? ch->leader : ch;
+	lch = (Deref(ch->leader) != nullptr) ? Deref(ch->leader) : ch;
 
 	if (ch->in_room == nullptr)
 		return;
@@ -5154,7 +5158,7 @@ void do_bash(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+	if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 	{
 		act("But $N is your friend!", ch, nullptr, victim, TO_CHAR);
 		return;
@@ -5446,7 +5450,7 @@ void do_dirt(CHAR_DATA *ch, char *argument)
 	if (check_sidestep(ch, victim, gsn_dirt, 95))
 		return;
 
-	if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+	if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 	{
 		act("But $N is such a good friend!", ch, nullptr, victim, TO_CHAR);
 		return;
@@ -5640,7 +5644,7 @@ void do_trip(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+	if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 	{
 		act("$N is your beloved master.", ch, nullptr, victim, TO_CHAR);
 		return;
@@ -5804,7 +5808,7 @@ void do_kill(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+	if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 	{
 		act("$N is your beloved master.", ch, nullptr, victim, TO_CHAR);
 		return;
@@ -5873,7 +5877,7 @@ void do_murder(CHAR_DATA *ch, char *argument)
 	if (check_sidestep(ch, victim, 0, 50))
 		return;
 
-	if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+	if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 	{
 		act("$N is your beloved master.", ch, nullptr, victim, TO_CHAR);
 		return;
@@ -7448,7 +7452,7 @@ void do_enlist(CHAR_DATA *ch, char *argument)
 
 	for (check = char_list; check != nullptr; check = check->next)
 	{
-		if (is_affected(check, gsn_enlist) && check->master == ch)
+		if (is_affected(check, gsn_enlist) && Deref(check->master) == ch)
 		{
 			send_to_char("You already have a devoted recruit following you.\n\r", ch);
 			return;
@@ -7482,8 +7486,8 @@ void do_enlist(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim->leader = ch;
-	victim->master = ch;
+	victim->leader = ch->self;
+	victim->master = ch->self;
 
 	init_affect(&af);
 	af.where = TO_AFFECTS;
@@ -8381,7 +8385,7 @@ void do_lash(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+	if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 	{
 		act("But $N is your friend!", ch, nullptr, victim, TO_CHAR);
 		return;

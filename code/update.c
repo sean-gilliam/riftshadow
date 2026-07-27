@@ -1250,9 +1250,9 @@ void char_update(void)
 			colorconv(buf1, "{GYou are now level 20.{x\n\r", ch);
 			send_to_char(buf1, ch);
 
-			if (ch->pet)
+			if (Deref(ch->pet))
 			{
-				sprintf(buf1, "Remember, you can ask your familiar questions.  For example, 'say %s, how do I get to my guild?'.\n\r", ch->pet->short_descr);
+				sprintf(buf1, "Remember, you can ask your familiar questions.  For example, 'say %s, how do I get to my guild?'.\n\r", Deref(ch->pet)->short_descr);
 				send_to_char(buf1, ch);
 			}
 		}

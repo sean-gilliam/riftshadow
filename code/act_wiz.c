@@ -2615,8 +2615,8 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	replyTo = Deref(victim->reply);
 
 	sprintf(buf, "Master: %-11s Leader: %-10s  Pet:    %-10s Reply: %s\n\r",
-		victim->master ? victim->master->name : "(none)", victim->leader ? victim->leader->name : "(none)",
-		victim->pet ? victim->pet->name : "(none)", replyTo ? replyTo->name : "(none)");
+		Deref(victim->master) ? Deref(victim->master)->name : "(none)", Deref(victim->leader) ? Deref(victim->leader)->name : "(none)",
+		Deref(victim->pet) ? Deref(victim->pet)->name : "(none)", replyTo ? replyTo->name : "(none)");
 	send_to_char(buf, ch);
 
 	sprintf(buf, "Pierce: %-10d  Bash:   %-8d    Slash:  %-8d   Exotic: %-10d\n\r",

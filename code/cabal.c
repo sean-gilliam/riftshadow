@@ -717,7 +717,7 @@ void spell_hire_mercenary(int sn, int level, CHAR_DATA *ch, void *vo, int target
 		if (is_npc(merc)
 			&& merc->pIndexData->vnum >= MOB_VNUM_WARRIOR_MERCENARY
 			&& merc->pIndexData->vnum <= MOB_VNUM_SHAMAN_MERCENARY
-			&& merc->master == ch)
+			&& Deref(merc->master) == ch)
 		{
 			break;
 		}
@@ -786,7 +786,7 @@ void spell_hire_mercenary(int sn, int level, CHAR_DATA *ch, void *vo, int target
 	merc->damage[DICE_BONUS] = ch->level / 2;
 
 	if (merc_vnum != MOB_VNUM_SHAMAN_MERCENARY)
-		merc->leader = ch;
+		merc->leader = ch->self;
 
 	SET_BIT(merc->affected_by, AFF_CHARM);
 	do_gtell(merc, "Reporting for duty.");

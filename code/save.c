@@ -6,6 +6,7 @@
 #include <time.h>
 #include <algorithm>
 #include "merc.h"
+#include "entity/handles.h"
 #include "save.h"
 #include "newmem.h"
 #include "recycle.h"
@@ -144,13 +145,13 @@ void save_char_obj(CHAR_DATA *ch)
 			fwrite_obj(ch, ch->pcdata->old->carrying, fp, 0);
 
 		/* save the pets */
-		if (ch->pet != nullptr && ch->pet->in_room == ch->in_room)
-			fwrite_pet(ch->pet, fp);
+		if (Deref(ch->pet) != nullptr && Deref(ch->pet)->in_room == ch->in_room)
+			fwrite_pet(Deref(ch->pet), fp);
 
 		for (search = char_list; search != nullptr; search = search->next)
 		{
 			if (is_npc(search)
-				&& search->master == ch
+				&& Deref(search->master) == ch
 				&& (IS_SET(search->act, ACT_UNDEAD)
 					|| (!strcmp(ch->Class()->name, "necromancer") && !IS_SET(search->act, ACT_PET)))
 				/*  && search->in_room->vnum==ch->in_room->vnum */
@@ -216,7 +217,7 @@ void fread_charmie(CHAR_DATA *ch, FILE *fp)
 	char_to_room(charmed, get_room_index(roomvnum));
 	add_follower(charmed, ch);
 
-	charmed->leader = ch;
+	charmed->leader = ch->self;
 
 	init_affect(&af);
 	af.where = TO_AFFECTS;
@@ -1969,9 +1970,9 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 			case 'E':
 				if (!str_cmp(word, "End"))
 				{
-					pet->leader = ch;
-					pet->master = ch;
-					ch->pet = pet;
+					pet->leader = ch->self;
+					pet->master = ch->self;
+					ch->pet = pet->self;
 					/* adjust hp mana move up  -- here for speed's sake */
 					percent = (current_time - lastlogoff) * 25 / (2 * 60 * 60);
 

@@ -498,7 +498,7 @@ void spell_summon_nephilim(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 
 	add_follower(nephilim, ch);
 
-	nephilim->leader = ch;
+	nephilim->leader = ch->self;
 
 	SET_BIT(nephilim->affected_by, AFF_CHARM);
 }

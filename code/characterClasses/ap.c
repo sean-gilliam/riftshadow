@@ -994,7 +994,7 @@ void spell_dark_familiar(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	for (check = char_list; check != nullptr; check = check->next)
 	{
-		if (is_npc(check) && check->leader == ch)
+		if (is_npc(check) && Deref(check->leader) == ch)
 		{
 			found = true;
 			break;
@@ -1071,7 +1071,7 @@ void spell_dark_familiar(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	add_follower(fam, ch);
 
-	fam->leader = ch;
+	fam->leader = ch->self;
 
 	SET_BIT(fam->affected_by, AFF_CHARM);
 

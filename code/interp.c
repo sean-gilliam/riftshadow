@@ -1114,7 +1114,7 @@ void interpret(CHAR_DATA *ch, char *argument)
 			&& victim
 			&& victim != ch
 			&& !Deref(victim->fighting)
-			&& victim->master != ch)
+			&& Deref(victim->master) != ch)
 		{
 			multi_hit(victim, ch, TYPE_UNDEFINED);
 		}

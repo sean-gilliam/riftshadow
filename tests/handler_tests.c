@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "../code/handler.h"
+#include "../code/act_comm.h"
 #include "../code/entity/char_data.h"
 #include "../code/entity/obj_data.h"
 #include "../code/entity/room_index_data.h"
@@ -1296,6 +1297,250 @@ SCENARIO("a reply to a freed character reads as nothing", "[reply]")
 			THEN("the reference reads as nothing rather than as recycled memory")
 			{
 				REQUIRE(Replying(listener) == nullptr);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+//
+// Deref(ch->master) / Deref(ch->leader) / Deref(ch->pet) -- the follower graph.
+//
+// These three differ from the fields above in that their clears live in
+// helpers -- stop_follower, die_follower, nuke_pets -- rather than inline in
+// extract_char, and those helpers are reached overwhelmingly for reasons that
+// have nothing to do with anyone dying. die_follower alone has four callers
+// and only one of them (extract_char) is a lifetime event; the others are a
+// player setting nofollow, a sphere of plasma, and an item prog putting its
+// owner to sleep. So the sweeps stay and the fields convert in place.
+//
+// Two behaviors here are deliberate game rules that a naive migration would
+// "fix" into regressions, and both are pinned below:
+//
+//   * A follower whose leader dies is made its OWN leader, not leaderless.
+//   * A follower secretly trailing via gsn_trail is exempt from the sweep and
+//     stays attached. That exemption is correct while the master is alive --
+//     the point of the skill is that the target cannot shake you -- and it is
+//     what makes `master` outlive its target when the master is extracted.
+//
+// Master()/Leader()/Pet() are the single points that have to change if the
+// field types change; every assertion below is written through them.
+//
+
+namespace
+{
+	CHAR_DATA *Master(CHAR_DATA *ch)
+	{
+		return Deref(ch->master);
+	}
+
+	CHAR_DATA *Leader(CHAR_DATA *ch)
+	{
+		return Deref(ch->leader);
+	}
+
+	CHAR_DATA *Pet(CHAR_DATA *ch)
+	{
+		return Deref(ch->pet);
+	}
+
+	/// gsn_trail and gsn_animate_dead are both zero in an unbooted test
+	/// binary, and die_follower branches on both -- an affect added for one
+	/// would answer for the other. Give trail a distinct value for the
+	/// duration of a test.
+	class ScopedTrailSkill
+	{
+	public:
+		ScopedTrailSkill() : saved(gsn_trail) { gsn_trail = 500; }
+		~ScopedTrailSkill() { gsn_trail = saved; }
+
+	private:
+		short saved;
+	};
+
+	void MakeTrailing(CHAR_DATA *ch)
+	{
+		AFFECT_DATA af;
+		init_affect(&af);
+		af.type = gsn_trail;
+		af.where = TO_AFFECTS;
+		af.duration = -1;
+		affect_to_char(ch, &af);
+	}
+}
+
+SCENARIO("die_follower detaches ordinary followers", "[follower]")
+{
+	GIVEN("a master with two followers and an unrelated pair")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *master = MakeTracker(room);
+		CHAR_DATA *followerOne = MakeTracker(room);
+		CHAR_DATA *followerTwo = MakeTracker(room);
+		CHAR_DATA *otherMaster = MakeTracker(room);
+		CHAR_DATA *otherFollower = MakeTracker(room);
+
+		followerOne->master = master->self;
+		followerTwo->master = master->self;
+		otherFollower->master = otherMaster->self;
+
+		WHEN("the master sheds its followers without dying")
+		{
+			die_follower(master);
+
+			THEN("its own followers are detached")
+			{
+				REQUIRE(Master(followerOne) == nullptr);
+				REQUIRE(Master(followerTwo) == nullptr);
+			}
+
+			THEN("somebody else's follower is left alone")
+			{
+				REQUIRE(Master(otherFollower) == otherMaster);
+			}
+
+			THEN("the master is still perfectly alive")
+			{
+				REQUIRE(master->valid);
+				REQUIRE(Deref(master->self) == master);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a follower whose leader dies becomes its own leader", "[follower]")
+{
+	GIVEN("a leader with a follower")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *leader = MakeTracker(room);
+		CHAR_DATA *follower = MakeTracker(room);
+
+		follower->leader = leader->self;
+
+		WHEN("the leader sheds its group")
+		{
+			die_follower(leader);
+
+			THEN("the follower leads itself rather than being left leaderless")
+			{
+				// Intentional game logic, not an oversight: a character with
+				// no group still leads one, consisting of itself. Turning this
+				// into a null would be a gameplay regression.
+				REQUIRE(Leader(follower) == follower);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a secret trailer survives the follower sweep", "[follower]")
+{
+	GIVEN("a master with one open follower and one trailing it secretly")
+	{
+		ScopedTrailSkill trailSkill;
+
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *master = MakeTracker(room);
+		CHAR_DATA *openFollower = MakeTracker(room);
+		CHAR_DATA *trailer = MakeTracker(room);
+
+		openFollower->master = master->self;
+		trailer->master = master->self;
+		MakeTrailing(trailer);
+
+		REQUIRE(is_affected(trailer, gsn_trail) == true);
+
+		WHEN("the master sheds its followers while staying alive")
+		{
+			die_follower(master);
+
+			THEN("the open follower is detached but the trailer is not")
+			{
+				// The whole point of the skill: the target cannot shake
+				// someone who is trailing them. This exemption is correct
+				// here, and must survive the field becoming a handle.
+				REQUIRE(Master(openFollower) == nullptr);
+				REQUIRE(Master(trailer) == master);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("stop_follower clears the master's pet when the pet stops following", "[follower]")
+{
+	GIVEN("a master with a pet")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *master = MakeTracker(room);
+		CHAR_DATA *pet = MakeTracker(room);
+
+		pet->master = master->self;
+		master->pet = pet->self;
+
+		WHEN("the pet stops following")
+		{
+			stop_follower(pet);
+
+			THEN("both ends of the relationship are cleared")
+			{
+				REQUIRE(Pet(master) == nullptr);
+				REQUIRE(Master(pet) == nullptr);
+			}
+
+			THEN("the pet itself is still alive")
+			{
+				REQUIRE(pet->valid);
+				REQUIRE(Deref(pet->self) == pet);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a secret trailer does not outlive the master it was trailing", "[follower]")
+{
+	GIVEN("a master being trailed secretly")
+	{
+		ScopedTrailSkill trailSkill;
+
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *master = MakeTracker(room);
+		CHAR_DATA *trailer = MakeTracker(room);
+
+		trailer->master = master->self;
+		MakeTrailing(trailer);
+
+		REQUIRE(Master(trailer) == master);
+
+		WHEN("the master is extracted from the world")
+		{
+			// The sweep in die_follower deliberately skips trailers, and that
+			// is right while the master is alive. It is not right once the
+			// master has been freed: the reference used to survive into a
+			// character struct that the free list hands straight back out, so
+			// the trailer silently ended up attached to whoever was allocated
+			// next.
+			extract_char(master, true);
+
+			THEN("its reference reads as nothing rather than as recycled memory")
+			{
+				REQUIRE(Master(trailer) == nullptr);
+			}
+
+			THEN("the address really was reissued, which is what made this silent")
+			{
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == master);
+				REQUIRE(Master(trailer) == nullptr);
 			}
 		}
 

@@ -4803,7 +4803,7 @@ void do_disrupt_formation(CHAR_DATA *ch, char *arg)
 		return;
 	}
 
-	if (ch->leader)
+	if (Deref(ch->leader))
 		grouped = true;
 
 	if (is_npc(victim))
@@ -4978,7 +4978,7 @@ void do_leadership(CHAR_DATA *ch, char *argument)
 
 bool check_leadership_save(CHAR_DATA *ch, int skill)
 {
-	if (ch->leader == nullptr || ch->leader == ch)
+	if (Deref(ch->leader) == nullptr || Deref(ch->leader) == ch)
 		return false;
 
 	if (skill == gsn_howl || skill == gsn_disrupt_formation)

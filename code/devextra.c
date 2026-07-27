@@ -1012,7 +1012,7 @@ bool trusts(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	if (is_npc(victim))
 	{
-		if (is_affected_by(victim, AFF_CHARM) && victim->master == ch)
+		if (is_affected_by(victim, AFF_CHARM) && Deref(victim->master) == ch)
 			return true;
 		else
 			return false;
@@ -2266,7 +2266,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 				}
 			}
 
-			if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+			if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 			{
 				send_to_char("You can't do that on your own master.\n\r", ch);
 				return;
@@ -2353,7 +2353,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 
 			if (target == TARGET_CHAR) /* check the sanity of the attack */
 			{
-				if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+				if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 				{
 					send_to_char("You can't do that on your own follower.\n\r", ch);
 					return;
@@ -2516,7 +2516,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 	if ((skill_table[sn].target == TAR_CHAR_OFFENSIVE
 			|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF
 			&& target == TARGET_CHAR))
-		&& victim != ch && victim->master != ch)
+		&& victim != ch && Deref(victim->master) != ch)
 	{
 		CHAR_DATA *vch;
 		CHAR_DATA *vch_next;
@@ -2626,7 +2626,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 				}
 			}
 
-			if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+			if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 			{
 				send_to_char("You can't do that on your own master.\n\r", ch);
 				return;
@@ -2703,7 +2703,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 
 			if (target == TARGET_CHAR) /* check the sanity of the attack */
 			{
-				if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+				if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 				{
 					send_to_char("You can't do that on your own follower.\n\r", ch);
 					return;
@@ -2824,7 +2824,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 	if ((skill_table[sn].target == TAR_CHAR_OFFENSIVE
 			|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF && target == TARGET_CHAR))
 		&& victim != ch
-		&& victim->master != ch)
+		&& Deref(victim->master) != ch)
 	{
 		CHAR_DATA *vch;
 		CHAR_DATA *vch_next;

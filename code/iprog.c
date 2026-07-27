@@ -1083,7 +1083,7 @@ void speech_prog_ice_dragon_statue(OBJ_DATA *obj, CHAR_DATA *ch, char *speech)
 	act("$p shatters violently in a cloud of ice. As it clears, a dragon of pure ice hovers over you.", dragon, obj, 0, TO_ROOM);
 	add_follower(dragon, ch);
 
-	dragon->leader = ch;
+	dragon->leader = ch->self;
 
 	SET_BIT(dragon->affected_by, AFF_CHARM);
 

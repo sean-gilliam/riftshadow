@@ -348,7 +348,7 @@ void spell_animate_dead(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (search = char_list; search != nullptr; search = search->next)
 	{
 		if (is_npc(search)
-			&& search->master == ch
+			&& Deref(search->master) == ch
 			&& (search->pIndexData->vnum == MOB_VNUM_ZOMBIE
 				|| (search->pIndexData->vnum >= 2940 && search->pIndexData->vnum <= 2947)))
 		{
@@ -564,7 +564,7 @@ void animate_four(CHAR_DATA *ch, OBJ_DATA *corpse)
 	std::snprintf(buf1, static_cast<size_t>(MAX_STRING_LENGTH), "%s", name);
 	add_follower(zombie, ch);
 
-	zombie->leader = ch;
+	zombie->leader = ch->self;
 
 	SET_BIT(zombie->affected_by, AFF_CHARM);
 
@@ -607,7 +607,7 @@ void spell_black_circle(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	for (pet = char_list; pet != nullptr; pet = pet->next)
 	{
-		if (is_npc(pet) && is_affected_by(pet, AFF_CHARM) && pet->master && pet->master == ch)
+		if (is_npc(pet) && is_affected_by(pet, AFF_CHARM) && Deref(pet->master) && Deref(pet->master) == ch)
 		{
 			stop_fighting(pet, true);
 
@@ -764,7 +764,7 @@ void visceral_four(CHAR_DATA *ch)
 
 	for (mob = ch->in_room->people; mob != nullptr; mob = mob->next_in_room)
 	{
-		if (is_npc(mob) && is_affected_by(mob, AFF_CHARM) && mob->master && mob->master == ch)
+		if (is_npc(mob) && is_affected_by(mob, AFF_CHARM) && Deref(mob->master) && Deref(mob->master) == ch)
 		{
 			af.location = APPLY_DAMROLL;
 			af.modifier = (ch->level / 2) - 5;
@@ -781,7 +781,7 @@ void spell_ritual_soul(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (search = char_list; search != nullptr; search = search->next)
 	{
 		if (is_npc(search)
-			&& search->master == ch
+			&& Deref(search->master) == ch
 			&& search->pIndexData->vnum > 2939
 			&& search->pIndexData->vnum < 2945)
 		{
@@ -790,7 +790,7 @@ void spell_ritual_soul(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		}
 	}
 
-	if (!is_npc(victim) || victim->pIndexData->vnum != MOB_VNUM_ZOMBIE || victim->master != ch)
+	if (!is_npc(victim) || victim->pIndexData->vnum != MOB_VNUM_ZOMBIE || Deref(victim->master) != ch)
 	{
 		send_to_char("You must cast the ritual upon a zombie you control.\n\r", ch);
 		return;
@@ -892,7 +892,7 @@ void ritual_four(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	add_follower(mob, ch);
 
-	mob->leader = ch;
+	mob->leader = ch->self;
 
 	SET_BIT(mob->affected_by, AFF_CHARM);
 
@@ -911,7 +911,7 @@ void spell_ritual_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (search = char_list; search != nullptr; search = search->next)
 	{
 		if (is_npc(search)
-			&& search->master == ch
+			&& Deref(search->master) == ch
 			&& search->pIndexData->vnum > 2944
 			&& search->pIndexData->vnum < 2948)
 		{
@@ -920,7 +920,7 @@ void spell_ritual_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		}
 	}
 
-	if (!is_npc(victim) || victim->pIndexData->vnum != MOB_VNUM_ZOMBIE || victim->master != ch)
+	if (!is_npc(victim) || victim->pIndexData->vnum != MOB_VNUM_ZOMBIE || Deref(victim->master) != ch)
 	{
 		send_to_char("You must cast the ritual upon a zombie you control.\n\r", ch);
 		return;
@@ -1018,7 +1018,7 @@ void flesh_four(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	add_follower(mob, ch);
 
-	mob->leader = ch;
+	mob->leader = ch->self;
 
 	SET_BIT(mob->affected_by, AFF_CHARM);
 
@@ -1242,7 +1242,7 @@ void spell_corrupt_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		extract_obj(obj);
 
 		mob->level = 1;
-		mob->leader = ch;
+		mob->leader = ch->self;
 	}
 }
 
@@ -1376,7 +1376,7 @@ void spell_lesser_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (check = char_list; check != nullptr; check = check->next)
 	{
 		if (is_npc(check)
-			&& check->master == ch
+			&& Deref(check->master) == ch
 			&& (check->pIndexData->vnum == 2955 || check->pIndexData->vnum == 2956 || check->pIndexData->vnum == 2957))
 		{
 			send_to_char("You already have a golem under your command.\n\r", ch);
@@ -1430,7 +1430,7 @@ void spell_lesser_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	add_follower(mob, ch);
 
-	mob->leader = ch;
+	mob->leader = ch->self;
 
 	SET_BIT(mob->affected_by, AFF_CHARM);
 
@@ -1467,7 +1467,7 @@ void spell_greater_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (check = char_list; check != nullptr; check = check->next)
 	{
 		if (is_npc(check)
-			&& check->master == ch
+			&& Deref(check->master) == ch
 			&& (check->pIndexData->vnum == 2959 || check->pIndexData->vnum == 2960 || check->pIndexData->vnum == 2961))
 		{
 			send_to_char("You already have a golem under your command.\n\r", ch);
@@ -1560,7 +1560,7 @@ void spell_greater_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	add_follower(mob, ch);
 
-	mob->leader = ch;
+	mob->leader = ch->self;
 
 	SET_BIT(mob->affected_by, AFF_CHARM);
 
@@ -1685,8 +1685,8 @@ bool check_zombie_summon(CHAR_DATA *ch)
 	{
 		if (is_npc(mob)
 			&& is_affected_by(mob, AFF_CHARM)
-			&& mob->master
-			&& mob->master == ch
+			&& Deref(mob->master)
+			&& Deref(mob->master) == ch
 			&& is_affected(mob, gsn_unholy_bond))
 		{
 			if (number_percent() > 75)

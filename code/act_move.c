@@ -183,9 +183,9 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 			{
 				act("The smoke parts for you allowing you passage.", ch, 0, 0, TO_CHAR);
 			}
-			else if (raf->owner == ch->master && automatic)
+			else if (raf->owner == Deref(ch->master) && automatic)
 			{
-				act("You follow $N through the smoke.", ch, 0, ch->master, TO_CHAR);
+				act("You follow $N through the smoke.", ch, 0, Deref(ch->master), TO_CHAR);
 			}
 		}
 		else
@@ -267,8 +267,8 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	}
 
 	if (is_affected_by(ch, AFF_CHARM)
-		&& ch->master != nullptr
-		&& in_room == ch->master->in_room)
+		&& Deref(ch->master) != nullptr
+		&& in_room == Deref(ch->master)->in_room)
 	{
 		send_to_char("What?  And leave your beloved master?\n\r", ch);
 		return;
@@ -1060,10 +1060,10 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		{
 			fch_next = fch->next_in_room;
 
-			if (fch->master == ch && is_affected_by(fch, AFF_CHARM) && fch->position < POS_STANDING)
+			if (Deref(fch->master) == ch && is_affected_by(fch, AFF_CHARM) && fch->position < POS_STANDING)
 				do_stand(fch, "");
 
-			if (fch->master == ch && fch->position == POS_STANDING && can_see_room(fch, to_room))
+			if (Deref(fch->master) == ch && fch->position == POS_STANDING && can_see_room(fch, to_room))
 			{
 				if (IS_SET(ch->in_room->room_flags, ROOM_LAW) && (is_npc(fch) && IS_SET(fch->act, ACT_AGGRESSIVE)))
 				{
@@ -3271,8 +3271,8 @@ void do_recall(CHAR_DATA *ch, char *argument)
 
 	do_look(ch, "auto");
 
-	if (ch->pet != nullptr)
-		do_recall(ch->pet, "");
+	if (Deref(ch->pet) != nullptr)
+		do_recall(Deref(ch->pet), "");
 }
 
 void do_train(CHAR_DATA *ch, char *argument)
@@ -3450,7 +3450,7 @@ void do_bear_call(CHAR_DATA *ch, char *argument)
 	auto found = false;
 	for (auto check = char_list; check != nullptr; check = check->next)
 	{
-		if (check->master == ch && check->pIndexData->vnum == MOB_VNUM_BEAR)
+		if (Deref(check->master) == ch && check->pIndexData->vnum == MOB_VNUM_BEAR)
 			found = true;
 	}
 
@@ -3497,7 +3497,7 @@ void do_bear_call(CHAR_DATA *ch, char *argument)
 		char_to_room(animal, ch->in_room);
 		add_follower(animal, ch);
 
-		animal->leader = ch;
+		animal->leader = ch->self;
 
 		SET_BIT(animal->affected_by, AFF_CHARM);
 
@@ -3594,7 +3594,7 @@ void do_animal_call(CHAR_DATA *ch, char *argument)
 	{
 		if (is_npc(mob)
 			&& is_affected_by(mob, AFF_CHARM)
-			&& (mob->master == ch)
+			&& (Deref(mob->master) == ch)
 			&& ((mob->pIndexData->vnum == MOB_VNUM_FALCON)
 				|| (mob->pIndexData->vnum == MOB_VNUM_WOLF)
 				|| (mob->pIndexData->vnum == MOB_VNUM_BEAR)
@@ -3721,10 +3721,10 @@ void do_animal_call(CHAR_DATA *ch, char *argument)
 	SET_BIT(animal1->affected_by, AFF_CHARM);
 	SET_BIT(animal2->affected_by, AFF_CHARM);
 
-	animal1->leader = ch;
-	animal2->leader = ch;
-	animal1->master = ch;
-	animal2->master = ch;
+	animal1->leader = ch->self;
+	animal2->leader = ch->self;
+	animal1->master = ch->self;
+	animal2->master = ch->self;
 	animal1->cabal = ch->cabal;
 	animal2->cabal = ch->cabal;
 

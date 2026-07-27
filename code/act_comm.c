@@ -1885,7 +1885,7 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 		if (!is_npc(wch))
 			continue;
 
-		if (is_npc(wch) && is_affected_by(wch, AFF_CHARM) && wch->master == ch && IS_SET(wch->act, ACT_UNDEAD))
+		if (is_npc(wch) && is_affected_by(wch, AFF_CHARM) && Deref(wch->master) == ch && IS_SET(wch->act, ACT_UNDEAD))
 		{
 			extract_char(wch, true);
 			continue;
@@ -1949,15 +1949,15 @@ void do_follow(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (is_affected_by(ch, AFF_CHARM) && ch->master != nullptr)
+	if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) != nullptr)
 	{
-		act("But you'd rather follow $N!", ch, nullptr, ch->master, TO_CHAR);
+		act("But you'd rather follow $N!", ch, nullptr, Deref(ch->master), TO_CHAR);
 		return;
 	}
 
 	if (victim == ch)
 	{
-		if (ch->master == nullptr)
+		if (Deref(ch->master) == nullptr)
 		{
 			send_to_char("You already follow yourself.\n\r", ch);
 			return;
@@ -1989,7 +1989,7 @@ void do_follow(CHAR_DATA *ch, char *argument)
 
 	REMOVE_BIT(ch->act, PLR_NOFOLLOW);
 
-	if (ch->master != nullptr)
+	if (Deref(ch->master) != nullptr)
 		stop_follower(ch);
 
 	add_follower(ch, victim);
@@ -1997,13 +1997,13 @@ void do_follow(CHAR_DATA *ch, char *argument)
 
 void add_follower(CHAR_DATA *ch, CHAR_DATA *master)
 {
-	if (ch->master != nullptr)
+	if (Deref(ch->master) != nullptr)
 	{
 		RS.Logger.Debug("Add_follower: non-nullptr master.");
 		return;
 	}
 
-	ch->master = master;
+	ch->master = master->self;
 	ch->leader = nullptr;
 
 	auto chance = get_skill(ch, gsn_trail);
@@ -2041,7 +2041,11 @@ void add_follower(CHAR_DATA *ch, CHAR_DATA *master)
 
 void stop_follower(CHAR_DATA *ch)
 {
-	if (ch->master == nullptr)
+	CHAR_DATA *master;
+
+	master = Deref(ch->master);
+
+	if (master == nullptr)
 	{
 		RS.Logger.Debug("Stop_follower: nullptr master.");
 		return;
@@ -2053,16 +2057,17 @@ void stop_follower(CHAR_DATA *ch)
 		affect_strip(ch, gsn_charm_person);
 	}
 
-	if (can_see(ch->master, ch) && ch->in_room != nullptr && !(is_npc(ch) && ch->pIndexData->vnum == MOB_VNUM_ANCHOR))
+	if (can_see(master, ch) && ch->in_room != nullptr && !(is_npc(ch) && ch->pIndexData->vnum == MOB_VNUM_ANCHOR))
 	{
-		act("$n stops following you.", ch, nullptr, ch->master, TO_VICT);
-		act("You stop following $N.", ch, nullptr, ch->master, TO_CHAR);
+		act("$n stops following you.", ch, nullptr, master, TO_VICT);
+		act("You stop following $N.", ch, nullptr, master, TO_CHAR);
 
 		if (is_affected(ch, gsn_trail))
 			affect_strip(ch, gsn_trail);
 	}
-	if (ch->master->pet == ch)
-		ch->master->pet = nullptr;
+
+	if (Deref(master->pet) == ch)
+		master->pet = nullptr;
 
 	check_leadership_affect(ch);
 	ch->master = nullptr;
@@ -2072,7 +2077,7 @@ void stop_follower(CHAR_DATA *ch)
 /* nukes charmed monsters and pets */
 void nuke_pets(CHAR_DATA *ch)
 {
-	auto pet = ch->pet;
+	auto pet = Deref(ch->pet);
 	if (pet != nullptr)
 	{
 		stop_follower(pet);
@@ -2093,10 +2098,12 @@ void die_follower(CHAR_DATA *ch)
 		return;
 	}
 
-	if (ch->master != nullptr)
+	CHAR_DATA *master = Deref(ch->master);
+
+	if (master != nullptr)
 	{
-		if (ch->master->pet == ch)
-			ch->master->pet = nullptr;
+		if (Deref(master->pet) == ch)
+			master->pet = nullptr;
 
 		stop_follower(ch);
 	}
@@ -2114,7 +2121,7 @@ void die_follower(CHAR_DATA *ch)
 		}*/
 		if (is_npc(fch) && (is_affected(fch, gsn_animate_dead) || is_affected_by(fch, AFF_CHARM)))
 		{
-			if (fch->master == ch)
+			if (Deref(fch->master) == ch)
 			{
 				REMOVE_BIT(fch->affected_by, AFF_CHARM);
 				affect_strip(fch, gsn_animate_dead);
@@ -2124,11 +2131,11 @@ void die_follower(CHAR_DATA *ch)
 		}
 		else
 		{
-			if (fch->master == ch && !is_affected(fch, gsn_trail))
+			if (Deref(fch->master) == ch && !is_affected(fch, gsn_trail))
 				stop_follower(fch);
 
-			if (fch->leader == ch && !is_affected(fch, gsn_trail))
-				fch->leader = fch;
+			if (Deref(fch->leader) == ch && !is_affected(fch, gsn_trail))
+				fch->leader = fch->self;
 		}
 	}
 }
@@ -2168,7 +2175,7 @@ void do_order(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (!is_affected_by(victim, AFF_CHARM) || victim->master != ch || (is_immortal(victim) && victim->trust >= ch->trust))
+		if (!is_affected_by(victim, AFF_CHARM) || Deref(victim->master) != ch || (is_immortal(victim) && victim->trust >= ch->trust))
 		{
 			send_to_char("Do it yourself!\n\r", ch);
 			return;
@@ -2195,7 +2202,7 @@ void do_order(CHAR_DATA *ch, char *argument)
 	{
 		och_next = och->next_in_room;
 
-		if (is_affected_by(och, AFF_CHARM) && och->master == ch && (fAll || och == victim))
+		if (is_affected_by(och, AFF_CHARM) && Deref(och->master) == ch && (fAll || och == victim))
 		{
 			if (is_npc(och) && och->pIndexData->vnum == ACADEMY_PET)
 				continue;
@@ -2234,7 +2241,7 @@ void do_group(CHAR_DATA *ch, char *argument)
 	{
 		std::string buffer;
 		char buf2[MAX_STRING_LENGTH];
-		auto leader = ch->leader != nullptr ? ch->leader : ch;
+		auto leader = Deref(ch->leader) != nullptr ? Deref(ch->leader) : ch;
 
 		buffer = fmt::format("{}'s group:\n\r", pers(leader, ch));
 		send_to_char(buffer.c_str(), ch);
@@ -2285,13 +2292,13 @@ void do_group(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->master != nullptr || (ch->leader != nullptr && ch->leader != ch))
+	if (Deref(ch->master) != nullptr || (Deref(ch->leader) != nullptr && Deref(ch->leader) != ch))
 	{
 		send_to_char("But you are following someone else!\n\r", ch);
 		return;
 	}
 
-	if (victim->master != ch && ch != victim)
+	if (Deref(victim->master) != ch && ch != victim)
 	{
 		act_new("$N isn't following you.", ch, nullptr, victim, TO_CHAR, POS_SLEEPING);
 		return;
@@ -2319,7 +2326,7 @@ void do_group(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim->leader = ch;
+	victim->leader = ch->self;
 	act_new("$N joins $n's group.", ch, nullptr, victim, TO_NOTVICT, POS_RESTING);
 	act_new("You join $n's group.", ch, nullptr, victim, TO_VICT, POS_SLEEPING);
 	act_new("$N joins your group.", ch, nullptr, victim, TO_CHAR, POS_SLEEPING);
@@ -2638,11 +2645,11 @@ bool is_same_group(CHAR_DATA *ach, CHAR_DATA *bch)
 	/* if ( ( ach->level - bch->level > 8 || ach->level - bch->level < -8 ) && !is_npc(ach) )
 		return false;*/
 
-	if (ach->leader != nullptr)
-		ach = ach->leader;
+	if (Deref(ach->leader) != nullptr)
+		ach = Deref(ach->leader);
 
-	if (bch->leader != nullptr)
-		bch = bch->leader;
+	if (Deref(bch->leader) != nullptr)
+		bch = Deref(bch->leader);
 
 	return ach == bch;
 }
@@ -2665,7 +2672,7 @@ void do_release(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!is_affected_by(victim, AFF_CHARM) || victim->master != ch)
+	if (!is_affected_by(victim, AFF_CHARM) || Deref(victim->master) != ch)
 	{
 		send_to_char("They aren't under your control.\n\r", ch);
 		return;
@@ -2728,8 +2735,8 @@ void perm_death_log(CHAR_DATA *ch, int deltype)
 
 void temp_death_log(CHAR_DATA *killer, CHAR_DATA *dead)
 {
-	if (is_npc(killer) && (killer->master != nullptr))
-		killer = killer->master;
+	if (is_npc(killer) && (Deref(killer->master) != nullptr))
+		killer = Deref(killer->master);
 
 	if (is_npc(dead) || is_npc(killer))
 		return;

@@ -907,9 +907,9 @@ void pulse_prog_demon(CHAR_DATA *mob)
 
 	if (!victim || !elemental->in_room || !victim->in_room || victim->ghost > 0)
 	{
-		if (mob->master && victim->ghost > 0)
+		if (Deref(mob->master) && victim->ghost > 0)
 		{
-			sprintf(buf, "%s I have taken the soul of %s. Your debt will one day be collected.", mob->master->name, victim->name);
+			sprintf(buf, "%s I have taken the soul of %s. Your debt will one day be collected.", Deref(mob->master)->name, victim->name);
 			do_tell(mob, buf);
 		}
 
@@ -1357,7 +1357,7 @@ bool death_prog_glass(CHAR_DATA *mob, CHAR_DATA *killer)
 {
 
 	CHAR_DATA *ch, *vch, *vch_next;
-	ch = mob->leader;
+	ch = Deref(mob->leader);
 
 	if (ch == nullptr)
 		return false;
@@ -1509,7 +1509,7 @@ bool move_prog_theatre_guard(CHAR_DATA *ch, CHAR_DATA *mob, ROOM_INDEX_DATA *fro
 void greet_prog_necro_skull(CHAR_DATA *mob, CHAR_DATA *ch)
 {
 	char buf[MSL];
-	CHAR_DATA *master = mob->leader;
+	CHAR_DATA *master = Deref(mob->leader);
 
 	if (ch == master)
 		return;
@@ -1537,7 +1537,7 @@ bool death_prog_necro_skull(CHAR_DATA *mob, CHAR_DATA *killer)
 
 void pulse_prog_necro_skull(CHAR_DATA *mob)
 {
-	if (mob->leader == nullptr)
+	if (Deref(mob->leader) == nullptr)
 	{
 		act("$n crumbles into a pile of dust.", mob, 0, 0, TO_ROOM);
 		extract_char(mob, true);
@@ -2239,7 +2239,7 @@ void pulse_prog_imp(CHAR_DATA *mob)
 	for (victim = mob->in_room->people; victim; victim = victim->next_in_room)
 	{
 		if (number_percent() < 98
-			|| (mob->master && (victim == mob->master || is_safe_new(mob->master, victim, false)))
+			|| (Deref(mob->master) && (victim == Deref(mob->master) || is_safe_new(Deref(mob->master), victim, false)))
 			|| mob == victim)
 		{
 			continue;
@@ -2270,7 +2270,7 @@ void fight_prog_geulgon(CHAR_DATA *mob, CHAR_DATA *victim)
 {
 	CHAR_DATA *vch;
 	CHAR_DATA *vch_next;
-	CHAR_DATA *ch = mob->master;
+	CHAR_DATA *ch = Deref(mob->master);
 	if (Deref(mob->fighting) == nullptr)
 		return;
 
@@ -2314,7 +2314,7 @@ void fight_prog_geulgon(CHAR_DATA *mob, CHAR_DATA *victim)
 void give_prog_minotaur(CHAR_DATA *mob, CHAR_DATA *ch, OBJ_DATA *obj)
 {
 
-	if (ch != mob->master)
+	if (ch != Deref(mob->master))
 	{
 		act("$N snarls angrily at $n's offering, taking $p and breaking it over his knee!", ch, obj, mob, TO_ROOM);
 		act("$n snarls angrily at your offering, taking $p and breaking it over his knee!", mob, obj, ch, TO_VICT);
@@ -3463,7 +3463,7 @@ void pulse_prog_glass(CHAR_DATA *mob)
 		af.type = gsn_bleeding;
 		af.aftype = AFT_MALADY;
 		af.level = mob->level;
-		af.owner = mob->leader;
+		af.owner = Deref(mob->leader);
 		af.end_fun = nullptr;
 		new_affect_to_char(victim, &af);
 
@@ -3478,7 +3478,7 @@ void pulse_prog_glass(CHAR_DATA *mob)
 		caf.type = gsn_trophy;
 		caf.level = mob->level;
 		caf.aftype = AFT_SKILL;
-		caf.owner = mob->leader;
+		caf.owner = Deref(mob->leader);
 		caf.end_fun = nullptr;
 		new_affect_to_char(mob, &caf);
 	}

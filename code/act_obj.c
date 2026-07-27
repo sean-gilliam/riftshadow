@@ -110,7 +110,7 @@ bool can_loot(CHAR_DATA *ch, OBJ_DATA *obj)
 	{
 		RS.Logger.Info("{} looting {}.",
 			is_npc(ch)
-				? ((ch->master == nullptr) ? "Unknown mob" : ch->master->name)
+				? ((Deref(ch->master) == nullptr) ? "Unknown mob" : Deref(ch->master)->name)
 				: ch->name,
 			obj->short_descr);
 		ch->pause = 5;
@@ -3720,7 +3720,7 @@ void do_buy(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (ch->pet != nullptr)
+		if (Deref(ch->pet) != nullptr)
 		{
 			send_to_char("You already own a pet.\n\r", ch);
 			return;
@@ -3791,8 +3791,8 @@ void do_buy(CHAR_DATA *ch, char *argument)
 		char_to_room(pet, ch->in_room);
 		add_follower(pet, ch);
 
-		pet->leader = ch;
-		ch->pet = pet;
+		pet->leader = ch->self;
+		ch->pet = pet->self;
 
 		send_to_char("Enjoy your pet.\n\r", ch);
 		act("$n bought $N as a pet.", ch, nullptr, pet, TO_ROOM);
