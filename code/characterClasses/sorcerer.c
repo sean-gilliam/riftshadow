@@ -2804,7 +2804,7 @@ void spell_anchor(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	{
 		wch_next = wch->next;
 
-		if (is_npc(wch) && wch->pIndexData->vnum == MOB_VNUM_ANCHOR && wch->hunting == ch)
+		if (is_npc(wch) && wch->pIndexData->vnum == MOB_VNUM_ANCHOR && Deref(wch->hunting) == ch)
 		{
 			oldanchor = wch;
 			break;
@@ -2820,7 +2820,7 @@ void spell_anchor(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	anchor = create_mobile(get_mob_index(MOB_VNUM_ANCHOR));
 	char_to_room(anchor, ch->in_room);
 	anchor->level = level;
-	anchor->hunting = ch;
+	anchor->hunting = ch->self;
 
 	act("You harness the energy in the surrounding air to anchor your essence to this spot.", ch, 0, 0, TO_CHAR);
 	act("$n concentrates intently, and a small funnel cloud begins to spin in place beside $m.", ch, 0, 0, TO_ROOM);
@@ -2849,7 +2849,7 @@ void spell_aerial_transferrence(int sn, int level, CHAR_DATA *ch, void *vo, int 
 	{
 		wch_next = wch->next;
 
-		if (is_npc(wch) && wch->pIndexData->vnum == MOB_VNUM_ANCHOR && wch->hunting == ch)
+		if (is_npc(wch) && wch->pIndexData->vnum == MOB_VNUM_ANCHOR && Deref(wch->hunting) == ch)
 		{
 			anchor = wch;
 			break;

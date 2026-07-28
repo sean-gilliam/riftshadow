@@ -69,7 +69,12 @@ public:
 	int tracktimer;
 	time_t last_fight_time;
 	char * last_fight_name;
-	CHAR_DATA *hunting;
+	// The character this mob is stalking -- set by the face sucker's greet prog
+	// and by the sorcerer's aerial anchor. Non-owning, and the quarry can be
+	// extracted independently, so it is a handle rather than a pointer. Nothing
+	// clears it anywhere, on death or otherwise, so before it was a handle a
+	// dead quarry's stalker was inherited by whoever took its address next.
+	Handle<CHAR_DATA> hunting;
 	// The character this one is guarding, and the one it is analyzing. Both
 	// non-owning, both able to outlive their target, so both are handles.
 	// Nothing scrubs either on extract -- `defending` is cleared only when a

@@ -1650,3 +1650,101 @@ SCENARIO("defending and analyzePC do not outlive their target", "[defending]")
 		ClearTrackers();
 	}
 }
+
+//
+// ch->hunting -- the mob-hunt-quarry link.
+//
+// The thinnest scrub story in the graph, thinner even than defending: this one
+// is never cleared anywhere at all. There are two setters -- the vnum-3002 face
+// sucker's greet prog and the sorcerer's aerial anchor -- and no clear on
+// extract, on quit, or on any other path.
+//
+// Nothing crashes, because every reachable reader is an identity compare
+// against a char_list walk rather than a dereference. That is what makes it
+// quiet: a fresh character that lands on a dead one's address silently
+// inherits the dead one's anchor and its face sucker. So the scenario that
+// matters is the reissued address, not the freed read.
+//
+
+namespace
+{
+	// Both helpers exist so the identical test source compiles against the raw
+	// pointer and against the handle -- when the field type flips, only these
+	// two bodies move.
+	CHAR_DATA *Hunting(CHAR_DATA *ch)
+	{
+		return Deref(ch->hunting);
+	}
+
+	void Hunt(CHAR_DATA *hunter, CHAR_DATA *quarry)
+	{
+		hunter->hunting = quarry->self;
+	}
+}
+
+SCENARIO("an unrelated death leaves a mob's quarry alone", "[hunting]")
+{
+	GIVEN("two mobs hunting one character, and a bystander")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *quarry = MakeTracker(room);
+		CHAR_DATA *sucker = MakeTracker(room);
+		CHAR_DATA *anchor = MakeTracker(room);
+		CHAR_DATA *bystander = MakeTracker(room);
+
+		Hunt(sucker, quarry);
+		Hunt(anchor, quarry);
+
+		WHEN("somebody else entirely is extracted")
+		{
+			extract_char(bystander, true);
+
+			THEN("both hunters still name their quarry")
+			{
+				REQUIRE(Hunting(sucker) == quarry);
+				REQUIRE(Hunting(anchor) == quarry);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a mob's quarry does not outlive it", "[hunting]")
+{
+	GIVEN("a mob hunting a character")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *quarry = MakeTracker(room);
+		CHAR_DATA *anchor = MakeTracker(room);
+
+		Hunt(anchor, quarry);
+
+		REQUIRE(Hunting(anchor) == quarry);
+
+		WHEN("the quarry dies")
+		{
+			extract_char(quarry, true);
+
+			THEN("the hunter names nothing")
+			{
+				REQUIRE(Hunting(anchor) == nullptr);
+			}
+
+			THEN("the next character to take the address is not mistaken for it")
+			{
+				// The whole defect, in three lines. Every reachable reader of
+				// this field walks char_list asking "is this the mob hunting
+				// me?" and answers with ==, so the newcomer used to inherit the
+				// dead character's anchor rather than crash on it.
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == quarry);
+				REQUIRE(Hunting(anchor) != newcomer);
+				REQUIRE(Hunting(anchor) == nullptr);
+			}
+		}
+
+		ClearTrackers();
+	}
+}

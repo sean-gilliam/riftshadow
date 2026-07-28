@@ -902,7 +902,7 @@ void greet_prog_outer_guardian(CHAR_DATA *mob, CHAR_DATA *ch)
 void pulse_prog_demon(CHAR_DATA *mob)
 {
 	CHAR_DATA *elemental = mob;
-	CHAR_DATA *victim = elemental->hunting;
+	CHAR_DATA *victim = Deref(elemental->hunting);
 	char buf[250];
 
 	if (!victim || !elemental->in_room || !victim->in_room || victim->ghost > 0)
@@ -3567,7 +3567,7 @@ void sucker_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 
 	for (owner = char_list; owner; owner = owner->next)
 	{
-		if (is_npc(owner) && owner->pIndexData->vnum == 3002 && owner->hunting == ch)
+		if (is_npc(owner) && owner->pIndexData->vnum == 3002 && Deref(owner->hunting) == ch)
 			break;
 	}
 
@@ -3597,14 +3597,14 @@ void greet_prog_face_sucker(CHAR_DATA *mob, CHAR_DATA *ch)
 	if (Deref(mob->fighting)
 		|| is_npc(ch)
 		|| mob == ch
-		|| mob->hunting == ch
+		|| Deref(mob->hunting) == ch
 		|| !can_see(mob, ch)
 		|| is_safe_new(mob, ch, false))
 	{
 		return;
 	}
 
-	mob->hunting = ch;
+	mob->hunting = ch->self;
 
 	sprintf(buf, "%sSuddenly, something pale and slimy falls from the ceiling, landing on your face!%s", get_char_color(ch, "red"), END_COLOR(ch));
 	act(buf, mob, 0, ch, TO_VICT);

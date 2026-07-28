@@ -2515,6 +2515,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	char arg[MAX_INPUT_LENGTH];
 	CHAR_DATA *victim;
 	CHAR_DATA *opponent;
+	CHAR_DATA *quarry;
 	CHAR_DATA *replyTo;
 	ROOM_INDEX_DATA *barred;
 	int i, x;
@@ -2604,11 +2605,12 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	send_to_char(buf, ch);
 
 	opponent = Deref(victim->fighting);
+	quarry = Deref(victim->hunting);
 
 	sprintf(buf, "Saves:  %-11d Dammod: %-8.4f%%   Hunt:   %-10s Fight: %-11s\n\r",
 		victim->saving_throw,
 		victim->dam_mod,
-		!victim->hunting ? "(none)" : victim->hunting->name,
+		!quarry ? "(none)" : quarry->name,
 		!opponent ? "(none)" : opponent->name);
 	send_to_char(buf, ch);
 

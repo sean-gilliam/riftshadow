@@ -1664,7 +1664,7 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 		&& is_npc(victim)
 		&& !is_affected_by(ch,AFF_CHARM)
 		&& !is_affected_by(victim,AFF_CHARM) && !ch->desc
-		&& !ch->hunting && !victim->hunting && victim!=ch
+		&& !Deref(ch->hunting) && !Deref(victim->hunting) && victim!=ch
 		&& Deref(ch->fighting) != victim
 		&& Deref(victim->fighting) != ch
 		&& !ch->desc && !victim->desc)
