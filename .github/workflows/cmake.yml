@@ -139,3 +139,28 @@ jobs:
           RIFT_BIN: ${{ github.workspace }}/build-asan/code/rift
           ASAN_OPTIONS: detect_leaks=0:detect_odr_violation=0
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+      # Goes past the greeting: creates a character, keeps it in the world while
+      # the game ticks, then logs it out again.
+      - name: Smoke test (new player, under ASAN)
+        run: tests/smoke/new_player_test.sh
+        env:
+          RIFT_BIN: ${{ github.workspace }}/build-asan/code/rift
+          RIFT_SMOKE_BOOT_TIMEOUT: 240
+          ASAN_OPTIONS: detect_leaks=0:detect_odr_violation=0
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+
+      # And again unsanitized. Not redundant: the heap overrun that motivated
+      # this test was invisible to ASAN. free_obj recycles onto a free list
+      # rather than returning memory, so there was nothing for ASAN to poison
+      # and announced itself only as a glibc allocator abort in a plain build.
+      - name: Configure (unsanitized)
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build (unsanitized)
+        run: cmake --build build
+
+      - name: Smoke test (new player, unsanitized)
+        run: tests/smoke/new_player_test.sh
+        env:
+          RIFT_BIN: ${{ github.workspace }}/build/code/rift

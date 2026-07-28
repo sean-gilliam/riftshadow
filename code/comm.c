@@ -496,7 +496,12 @@ void init_descriptor(int control)
 
 		addr = ntohl(sock.sin_addr.s_addr);
 
-		RS.Logger.Info("Sock.sinaddr:  {}.{}.{}.{}", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, (addr)&0xFF);
+		// buf is both the subject of the banned-range check below and the host
+		// string used when the reverse lookup fails, so it has to be built here
+		// rather than formatted straight into the log line.
+		sprintf(buf, "%d.%d.%d.%d", (addr >> 24) & 0xFF, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, (addr)&0xFF);
+
+		RS.Logger.Info("Sock.sinaddr:  {}", buf);
 
 		if (strstr(buf, "204.82.56."))
 		{
@@ -1173,6 +1178,11 @@ void bust_a_prompt(CHAR_DATA *ch)
 			++point, ++i;
 		}
 	}
+
+	// The literal-character branch above advances point without terminating, so a
+	// prompt that does not end in a % substitution leaves buf unterminated. We
+	// therefore need to terminate it here so we avoid stack garabage.
+	*point = '\0';
 
 	write_to_buffer(ch->desc, buf, point - buf);
 	//   free_pstring(orig);
