@@ -602,8 +602,10 @@ void close_socket(DESCRIPTOR_DATA *dclose)
 			if (ch->invis_level < 51)
 				act("$n has lost $s link.", ch, nullptr, nullptr, TO_ROOM);
 
+			CHAR_DATA *lastOpponent = Deref(ch->last_fight_opponent);
+
 			sprintf(buf, "$N has lost $S link (Last fought %s %d %s ago).",
-				ch->last_fight_name != nullptr ? ch->last_fight_name : "nobody",
+				lastOpponent != nullptr ? lastOpponent->true_name : "nobody",
 				ch->last_fight_time ? ftime > 600 ? (int)(ftime / 60) : ftime : -1,
 				ftime > 600 ? "minutes" : "seconds");
 			wiznet(buf, ch, nullptr, WIZ_LINKS, 0, get_trust(ch));

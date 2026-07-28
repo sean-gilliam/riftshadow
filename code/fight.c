@@ -3513,7 +3513,7 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 	af.level = victim->level;
 	affect_to_char(victim, &af);
 
-	victim->last_fight_name = nullptr;
+	victim->last_fight_opponent = nullptr;
 	victim->last_fight_time = 0;
 
 	if (!is_npc(victim)) /* con loss */

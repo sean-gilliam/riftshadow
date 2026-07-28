@@ -68,7 +68,13 @@ public:
 	Handle<CHAR_DATA> last_fought;
 	int tracktimer;
 	time_t last_fight_time;
-	char * last_fight_name;
+	// The player this one last fought, for the lost-link wiznet and do_stat.
+	// This used to be a `char *` aliasing the opponent's own true_name buffer
+	// and compared by pointer identity, which meant it went stale whenever that
+	// buffer was released -- on death, but also on a rename, which no scrub
+	// could catch because the buffer was no longer anyone's name. Naming the
+	// character instead of their name allocation removes both problems.
+	Handle<CHAR_DATA> last_fight_opponent;
 	// The character this mob is stalking -- set by the face sucker's greet prog
 	// and by the sorcerer's aerial anchor. Non-owning, and the quarry can be
 	// extracted independently, so it is a handle rather than a pointer. Nothing

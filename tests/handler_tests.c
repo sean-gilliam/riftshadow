@@ -12,6 +12,7 @@
 #include "../code/enums.h"
 #include "../code/db.h"
 #include "../code/recycle.h"
+#include "../code/newmem.h"
 
 // TEST_CASE("Test capitalization", "[string]" )
 // {
@@ -1997,6 +1998,119 @@ SCENARIO("a possessed mob does not outlive the connection driving it", "[chdesc]
 
 				free_descriptor(newcomer);
 			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+//
+// ch->last_fight_opponent -- "who did I last fight", for the lost-link wiznet and
+// do_stat.
+//
+// Not a string field. It is a `char *` holding the *other character's*
+// true_name allocation, compared by pointer identity, and the only setter is
+// update_pc_last_fight -- which early-returns unless both parties are players.
+// extract_char's scrub carries the identical !is_npc guard on both sides, so
+// the mismatch that guard could hide is unreachable by construction.
+//
+// The hole is somewhere else. `true_name` is free_pstring'd and reallocated on
+// two paths that leave the character *alive* -- do_rename, and update.c's
+// name-repair tick -- and after either, the alias points at released memory
+// that extract_char's scrub can never match, because it compares against the
+// character's current true_name and that buffer is no longer anyone's.
+//
+// free_pstring is a real delete[], not a free list, so unlike every other
+// defect in this graph this one is ordinary heap memory and ASAN sees it.
+//
+
+namespace
+{
+	const char *LastOpponentName(CHAR_DATA *ch)
+	{
+		CHAR_DATA *opponent = Deref(ch->last_fight_opponent);
+
+		return opponent ? opponent->true_name : nullptr;
+	}
+
+	void RecordFight(CHAR_DATA *a, CHAR_DATA *b)
+	{
+		a->last_fight_opponent = b->self;
+	}
+
+	CHAR_DATA *MakeNamedPlayer(ROOM_INDEX_DATA *room, const char *name)
+	{
+		CHAR_DATA *ch = MakeTracker(room);
+
+		REMOVE_BIT(ch->act, ACT_IS_NPC);
+		// extract_char's remaining scrub walk reads tch->pcdata->trusting for
+		// every player in char_list, so a test player needs real pcdata.
+		ch->pcdata = std::make_unique<pc_data>();
+		ch->true_name = palloc_string(name);
+		ch->name = palloc_string(name);
+
+		return ch;
+	}
+}
+
+SCENARIO("the last opponent is forgotten when they leave the world", "[lastfight]")
+{
+	GIVEN("two players who have fought each other")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *fighter = MakeNamedPlayer(room, "Alice");
+		CHAR_DATA *opponent = MakeNamedPlayer(room, "Bob");
+
+		RecordFight(fighter, opponent);
+
+		REQUIRE(LastOpponentName(fighter) != nullptr);
+		REQUIRE(strcmp(LastOpponentName(fighter), "Bob") == 0);
+
+		WHEN("the opponent is extracted")
+		{
+			extract_char(opponent, true);
+
+			THEN("the record reads as nothing rather than as a released buffer")
+			{
+				REQUIRE(LastOpponentName(fighter) == nullptr);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("the last opponent survives a rename", "[lastfight]")
+{
+	GIVEN("two players who have fought each other")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *fighter = MakeNamedPlayer(room, "Alice");
+		CHAR_DATA *opponent = MakeNamedPlayer(room, "Bob");
+
+		RecordFight(fighter, opponent);
+
+		WHEN("the opponent is renamed")
+		{
+			// do_rename and update.c's name-repair tick both free_pstring the
+			// old true_name and allocate a new one, and both leave the
+			// character alive -- so extract_char's scrub never runs, and could
+			// not match the released buffer if it did.
+			//
+			// The old buffer is deliberately kept alive here rather than freed:
+			// reading a released one is undefined, and the question this asks
+			// is which *name* the record reports, not whether the read traps.
+			// The trap is real and ASAN sees it; that is demonstrated
+			// separately, because a permanently undefined test is a bad test.
+			char *releasedInProduction = opponent->true_name;
+			opponent->true_name = palloc_string("Robert");
+
+			THEN("the record names the opponent by their current name")
+			{
+				REQUIRE(strcmp(LastOpponentName(fighter), "Robert") == 0);
+			}
+
+			free_pstring(releasedInProduction);
 		}
 
 		ClearTrackers();

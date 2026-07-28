@@ -1420,10 +1420,10 @@ void update_pc_last_fight(CHAR_DATA *ch, CHAR_DATA *ch2)
 		return;
 
 	ch->last_fight_time = current_time;
-	ch->last_fight_name = ch2->true_name;
+	ch->last_fight_opponent = ch2->self;
 
 	ch2->last_fight_time = current_time;
-	ch2->last_fight_name = ch->true_name;
+	ch2->last_fight_opponent = ch->self;
 }
 
 /// Displays a list of members in a specified cabal and their last login times.

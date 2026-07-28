@@ -2257,9 +2257,6 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 	// pass here: they stop resolving when free_char retires its slot.
 	for (tch = char_list; tch != nullptr; tch = tch->next)
 	{
-		if (!is_npc(ch) && !is_npc(tch) && tch->last_fight_name == ch->true_name)
-			tch->last_fight_name = nullptr;
-
 		if (!is_npc(tch) && !is_npc(ch) && tch->pcdata->trusting == ch)
 			tch->pcdata->trusting = nullptr;
 

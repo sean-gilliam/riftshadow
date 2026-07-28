@@ -2784,8 +2784,10 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 
 	if (!is_npc(victim))
 	{
+		CHAR_DATA *lastOpponent = Deref(victim->last_fight_opponent);
+
 		sprintf(buf, "Last PC fought: %s, %d seconds ago\n\r",
-			victim->last_fight_name != nullptr ? victim->last_fight_name : "(none)",
+			lastOpponent != nullptr ? lastOpponent->true_name : "(none)",
 			victim->last_fight_time ? (int)(current_time - victim->last_fight_time) : -1);
 		send_to_char(buf, ch);
 	}
