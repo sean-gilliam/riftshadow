@@ -2664,9 +2664,11 @@ void do_score(CHAR_DATA *ch, char *argument)
 	else
 		send_to_char("chaotic ethos.\n\r", ch);
 
-	if (ch->pcdata->trusting)
+	CHAR_DATA *trusted = Deref(ch->pcdata->trusting);
+
+	if (trusted)
 	{
-		sprintf(buf, "You are trusting %s.\n\r", ch->pcdata->trusting->name);
+		sprintf(buf, "You are trusting %s.\n\r", trusted->name);
 		send_to_char(buf, ch);
 	}
 	if (ch->Class()->GetIndex() == CLASS_SORCERER)
@@ -5308,18 +5310,20 @@ void do_trustchar(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(argument, "self"))
 	{
-		if (!ch->pcdata->trusting)
+		CHAR_DATA *trusted = Deref(ch->pcdata->trusting);
+
+		if (!trusted)
 		{
 			send_to_char("You are not trusting anybody specific.\n\r", ch);
 			return;
 		}
 
-		act("You no longer trust $N with questionable actions.", ch, 0, ch->pcdata->trusting, TO_CHAR);
+		act("You no longer trust $N with questionable actions.", ch, 0, trusted, TO_CHAR);
 		ch->pcdata->trusting = nullptr;
 		return;
 	}
 
-	ch->pcdata->trusting = victim;
+	ch->pcdata->trusting = victim->self;
 	act("You now trust $N with questionable actions.", ch, 0, victim, TO_CHAR);
 }
 

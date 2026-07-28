@@ -2080,6 +2080,52 @@ SCENARIO("the last opponent is forgotten when they leave the world", "[lastfight
 	}
 }
 
+SCENARIO("a slain player is still in the world, so extract_char is not a lifetime event for them", "[lastfight]")
+{
+	GIVEN("two players who have fought each other")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *fighter = MakeNamedPlayer(room, "Alice");
+		CHAR_DATA *opponent = MakeNamedPlayer(room, "Bob");
+
+		RecordFight(fighter, opponent);
+
+		WHEN("the opponent is extracted the way raw_kill does it, without pulling them")
+		{
+			// raw_kill is the only caller that passes fPull = false, and for a
+			// player extract_char then returns early to the altar without
+			// freeing anything. So this call leaves Bob alive and in char_list.
+			extract_char(opponent, false);
+
+			THEN("the opponent is still alive")
+			{
+				REQUIRE(opponent->valid);
+				REQUIRE(Deref(opponent->self) == opponent);
+			}
+
+			THEN("clearing the other side's record is raw_kill's job, not extract_char's")
+			{
+				// extract_char cannot be responsible for this: the reference is
+				// still perfectly live, because its target is. The record is
+				// reset on death because that is the game rule, and raw_kill is
+				// where the rule lives.
+				//
+				// NOT COVERED, deliberately: that raw_kill actually applies the
+				// rule. Reaching it needs a killer, a corpse, the ghost affect
+				// set, group and cabal state and a populated room index -- far
+				// more world than this suite stands up, and a mock of it would
+				// only assert that the mock was written correctly. The walk in
+				// raw_kill, immediately after its extract_char call, is checked
+				// by reading. If that walk is ever moved or dropped, nothing
+				// here will fail -- so treat it as load-bearing.
+				REQUIRE(LastOpponentName(fighter) != nullptr);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
 SCENARIO("the last opponent survives a rename", "[lastfight]")
 {
 	GIVEN("two players who have fought each other")
@@ -2111,6 +2157,118 @@ SCENARIO("the last opponent survives a rename", "[lastfight]")
 			}
 
 			free_pstring(releasedInProduction);
+		}
+
+		ClearTrackers();
+	}
+}
+
+//
+// ch->pcdata->trusting -- who this player has authorised to take questionable
+// actions against them.
+//
+// A plain CHAR -> CHAR back-reference that happens to live on PC_DATA rather
+// than CHAR_DATA, which is the only reason §1's original table missed it. Set
+// only by do_trust, which rejects NPCs, so both ends are always players.
+//
+// Its clause in extract_char's walk is guarded !is_npc on both sides, and that
+// makes it half lifetime and half game rule -- see the scenarios below.
+//
+
+namespace
+{
+	CHAR_DATA *Trusting(CHAR_DATA *ch)
+	{
+		return Deref(ch->pcdata->trusting);
+	}
+
+	void Trust(CHAR_DATA *ch, CHAR_DATA *victim)
+	{
+		ch->pcdata->trusting = victim->self;
+	}
+}
+
+SCENARIO("trust does not outlive the trusted player", "[trusting]")
+{
+	GIVEN("a player trusting another")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *truster = MakeNamedPlayer(room, "Alice");
+		CHAR_DATA *trusted = MakeNamedPlayer(room, "Bob");
+		CHAR_DATA *bystander = MakeNamedPlayer(room, "Carol");
+
+		Trust(truster, trusted);
+
+		REQUIRE(Trusting(truster) == trusted);
+
+		WHEN("the trusted player is pulled from the world")
+		{
+			// fPull = true is the real removal -- quit, delete_char. This is
+			// the half of the clause that is lifetime, and the half a handle
+			// covers for free.
+			extract_char(trusted, true);
+
+			THEN("the trust reads as nothing")
+			{
+				REQUIRE(Trusting(truster) == nullptr);
+			}
+
+			THEN("it stays nothing once the address is reissued")
+			{
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == trusted);
+				REQUIRE(Trusting(truster) != newcomer);
+			}
+		}
+
+		WHEN("somebody unrelated is pulled from the world")
+		{
+			extract_char(bystander, true);
+
+			THEN("the trust is untouched")
+			{
+				REQUIRE(Trusting(truster) == trusted);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a slain player is still trustworthy as far as the world is concerned", "[trusting]")
+{
+	GIVEN("a player trusting another")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *truster = MakeNamedPlayer(room, "Alice");
+		CHAR_DATA *trusted = MakeNamedPlayer(room, "Bob");
+
+		Trust(truster, trusted);
+
+		WHEN("the trusted player is slain, which does not pull them from the world")
+		{
+			extract_char(trusted, false);
+
+			THEN("the trusted player is still alive")
+			{
+				REQUIRE(trusted->valid);
+				REQUIRE(Deref(trusted->self) == trusted);
+			}
+
+			THEN("dropping the trust is the death rule's job, not extract_char's")
+			{
+				// The reference is still live because its target is. That
+				// death cancels trust is a rule, and rules belong where the
+				// death happens -- raw_kill -- not in the lifetime teardown.
+				//
+				// NOT COVERED, deliberately, and for the same reason as the
+				// [lastfight] scenario above: this suite does not execute
+				// raw_kill, so nothing here proves the rule still fires. Both
+				// clears live in one walk directly after raw_kill's
+				// extract_char call; that walk is verified by reading only.
+				REQUIRE(Trusting(truster) != nullptr);
+			}
 		}
 
 		ClearTrackers();

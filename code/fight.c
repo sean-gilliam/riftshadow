@@ -3451,6 +3451,27 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	extract_char(victim, false);
 
+	// Death clears every other player's record of having fought the victim, and
+	// cancels their trust in them. Both used to be done inside extract_char and
+	// that was the wrong home: a slain player is not removed from the world,
+	// they are moved to the altar and stay in char_list, so these are game
+	// rules rather than lifetime cleanup, and a handle will not expire them.
+	// Placed immediately after the call so the ordering is exactly what it was.
+	//
+	// No test covers this loop -- raw_kill needs far more world than the test
+	// suite stands up. The suite pins the half that led here (extract_char
+	// leaves a slain player alive, so the references stay live and something
+	// else has to drop them); this is the half that answers it. Deleting it
+	// will not fail a build or a test, it will quietly restore a bug.
+	for (CHAR_DATA *wch = char_list; wch != nullptr; wch = wch->next)
+	{
+		if (Deref(wch->last_fight_opponent) == victim)
+			wch->last_fight_opponent = nullptr;
+
+		if (!is_npc(wch) && Deref(wch->pcdata->trusting) == victim)
+			wch->pcdata->trusting = nullptr;
+	}
+
 	for (auto it = victim->affected.begin(); it != victim->affected.end(); )
 	{
 		auto next = std::next(it);
@@ -3513,6 +3534,8 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 	af.level = victim->level;
 	affect_to_char(victim, &af);
 
+	// The victim's own half of the fight record; the other players' half is
+	// cleared up by extract_char, above.
 	victim->last_fight_opponent = nullptr;
 	victim->last_fight_time = 0;
 

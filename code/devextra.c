@@ -1027,7 +1027,7 @@ bool trusts(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (IS_SET(victim->pcdata->trust, TRUST_GROUP) && is_same_group(ch, victim))
 		return true;
 
-	if (victim->pcdata->trusting == ch)
+	if (Deref(victim->pcdata->trusting) == ch)
 		return true;
 
 	return false;

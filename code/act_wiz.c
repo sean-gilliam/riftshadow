@@ -2742,7 +2742,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		sprintf(buf, "Trust: %s%s%s\n\r",
 			IS_SET(victim->pcdata->trust, TRUST_GROUP) ? "group " : "",
 			IS_SET(victim->pcdata->trust, TRUST_CABAL) ? "cabal " : "",
-			ch->pcdata->trusting ? ch->pcdata->trusting->true_name : "");
+			Deref(ch->pcdata->trusting) ? Deref(ch->pcdata->trusting)->true_name : "");
 		send_to_char(buf, ch);
 	}
 
