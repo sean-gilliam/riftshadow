@@ -607,8 +607,6 @@ void close_socket(DESCRIPTOR_DATA *dclose)
 				ch->last_fight_time ? ftime > 600 ? (int)(ftime / 60) : ftime : -1,
 				ftime > 600 ? "minutes" : "seconds");
 			wiznet(buf, ch, nullptr, WIZ_LINKS, 0, get_trust(ch));
-
-			ch->desc = nullptr;
 		}
 		else
 		{
@@ -1194,7 +1192,7 @@ void bust_a_prompt(CHAR_DATA *ch)
 	// therefore need to terminate it here so we avoid stack garabage.
 	*point = '\0';
 
-	write_to_buffer(ch->desc, buf, point - buf);
+	write_to_buffer(Deref(ch->desc), buf, point - buf);
 	//   free_pstring(orig);
 }
 
@@ -2800,7 +2798,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				char_to_room(ch, get_room_index(24525));
 			}
 
-			ch->pcdata->host = palloc_string(ch->desc->host);
+			ch->pcdata->host = palloc_string(Deref(ch->desc)->host);
 
 			if (!is_immortal(ch))
 				act("$n awakens into the world of Shalar.", ch, nullptr, nullptr, TO_ROOM);
@@ -2981,7 +2979,7 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 	for (ch = char_list; ch != nullptr; ch = ch->next)
 	{
 		if (!is_npc(ch)
-			&& (!fConn || ch->desc == nullptr)
+			&& (!fConn || Deref(ch->desc) == nullptr)
 			&& !str_cmp((pending->true_name ? pending->true_name : pending->name), (ch->true_name ? ch->true_name : ch->name)))
 		{
 			if (fConn == false)
@@ -3005,7 +3003,7 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 				free_char(pending);
 				d->character = ch->self;
 
-				ch->desc = d;
+				ch->desc = d->self;
 				ch->timer = 0;
 
 				send_to_char("Reconnecting. Type replay to see missed tells.\n\r", ch);
@@ -3013,7 +3011,7 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 				if (ch->invis_level < 51)
 					act("$n has reconnected.", ch, nullptr, nullptr, TO_ROOM);
 
-				ch->pcdata->host = palloc_string(ch->desc->host);
+				ch->pcdata->host = palloc_string(Deref(ch->desc)->host);
 				/* Limit crap to balance reconnect objects from extracted link object */
 				for (obj = ch->carrying; obj != nullptr; obj = obj->next_content)
 				{
@@ -3069,8 +3067,8 @@ bool check_playing(DESCRIPTOR_DATA *d, char *name)
 void stop_idling(CHAR_DATA *ch)
 {
 	if (ch == nullptr
-		|| ch->desc == nullptr
-		|| ch->desc->connected != CON_PLAYING
+		|| Deref(ch->desc) == nullptr
+		|| Deref(ch->desc)->connected != CON_PLAYING
 		|| ch->was_in_room == nullptr
 		|| ch->in_room != get_room_index(ROOM_VNUM_LIMBO))
 		return;
@@ -3092,8 +3090,8 @@ void stop_idling(CHAR_DATA *ch)
 ///
 void send_to_char(const char *txt, CHAR_DATA *ch)
 {
-	if (txt != nullptr && ch->desc != nullptr)
-		write_to_buffer(ch->desc, txt, strlen(txt));
+	if (txt != nullptr && Deref(ch->desc) != nullptr)
+		write_to_buffer(Deref(ch->desc), txt, strlen(txt));
 }
 
 void send_to_char_queue (std::string txt, CHAR_DATA *ch)
@@ -3103,8 +3101,8 @@ void send_to_char_queue (std::string txt, CHAR_DATA *ch)
 
 void send_to_chars(const char *txt, CHAR_DATA *ch, int min, ...)
 {
-	if (txt != nullptr && ch->desc != nullptr)
-		write_to_buffer(ch->desc, txt, strlen(txt));
+	if (txt != nullptr && Deref(ch->desc) != nullptr)
+		write_to_buffer(Deref(ch->desc), txt, strlen(txt));
 }
 
 /*
@@ -3112,7 +3110,9 @@ void send_to_chars(const char *txt, CHAR_DATA *ch, int min, ...)
  */
 void page_to_char(const char *txt, CHAR_DATA *ch)
 {
-	if (txt == nullptr || ch->desc == nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (txt == nullptr || connection == nullptr)
 		return;
 
 	if (ch->lines == 0)
@@ -3121,11 +3121,11 @@ void page_to_char(const char *txt, CHAR_DATA *ch)
 		return;
 	}
 
-	ch->desc->showstr_head = new char[strlen(txt) + 1];
-	strcpy(ch->desc->showstr_head, txt);
+	connection->showstr_head = new char[strlen(txt) + 1];
+	strcpy(connection->showstr_head, txt);
 
-	ch->desc->showstr_point = ch->desc->showstr_head;
-	show_string(ch->desc, "");
+	connection->showstr_point = connection->showstr_head;
+	show_string(connection, "");
 }
 
 /* string pager */
@@ -3239,7 +3239,7 @@ void act_area(const char *format, CHAR_DATA *ch, CHAR_DATA *victim)
 
 			to = Deref(d->character);
 
-			if ((!is_npc(to) && to->desc == nullptr))
+			if ((!is_npc(to) && Deref(to->desc) == nullptr))
 				continue;
 
 			point = buf;
@@ -3294,13 +3294,13 @@ void act_area(const char *format, CHAR_DATA *ch, CHAR_DATA *victim)
 
 			*point = '\0';
 
-			if (to->desc != nullptr)
+			if (Deref(to->desc) != nullptr)
 			{
 				sprintf(buf2, "%s yells '%s", ch->short_descr, get_char_color(to, "yells"));
 				buf2[0] = UPPER(buf2[0]);
 				send_to_char(buf2, to);
 
-				write_to_buffer(to->desc, buf, point - buf);
+				write_to_buffer(Deref(to->desc), buf, point - buf);
 
 				sprintf(buf2, "%s'\n\r", END_COLOR(to));
 				send_to_char(buf2, to);
@@ -3363,7 +3363,7 @@ void act_new(const char *format, CHAR_DATA *ch, const void *arg1, const void *ar
 
 	for (; to != nullptr; to = to->next_in_room)
 	{
-		if ((!is_npc(to) && to->desc == nullptr) || to->position < min_pos)
+		if ((!is_npc(to) && Deref(to->desc) == nullptr) || to->position < min_pos)
 			continue;
 
 		if ((type == TO_CHAR) && to != ch)
@@ -3519,8 +3519,8 @@ void act_new(const char *format, CHAR_DATA *ch, const void *arg1, const void *ar
 		else
 			buf[0] = UPPER(buf[0]);
 
-		if (to->desc != nullptr)
-			write_to_buffer(to->desc, buf, point - buf);
+		if (Deref(to->desc) != nullptr)
+			write_to_buffer(Deref(to->desc), buf, point - buf);
 	}
 }
 
@@ -3604,7 +3604,7 @@ void do_rename(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!victim->desc || (victim->desc->connected != CON_PLAYING))
+	if (!Deref(victim->desc) || Deref(victim->desc)->connected != CON_PLAYING)
 	{
 		send_to_char("They are link-dead.\n\r", ch);
 		return;
@@ -3822,14 +3822,14 @@ void show_allocate(CHAR_DATA *ch, int finish)
 
 	if (!finish)
 	{
-		write_to_buffer(ch->desc, "Type '<str/int/wis/dex/con> <amount>' to modify a particular stat.\n\r", 0);
-		write_to_buffer(ch->desc, "The default amount is 1, use negative numbers to deallocate points.\n\r", 0);
-		write_to_buffer(ch->desc, "Type 'finish' when you're done.\n\r", 0);
-		write_to_buffer(ch->desc, "\n\rTime to allocate points to your stats.\n\r", 0);
+		write_to_buffer(Deref(ch->desc), "Type '<str/int/wis/dex/con> <amount>' to modify a particular stat.\n\r", 0);
+		write_to_buffer(Deref(ch->desc), "The default amount is 1, use negative numbers to deallocate points.\n\r", 0);
+		write_to_buffer(Deref(ch->desc), "Type 'finish' when you're done.\n\r", 0);
+		write_to_buffer(Deref(ch->desc), "\n\rTime to allocate points to your stats.\n\r", 0);
 	}
 
 	sprintf(buf, "You have %d points to allocate.\n\r", ch->train);
-	write_to_buffer(ch->desc, buf, 0);
+	write_to_buffer(Deref(ch->desc), buf, 0);
 
 	sprintf(buf, "Your stats: Str: %d (Max %d)  Int: %d (Max %d)  Wis: %d (Max %d)  Dex: %d (Max %d)  Con: %d (Max %d)\n\r",
 		ch->perm_stat[STAT_STR],
@@ -3844,7 +3844,7 @@ void show_allocate(CHAR_DATA *ch, int finish)
 		pc_race_table[ch->race].max_stats[STAT_CON]);
 	send_to_char(buf, ch);
 
-	write_to_buffer(ch->desc, "> ", 0);
+	write_to_buffer(Deref(ch->desc), "> ", 0);
 }
 
 void process_text(CHAR_DATA *ch, char *text)

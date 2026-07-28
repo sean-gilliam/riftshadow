@@ -750,16 +750,20 @@ void interpret(CHAR_DATA *ch, char *argument)
 
 	if ((!is_npc(ch) && IS_SET(ch->act, PLR_LOG)) || fLogAll || cmd_table[cmd].log == LOG_ALWAYS)
 	{
-		auto buffer = fmt::format("Log {}: {}", Deref(ch->desc->original) ? Deref(ch->desc->original)->true_name : ch->true_name, logline);
+		DESCRIPTOR_DATA *connection = Deref(ch->desc);
+		CHAR_DATA *switchedFrom = Deref(connection->original);
+		auto buffer = fmt::format("Log {}: {}", switchedFrom ? switchedFrom->true_name : ch->true_name, logline);
 		wiznet(buffer.data(), ch, nullptr, WIZ_SECURE, 0, get_trust(ch));
 		RS.Logger.Info(buffer);
 	}
 
-	if (ch->desc != nullptr && ch->desc->snoop_by != nullptr)
+	DESCRIPTOR_DATA *snooped = Deref(ch->desc);
+
+	if (snooped != nullptr && snooped->snoop_by != nullptr)
 	{
-		write_to_buffer(ch->desc->snoop_by, "% ", 2);
-		write_to_buffer(ch->desc->snoop_by, logline, 0);
-		write_to_buffer(ch->desc->snoop_by, "\n\r", 2);
+		write_to_buffer(snooped->snoop_by, "% ", 2);
+		write_to_buffer(snooped->snoop_by, logline, 0);
+		write_to_buffer(snooped->snoop_by, "\n\r", 2);
 	}
 
 	/* Hold person */

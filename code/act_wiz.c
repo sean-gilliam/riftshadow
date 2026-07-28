@@ -843,7 +843,7 @@ void do_smote(CHAR_DATA *ch, char *argument)
 
 	for (vch = ch->in_room->people; vch != nullptr; vch = vch->next_in_room)
 	{
-		if (vch->desc == nullptr || vch == ch)
+		if (Deref(vch->desc) == nullptr || vch == ch)
 			continue;
 
 		letter = strstr(argument, vch->name);
@@ -1015,10 +1015,10 @@ void do_deny(CHAR_DATA *ch, char *argument)
 	victim->pause = 0;
 
 	// add to denial #
-	if (victim->desc)
+	if (Deref(victim->desc))
 	{
 		auto sites = SiteTrackerRepository(RS.DbRift);
-		sites.IncrementDenialsByHost(victim->desc->host);
+		sites.IncrementDenialsByHost(Deref(victim->desc)->host);
 	}
 
 	sprintf(buf, "AUTO: Denied by %s.\n\r", ch->true_name);
@@ -1072,7 +1072,7 @@ void do_disconnect(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->desc == nullptr)
+	if (Deref(victim->desc) == nullptr)
 	{
 		act("$N doesn't have a descriptor.", ch, nullptr, victim, TO_CHAR);
 		return;
@@ -1080,7 +1080,7 @@ void do_disconnect(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d == victim->desc)
+		if (d == Deref(victim->desc))
 		{
 			close_socket(d);
 			send_to_char("Ok.\n\r", ch);
@@ -3589,7 +3589,7 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->desc == nullptr)
+	if (Deref(victim->desc) == nullptr)
 	{
 		send_to_char("No descriptor to snoop.\n\r", ch);
 		return;
@@ -3602,14 +3602,14 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
-			if (d->snoop_by == ch->desc)
+			if (d->snoop_by == Deref(ch->desc))
 				d->snoop_by = nullptr;
 		}
 
 		return;
 	}
 
-	if (victim->desc->snoop_by != nullptr)
+	if (Deref(victim->desc)->snoop_by != nullptr)
 	{
 		send_to_char("Busy already.\n\r", ch);
 		return;
@@ -3636,9 +3636,9 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->desc != nullptr)
+	if (Deref(ch->desc) != nullptr)
 	{
-		for (d = ch->desc->snoop_by; d != nullptr; d = d->snoop_by)
+		for (d = Deref(ch->desc)->snoop_by; d != nullptr; d = d->snoop_by)
 		{
 			if (Deref(d->character) == victim || Deref(d->original) == victim)
 			{
@@ -3648,7 +3648,7 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	victim->desc->snoop_by = ch->desc;
+	Deref(victim->desc)->snoop_by = Deref(ch->desc);
 
 	sprintf(buf, "$N starts snooping on %s", (is_npc(ch) ? victim->short_descr : victim->name));
 	wiznet(buf, ch, nullptr, WIZ_SNOOPS, WIZ_SECURE, get_trust(ch));
@@ -3669,10 +3669,12 @@ void do_switch(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->desc == nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
 		return;
 
-	if (Deref(ch->desc->original) != nullptr)
+	if (Deref(connection->original) != nullptr)
 	{
 		send_to_char("You are already switched.\n\r", ch);
 		return;
@@ -3707,7 +3709,7 @@ void do_switch(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->desc != nullptr)
+	if (Deref(victim->desc) != nullptr)
 	{
 		send_to_char("Character in use.\n\r", ch);
 		return;
@@ -3716,8 +3718,8 @@ void do_switch(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "$N switches into %s.", victim->short_descr);
 	wiznet(buf, ch, nullptr, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
 
-	ch->desc->character = victim->self;
-	ch->desc->original = ch->self;
+	Deref(ch->desc)->character = victim->self;
+	Deref(ch->desc)->original = ch->self;
 	victim->desc = ch->desc;
 	// The possessed mob borrows the immortal's pcdata (it's an NPC, so its own
 	// pcdata is null). Ownership stays with the original body; do_return calls
@@ -3740,10 +3742,12 @@ void do_return(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_STRING_LENGTH];
 
-	if (ch->desc == nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
 		return;
 
-	if (Deref(ch->desc->original) == nullptr)
+	if (Deref(connection->original) == nullptr)
 	{
 		send_to_char("You aren't switched.\n\r", ch);
 		return;
@@ -3759,12 +3763,12 @@ void do_return(CHAR_DATA *ch, char *argument)
 
 	sprintf(buf, "$N returns from %s.", ch->short_descr);
 
-	wiznet(buf, Deref(ch->desc->original), 0, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
+	wiznet(buf, Deref(connection->original), 0, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
 
 	ch->pcdata.release();		// relinquish the borrowed pcdata WITHOUT freeing it
-	ch->desc->character = ch->desc->original;
-	ch->desc->original = nullptr;
-	Deref(ch->desc->character)->desc = ch->desc;
+	connection->character = connection->original;
+	connection->original = nullptr;
+	Deref(connection->character)->desc = ch->desc;
 	ch->desc = nullptr;
 }
 
@@ -4109,7 +4113,7 @@ void do_purge(CHAR_DATA *ch, char *argument)
 		if (victim->level > 1)
 			save_char_obj(victim);
 
-		d = victim->desc;
+		d = Deref(victim->desc);
 		extract_char(victim, true);
 
 		if (d != nullptr)
@@ -6117,7 +6121,7 @@ void do_force(CHAR_DATA *ch, char *argument)
 		}
 
 		/*
-		if(victim->desc == nullptr)
+		if(Deref(victim->desc) == nullptr)
 		{
 			send_to_char("They have no descriptor!\n\r",ch);
 			return;

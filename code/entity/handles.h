@@ -42,6 +42,7 @@
 
 extern SlotMap<CHAR_DATA> charHandles;
 extern SlotMap<OBJ_DATA> objectHandles;
+extern SlotMap<DESCRIPTOR_DATA> descriptorHandles;
 
 /// The character this handle names, or null if it has been extracted.
 inline CHAR_DATA *Deref(Handle<CHAR_DATA> handle)
@@ -53,6 +54,12 @@ inline CHAR_DATA *Deref(Handle<CHAR_DATA> handle)
 inline OBJ_DATA *Deref(Handle<OBJ_DATA> handle)
 {
 	return objectHandles.Deref(handle);
+}
+
+/// The connection this handle names, or null if the socket has been closed.
+inline DESCRIPTOR_DATA *Deref(Handle<DESCRIPTOR_DATA> handle)
+{
+	return descriptorHandles.Deref(handle);
 }
 
 #endif /* ENTITY_HANDLES_H */

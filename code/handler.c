@@ -495,12 +495,13 @@ int get_skill(CHAR_DATA *ch, int sn)
 	bool using_switched= false;
 	CHAR_DATA *original = ch;
 	CHAR_DATA *opponent;
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
 
-	if (is_npc(ch) && ch->desc && Deref(ch->desc->original) && IS_SET(ch->comm, COMM_SWITCHSKILLS))
+	if (is_npc(ch) && connection && Deref(connection->original) && IS_SET(ch->comm, COMM_SWITCHSKILLS))
 		using_switched = true;
 
 	if (using_switched)
-		ch = Deref(ch->desc->original);
+		ch = Deref(connection->original);
 
 	if (sn == -1) /* shorthand for level based skills */
 	{
@@ -849,8 +850,10 @@ void reset_char(CHAR_DATA *ch)
  */
 int get_trust(CHAR_DATA *ch)
 {
-	if (ch->desc != nullptr && Deref(ch->desc->original) != nullptr)
-		ch = Deref(ch->desc->original);
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
+		ch = Deref(connection->original);
 
 	if (ch->trust)
 		return ch->trust;
@@ -2306,7 +2309,9 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 		total_wealth -= ch->pIndexData->wealth;
 	}
 
-	if (ch->desc != nullptr && Deref(ch->desc->original) != nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
 	{
 		do_return(ch, "");
 		ch->desc = nullptr;
@@ -2804,7 +2809,7 @@ bool can_see(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (!is_immortal(ch) && is_affected_by(victim, AFF_NOSHOW))
 		return false;
 
-	if (is_cabal_guard(ch) && !ch->desc)
+	if (is_cabal_guard(ch) && !Deref(ch->desc))
 		return true;
 
 	if (get_trust(ch) < victim->invis_level)

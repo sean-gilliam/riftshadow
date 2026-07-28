@@ -84,7 +84,15 @@ public:
 	std::list<MEM_DATA> memory;
 	GAME_FUN *game_fun;
 	MOB_INDEX_DATA *pIndexData;
-	DESCRIPTOR_DATA *desc;
+	// The connection driving this character, if any -- null for a mob, and for
+	// a player who has gone link-dead. Non-owning, and the socket can be closed
+	// and its struct recycled while the body stays in the world, so it is a
+	// handle rather than a pointer. The only clear on a lifetime path is
+	// close_socket's, and it is guarded: when an immortal is switched at
+	// shutdown, close_socket frees the immortal and the descriptor but never
+	// touches the mob, which before this was a handle left the mob holding a
+	// descriptor the next connection would be handed.
+	Handle<DESCRIPTOR_DATA> desc;
 	std::list<AFFECT_DATA> affected;
 	NOTE_DATA *pnote;
 	OBJ_DATA *carrying;

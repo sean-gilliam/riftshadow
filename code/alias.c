@@ -110,10 +110,12 @@ void do_alias(CHAR_DATA *ch, char *argument)
 	int pos;
 	smash_tilde(argument);
 
-	if (ch->desc == nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
 		rch = ch;
 	else
-		rch = Deref(ch->desc->original) ? Deref(ch->desc->original) : ch;
+		rch = Deref(connection->original) ? Deref(connection->original) : ch;
 
 	if (is_npc(rch))
 		return;
@@ -210,10 +212,12 @@ void do_unalias(CHAR_DATA *ch, char *argument)
 	int pos;
 	bool found = false;
 
-	if (ch->desc == nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
 		rch = ch;
 	else
-		rch = Deref(ch->desc->original) ? Deref(ch->desc->original) : ch;
+		rch = Deref(connection->original) ? Deref(connection->original) : ch;
 
 	if (is_npc(rch))
 		return;

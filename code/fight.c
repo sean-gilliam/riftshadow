@@ -363,7 +363,7 @@ void multi_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	bool noprimary = false;
 
 	/* decrement the wait */
-	if (ch->desc == nullptr)
+	if (Deref(ch->desc) == nullptr)
 		ch->wait = std::max(0, ch->wait - PULSE_VIOLENCE);
 
 	if (ch->level == MAX_LEVEL)
@@ -1663,11 +1663,11 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 	if (is_npc(ch)
 		&& is_npc(victim)
 		&& !is_affected_by(ch,AFF_CHARM)
-		&& !is_affected_by(victim,AFF_CHARM) && !ch->desc
+		&& !is_affected_by(victim,AFF_CHARM) && !Deref(ch->desc)
 		&& !Deref(ch->hunting) && !Deref(victim->hunting) && victim!=ch
 		&& Deref(ch->fighting) != victim
 		&& Deref(victim->fighting) != ch
-		&& !ch->desc && !victim->desc)
+		&& !Deref(ch->desc) && !Deref(victim->desc))
 	{
 		return true;
 	}
@@ -1677,7 +1677,7 @@ bool is_safe_new(CHAR_DATA *ch, CHAR_DATA *victim, bool show)
 
 	/* Handle Link dead players , only saves from PKS, not mobs -Ceran */
 	if (!is_npc(victim)
-		&& victim->desc == nullptr
+		&& Deref(victim->desc) == nullptr
 		&& !is_npc(ch)
 		&& get_trust(ch) < 58
 		&& Deref(victim->fighting) != ch

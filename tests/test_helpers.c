@@ -5,11 +5,13 @@ void TestHelperSetupPlayerBuffer(CHAR_DATA *player, char *name = "player1", char
 {
 	player->name = name;
 	player->pcdata = std::make_unique<pc_data>();
-	player->desc = new descriptor_data();
-	player->desc->outbuf = new char[2];
-	player->desc->outtop = 0;
-	player->desc->fcommand = false;
-	player->desc->outsize = 2;
+	auto dnew = new descriptor_data();
+	dnew->self = descriptorHandles.Add(dnew);	// as new_descriptor would
+	player->desc = dnew->self;
+	dnew->outbuf = new char[2];
+	dnew->outtop = 0;
+	dnew->fcommand = false;
+	dnew->outsize = 2;
 	player->in_room = new room_index_data();
 	player->in_room->name = room_name;
 }
@@ -26,12 +28,12 @@ void TestHelperCleanupPlayerObject(CHAR_DATA *player)
 	if (player == nullptr)
 		return;
 
-	if (player->desc != nullptr)
+	if (Deref(player->desc) != nullptr)
 	{
-		if (player->desc->outbuf != nullptr)
-			delete[] player->desc->outbuf;
+		if (Deref(player->desc)->outbuf != nullptr)
+			delete[] Deref(player->desc)->outbuf;
 		
-		delete player->desc;
+		delete Deref(player->desc);
 	}
 
 	if(player->pIndexData != nullptr)

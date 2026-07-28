@@ -109,8 +109,8 @@ int remove();
 
 #include "entity/fwd.h"
 #include "entity/limits.h"
-// descriptor_data below carries Handle<CHAR_DATA> members, so the template has
-// to be visible here and not just to whoever includes this header.
+// descriptor_data below carries Handle members, so the template has to be
+// visible here and not just to whoever includes this header.
 #include "entity/handles.h"
 
 //
@@ -312,6 +312,10 @@ struct rune_data
 struct descriptor_data
 {
 	DESCRIPTOR_DATA *next;
+	// This connection's own handle, handed out so a character can name it
+	// without holding a pointer into a recycled struct. Registered by
+	// new_descriptor and retired by free_descriptor.
+	Handle<DESCRIPTOR_DATA> self;
 	DESCRIPTOR_DATA *snoop_by;
 	// The body this connection drives, and -- while an immortal is switched
 	// into a mob -- the immortal's own body parked behind it. Non-owning both

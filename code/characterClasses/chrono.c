@@ -177,7 +177,7 @@ void do_rune(CHAR_DATA *ch, char *argument)
 	void *vo;
 	int mana, where, sn, target = 0;
 
-	if (is_npc(ch) && ch->desc == nullptr)
+	if (is_npc(ch) && Deref(ch->desc) == nullptr)
 		return;
 
 	if (ch->Class()->ctype != CLASS_CASTER && !is_immortal(ch))

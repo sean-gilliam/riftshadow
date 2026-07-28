@@ -99,8 +99,10 @@ void save_char_obj(CHAR_DATA *ch)
 	if (is_npc(ch) || mPort == 4000) // do not save, sir!!!
 		return;
 
-	if (ch->desc != nullptr && Deref(ch->desc->original) != nullptr)
-		ch = Deref(ch->desc->original);
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
+		ch = Deref(connection->original);
 
 	if (!check_parse_name(ch->true_name))
 		wiznet("ALERT!! $N/$F name corrupt!!", ch, nullptr, 0, 0, 0);
@@ -926,7 +928,7 @@ bool load_char_obj(DESCRIPTOR_DATA *d, char *name)
 	ch->pcdata = new_pcdata();
 
 	d->character = ch->self;
-	ch->desc = d;
+	ch->desc = d->self;
 	ch->pcdata->entering_text = false;
 	ch->name = palloc_string(name);
 	ch->id = get_pc_id();

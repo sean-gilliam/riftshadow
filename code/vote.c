@@ -260,7 +260,7 @@ void do_vote(CHAR_DATA *ch, char *argument)
 		vote.vote_for = arg1;
 		vote.cabal = ch->cabal;
 		vote.time = current_time;
-		vote.host = ch->pcdata->host ? ch->pcdata->host : ch->desc->host;
+		vote.host = ch->pcdata->host ? ch->pcdata->host : Deref(ch->desc)->host;
 
 		votes.Add(vote);
 

@@ -90,6 +90,7 @@ CHAR_DATA *char_list;
 // be checked for liveness instead of trusted. See entity/handles.h.
 SlotMap<CHAR_DATA> charHandles;
 SlotMap<OBJ_DATA> objectHandles;
+SlotMap<DESCRIPTOR_DATA> descriptorHandles;
 char *help_greeting;
 char log_buf[2 * MAX_INPUT_LENGTH];
 KILL_DATA kill_table[MAX_LEVEL];

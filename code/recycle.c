@@ -83,6 +83,10 @@ DESCRIPTOR_DATA *new_descriptor(void)
 	*d = d_zero;
 
 	d->valid = true;
+
+	// After the reset, which zeroes the old handle along with everything else.
+	d->self = descriptorHandles.Add(d);
+
 	return d;
 }
 
@@ -97,6 +101,13 @@ void free_descriptor(DESCRIPTOR_DATA *d)
 		delete[] d->outbuf;
 
 	d->valid = false;
+
+	// Expires every handle to this connection. Must happen before it goes on
+	// the free list, since new_descriptor can hand the same address straight
+	// back out.
+	descriptorHandles.Remove(d->self);
+	d->self = nullptr;
+
 	d->next = descriptor_free;
 	descriptor_free = d;
 }

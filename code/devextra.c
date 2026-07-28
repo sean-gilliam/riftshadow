@@ -1148,8 +1148,10 @@ char *get_char_color(CHAR_DATA *ch, char *event)
 	if (IS_SET(ch->comm, COMM_LOTS_O_COLOR))
 		return color_table[number_range(0, MAX_COLORS - 1)].color_ascii;
 
-	if (ch->desc != nullptr && Deref(ch->desc->original) != nullptr)
-		ch = Deref(ch->desc->original);
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
+		ch = Deref(connection->original);
 
 	if (is_npc(ch))
 		return "";
@@ -1214,9 +1216,11 @@ char *END_COLOR(CHAR_DATA *ch)
 	if (IS_SET(ch->comm, COMM_LOTS_O_COLOR))
 		return color_table[number_range(0, MAX_COLORS - 1)].color_ascii;
 
-	if (ch->desc != nullptr && Deref(ch->desc->original) != nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
 	{
-		if (IS_SET(Deref(ch->desc->original)->comm, COMM_ANSI))
+		if (IS_SET(Deref(connection->original)->comm, COMM_ANSI))
 			return "\x01B[0m";
 		else
 			return "";
@@ -2114,7 +2118,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 	AFFECT_DATA af, *paf;
 	int target;
 
-	if (is_npc(ch) && ch->desc == nullptr)
+	if (is_npc(ch) && Deref(ch->desc) == nullptr)
 		return;
 
 	target_name = one_argument(argument, arg1);
@@ -2547,7 +2551,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 	int sn;
 	int target;
 
-	if (is_npc(ch) && ch->desc == nullptr)
+	if (is_npc(ch) && Deref(ch->desc) == nullptr)
 		return;
 
 	target_name = one_argument(argument, arg1);

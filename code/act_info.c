@@ -215,7 +215,7 @@ char *format_obj_to_char(OBJ_DATA *obj, CHAR_DATA *ch, bool fShort)
  */
 void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNothing)
 {
-	if (ch->desc == nullptr)
+	if (Deref(ch->desc) == nullptr)
 		return;
 
 	/*
@@ -1575,7 +1575,7 @@ void do_nosummon(CHAR_DATA *ch, char *argument)
 
 void do_glance(CHAR_DATA *ch, char *argument)
 {
-	if (ch->desc == nullptr)
+	if (Deref(ch->desc) == nullptr)
 		return;
 
 	if (argument[0] == '\0')
@@ -1617,7 +1617,7 @@ void do_glance(CHAR_DATA *ch, char *argument)
 
 void do_examine(CHAR_DATA *ch, char *argument)
 {
-	if (ch->desc == nullptr)
+	if (Deref(ch->desc) == nullptr)
 		return;
 
 	char arg[MAX_INPUT_LENGTH];
@@ -1710,7 +1710,7 @@ void do_look(CHAR_DATA *ch, char *argument)
 	int door;
 	int i;
 
-	if (ch->desc == nullptr)
+	if (Deref(ch->desc) == nullptr)
 		return;
 
 	if (ch->position < POS_SLEEPING)
@@ -2913,7 +2913,9 @@ void do_oldhelp(CHAR_DATA *ch, char *argument)
 			found = true;
 
 			/* small hack :) */
-			if (ch->desc != nullptr && ch->desc->connected != CON_PLAYING && ch->desc->connected != CON_GEN_GROUPS)
+			DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+			if (connection != nullptr && connection->connected != CON_PLAYING && connection->connected != CON_GEN_GROUPS)
 				break;
 		}
 	}

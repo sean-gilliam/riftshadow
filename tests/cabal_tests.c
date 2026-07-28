@@ -12,6 +12,7 @@ char_data* TestHelperCreatePlayer(char *name = "player 1")
 	player->pcdata = std::make_unique<pc_data>();
 	player->name = name;
 	auto dnew = new descriptor_data();
+	dnew->self = descriptorHandles.Add(dnew);	// as new_descriptor would
 	dnew->showstr_head = nullptr;
 	dnew->showstr_point = nullptr;
 	dnew->outsize = 2000;
@@ -20,7 +21,7 @@ char_data* TestHelperCreatePlayer(char *name = "player 1")
 	dnew->editor = 0;	  /* OLC */
 	dnew->outbuf = new char[dnew->outsize];
 	dnew->outtop = 0;	
-	player->desc = dnew;
+	player->desc = dnew->self;
 
 	return player;
 }

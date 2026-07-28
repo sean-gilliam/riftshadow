@@ -539,7 +539,7 @@ void gain_condition(CHAR_DATA *ch, int iCond, int value)
 	if (value == 0 || is_npc(ch) || is_immortal(ch) || is_heroimm(ch) || IS_SET(ch->act, PLR_NOVOID))
 		return;
 
-	if (!ch->desc)
+	if (!Deref(ch->desc))
 		return;
 
 	condition = ch->pcdata->condition[iCond];
@@ -1350,7 +1350,7 @@ void char_update(void)
 			gain_condition(ch, COND_HUNGER, 1);
 		}
 
-		if (!is_npc(ch) && ch->desc == nullptr)
+		if (!is_npc(ch) && Deref(ch->desc) == nullptr)
 		{
 			/* nothing */
 		}
@@ -1471,7 +1471,9 @@ void char_update(void)
 	{
 		ch_next = ch->next;
 
-		if (ch->desc != nullptr && ch->desc->descriptor % 3 == save_number)
+		DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+		if (connection != nullptr && connection->descriptor % 3 == save_number)
 			save_char_obj(ch);
 	}
 }
@@ -1893,7 +1895,7 @@ void aggr_update(void)
 		if (wch->position == POS_SLEEPING && IS_SET(wch->imm_flags, IMM_SLEEP))
 			wch->position = POS_STANDING;
 
-		if (is_affected_by(wch, AFF_RAGE) && is_awake(wch) && !Deref(wch->fighting) && !(wch->desc == nullptr && !is_npc(wch)))
+		if (is_affected_by(wch, AFF_RAGE) && is_awake(wch) && !Deref(wch->fighting) && !(Deref(wch->desc) == nullptr && !is_npc(wch)))
 		{
 			for (vch = wch->in_room->people; vch != nullptr; vch = vch_next)
 			{
@@ -1969,7 +1971,7 @@ void aggr_update(void)
 		if (is_affected(wch, gsn_mark_of_wrath)
 			&& is_awake(wch)
 			&& !Deref(wch->fighting)
-			&& !(wch->desc == nullptr && !is_npc(wch)))
+			&& !(Deref(wch->desc) == nullptr && !is_npc(wch)))
 		{
 			AFFECT_DATA *paf = affect_find(wch->affected, gsn_mark_of_wrath);
 

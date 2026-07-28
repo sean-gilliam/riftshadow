@@ -1791,7 +1791,7 @@ namespace
 	void Connect(DESCRIPTOR_DATA *d, CHAR_DATA *ch)
 	{
 		d->character = ch->self;
-		ch->desc = d;
+		ch->desc = d->self;
 	}
 
 	/// The state do_switch leaves behind: the descriptor drives the mob, the
@@ -1800,7 +1800,7 @@ namespace
 	{
 		d->character = mob->self;
 		d->original = immortal->self;
-		mob->desc = d;
+		mob->desc = d->self;
 		immortal->desc = nullptr;
 	}
 }
@@ -1889,6 +1889,116 @@ SCENARIO("a switched immortal's original body does not outlive it", "[descriptor
 		}
 
 		free_descriptor(d);
+		ClearTrackers();
+	}
+}
+
+//
+// ch->desc -- the character half of the bidirectional pair.
+//
+// The inverse of d->character, and scrubbed far less carefully than it. The
+// only clear on a lifetime path is close_socket's, and it is guarded:
+//
+//     if (dclose->connected == CON_PLAYING && !merc_down)
+//         ch->desc = nullptr;                       // link-dead, body lives on
+//     else
+//         free_char(dclose->original ? dclose->original : dclose->character);
+//     ...
+//     free_descriptor(dclose);
+//
+// Take the else branch with an immortal switched into a mob and it frees the
+// immortal, never touches the mob, and then frees the descriptor -- leaving the
+// mob naming a descriptor on the free list. DESCRIPTOR_DATA is recycled through
+// descriptor_free, so the next connection gets that address and the mob is
+// suddenly holding a live player's socket.
+//
+// Narrow: it needs a shutdown or a non-CON_PLAYING close with a switch in
+// effect. It is the least severe dangle in the graph, not the worst.
+//
+
+namespace
+{
+	DESCRIPTOR_DATA *Connection(CHAR_DATA *ch)
+	{
+		return Deref(ch->desc);
+	}
+
+	void Attach(CHAR_DATA *ch, DESCRIPTOR_DATA *d)
+	{
+		ch->desc = d ? d->self : nullptr;
+	}
+}
+
+SCENARIO("losing the link leaves the body in the world", "[chdesc]")
+{
+	GIVEN("a player on a descriptor")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *player = MakeTracker(room);
+		DESCRIPTOR_DATA *d = new_descriptor();
+
+		Attach(player, d);
+
+		REQUIRE(Connection(player) == d);
+
+		WHEN("the socket closes but the body is left in the world")
+		{
+			// close_socket's CON_PLAYING branch. This is the half that must not
+			// change: it means "the connection went away", not "the body did".
+			// close_socket used to null ch->desc by hand just before freeing
+			// the descriptor; this asserts the free alone is enough, which is
+			// what makes that line deletable.
+			free_descriptor(d);
+
+			THEN("the body is still alive and simply has no connection")
+			{
+				REQUIRE(Connection(player) == nullptr);
+				REQUIRE(player->valid);
+				REQUIRE(Deref(player->self) == player);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a possessed mob does not outlive the connection driving it", "[chdesc]")
+{
+	GIVEN("an immortal switched into a mob")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *immortal = MakeTracker(room);
+		CHAR_DATA *mob = MakeTracker(room);
+		DESCRIPTOR_DATA *d = new_descriptor();
+
+		Possess(d, mob, immortal);
+
+		REQUIRE(Connection(mob) == d);
+		REQUIRE(Connection(immortal) == nullptr);
+
+		WHEN("the socket closes on the shutdown path, which frees only the immortal")
+		{
+			free_char(immortal);
+			free_descriptor(d);
+
+			THEN("the mob names no connection")
+			{
+				REQUIRE(Connection(mob) == nullptr);
+			}
+
+			THEN("the next connection to take the address is not adopted")
+			{
+				// Every reader of this field asks "is this a player with a live
+				// connection", so a recycled descriptor turns a mob into one.
+				DESCRIPTOR_DATA *newcomer = new_descriptor();
+
+				REQUIRE(newcomer == d);
+				REQUIRE(Connection(mob) != newcomer);
+
+				free_descriptor(newcomer);
+			}
+		}
+
 		ClearTrackers();
 	}
 }

@@ -532,11 +532,11 @@ bool redit_mshow(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		ch->desc->pEdit = (void *)pMob;
+		Deref(ch->desc)->pEdit = (void *)pMob;
 	}
 
 	medit_show(ch, argument);
-	ch->desc->pEdit = (void *)ch->in_room;
+	Deref(ch->desc)->pEdit = (void *)ch->in_room;
 	return false;
 }
 
@@ -567,11 +567,11 @@ bool redit_oshow(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		ch->desc->pEdit = (void *)pObj;
+		Deref(ch->desc)->pEdit = (void *)pObj;
 	}
 
 	oedit_show(ch, argument);
-	ch->desc->pEdit = (void *)ch->in_room;
+	Deref(ch->desc)->pEdit = (void *)ch->in_room;
 	return false;
 }
 
@@ -1762,7 +1762,7 @@ bool aedit_create(CHAR_DATA *ch, char *argument)
 	pArea = new_area();
 	area_last->next = pArea;
 	area_last = pArea; /* Thanks, Walker. */
-	ch->desc->pEdit = (void *)pArea;
+	Deref(ch->desc)->pEdit = (void *)pArea;
 
 	SET_BIT(pArea->area_flags, AREA_ADDED);
 	send_to_char("Area Created.\n\r", ch);
@@ -2982,7 +2982,7 @@ bool redit_create(CHAR_DATA *ch, char *argument)
 	iHash = value % MAX_KEY_HASH;
 	pRoom->next = room_index_hash[iHash];
 	room_index_hash[iHash] = pRoom;
-	ch->desc->pEdit = (void *)pRoom;
+	Deref(ch->desc)->pEdit = (void *)pRoom;
 
 	sprintf(buf, "Room #%d created.\n\r", value);
 	send_to_char(buf, ch);
@@ -4908,7 +4908,7 @@ bool oedit_create(CHAR_DATA *ch, char *argument)
 	iHash = value % MAX_KEY_HASH;
 	pObj->next = obj_index_hash[iHash];
 	obj_index_hash[iHash] = pObj;
-	ch->desc->pEdit = (void *)pObj;
+	Deref(ch->desc)->pEdit = (void *)pObj;
 
 	send_to_char("Object Created.\n\r", ch);
 	return true;
@@ -5968,7 +5968,7 @@ bool medit_create(CHAR_DATA *ch, char *argument)
 
 	pMob->next = mob_index_hash[iHash];
 	mob_index_hash[iHash] = pMob;
-	ch->desc->pEdit = (void *)pMob;
+	Deref(ch->desc)->pEdit = (void *)pMob;
 
 	send_to_char("Mobile Created.\n\r", ch);
 	return true;

@@ -428,10 +428,12 @@ void do_newbie(CHAR_DATA *ch, char *argument)
 
 	for (auto wch = char_list; wch != nullptr; wch = wch->next)
 	{
-		if (is_npc(wch) && wch->desc == nullptr)
+		DESCRIPTOR_DATA *connection = Deref(wch->desc);
+
+		if (is_npc(wch) && connection == nullptr)
 			continue;
 
-		if ((wch->level <= 25 && !IS_SET(wch->comm, COMM_NONEWBIE)) || is_immortal(wch) || is_heroimm(wch) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(Deref(wch->desc->original))))
+		if ((wch->level <= 25 && !IS_SET(wch->comm, COMM_NONEWBIE)) || is_immortal(wch) || is_heroimm(wch) || (is_npc(wch) && connection != nullptr && is_immortal(Deref(connection->original))))
 		{
 			if (IS_SET(wch->comm, COMM_ANSI))
 			{
@@ -496,10 +498,12 @@ void do_builder(CHAR_DATA *ch, char *argument)
 
 	for (auto wch = char_list; wch != nullptr; wch = wch->next)
 	{
-		if (is_npc(wch) && wch->desc == nullptr)
+		DESCRIPTOR_DATA *connection = Deref(wch->desc);
+
+		if (is_npc(wch) && connection == nullptr)
 			continue;
 
-		if (is_immortal(wch) || IS_SET(wch->comm, COMM_BUILDER) || is_heroimm(wch) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(Deref(wch->desc->original))))
+		if (is_immortal(wch) || IS_SET(wch->comm, COMM_BUILDER) || is_heroimm(wch) || (is_npc(wch) && connection != nullptr && is_immortal(Deref(connection->original))))
 		{
 			if (IS_SET(wch->comm, COMM_ANSI))
 			{
@@ -585,10 +589,12 @@ void do_immtalk(CHAR_DATA *ch, char *argument)
 
 	for (auto wch = char_list; wch != nullptr; wch = wch->next)
 	{
-		if (is_npc(wch) && wch->desc == nullptr)
+		DESCRIPTOR_DATA *connection = Deref(wch->desc);
+
+		if (is_npc(wch) && connection == nullptr)
 			continue;
 
-		if ((is_immortal(wch) || IS_SET(wch->comm, COMM_IMMORTAL) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(Deref(wch->desc->original)))) && get_trust(wch) >= std::max(level, 52))
+		if ((is_immortal(wch) || IS_SET(wch->comm, COMM_IMMORTAL) || (is_npc(wch) && connection != nullptr && is_immortal(Deref(connection->original)))) && get_trust(wch) >= std::max(level, 52))
 		{
 			if (IS_SET(wch->comm, COMM_ANSI))
 			{
@@ -1225,7 +1231,7 @@ void do_tell(CHAR_DATA *ch, char *argument)
 	}
 
 	char buf[MAX_STRING_LENGTH];
-	if (victim->desc == nullptr && !is_npc(victim))
+	if (Deref(victim->desc) == nullptr && !is_npc(victim))
 	{
 		act("$N seems to have lost consciousness...try again later.", ch, nullptr, victim, TO_CHAR);
 		sprintf(buf, "%s tells you '%s'\n\r", pers(ch, victim), argument);
@@ -1311,7 +1317,7 @@ void do_reply(CHAR_DATA *ch, char *argument)
 	}
 
 	char buf[MAX_STRING_LENGTH];
-	if (victim->desc == nullptr && !is_npc(victim) && !is_switched(victim) && victim->pcdata)
+	if (Deref(victim->desc) == nullptr && !is_npc(victim) && !is_switched(victim) && victim->pcdata)
 	{
 		act("$N seems to have lost consciousness...try again later.", ch, nullptr, victim, TO_CHAR);
 		sprintf(buf, "%s tells you '%s'\n\r", pers(ch, victim), argument);
@@ -1581,7 +1587,7 @@ void do_pmote(CHAR_DATA *ch, char *argument)
 	char last[MAX_INPUT_LENGTH];
 	for (auto vch = ch->in_room->people; vch != nullptr; vch = vch->next_in_room)
 	{
-		if (vch->desc == nullptr || vch == ch)
+		if (Deref(vch->desc) == nullptr || vch == ch)
 			continue;
 
 		letter = strstr(argument, vch->name);
@@ -1905,7 +1911,7 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 
 	save_char_obj(ch);
 	auto id = ch->id;
-	auto d = ch->desc;
+	auto d = Deref(ch->desc);
 
 	extract_char(ch, true);
 
@@ -2784,7 +2790,7 @@ void mob_death_log(CHAR_DATA *killer, CHAR_DATA *dead)
 /* type 0 = create, 1 = login, 2 = logout */
 void login_log(CHAR_DATA *ch, int type)
 {
-	if (!ch->pcdata->host && !ch->desc)
+	if (!ch->pcdata->host && !Deref(ch->desc))
 		return;
 
 	if (IS_SET(ch->comm, COMM_NOSOCKET))
@@ -2792,7 +2798,7 @@ void login_log(CHAR_DATA *ch, int type)
 
 	Login login;
 	login.name = ch->true_name;
-	login.site = ch->pcdata->host ? ch->pcdata->host : ch->desc->host;
+	login.site = ch->pcdata->host ? ch->pcdata->host : Deref(ch->desc)->host;
 	login.time = log_time();
 	login.ctime = current_time;
 	login.played = type == 2 ? (int)((current_time - ch->logon) / 60) : -1;
