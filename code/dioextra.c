@@ -156,20 +156,20 @@ void do_ghost(CHAR_DATA *ch, char *argument)
 		for (d = descriptor_list; d; d = d->next)
 		{
 			if (d->connected == CON_PLAYING
-				&& d->character != ch
-				&& d->character->in_room != nullptr
-				&& can_see(ch, d->character))
+				&& Deref(d->character) != ch
+				&& Deref(d->character)->in_room != nullptr
+				&& can_see(ch, Deref(d->character)))
 			{
 				if (!str_cmp(arg2, "yes"))
 				{
-					d->character->ghost = 15;
-					send_to_char("You have turned into an invincible ghost for several minutes.\n\r", d->character);
+					Deref(d->character)->ghost = 15;
+					send_to_char("You have turned into an invincible ghost for several minutes.\n\r", Deref(d->character));
 				}
 
 				if (!str_cmp(arg2, "no"))
 				{
-					d->character->ghost = 0;
-					send_to_char("You are no longer an invincible ghost.\n\r", d->character);
+					Deref(d->character)->ghost = 0;
+					send_to_char("You are no longer an invincible ghost.\n\r", Deref(d->character));
 				}
 			}
 		}
@@ -182,21 +182,21 @@ void do_ghost(CHAR_DATA *ch, char *argument)
 		for (d = descriptor_list; d; d = d->next)
 		{
 			if (d->connected == CON_PLAYING 
-				&& d->character != ch
-				&& d->character->in_room != nullptr
-				&& can_see(ch, d->character)
-				&& d->character->in_room->area == ch->in_room->area)
+				&& Deref(d->character) != ch
+				&& Deref(d->character)->in_room != nullptr
+				&& can_see(ch, Deref(d->character))
+				&& Deref(d->character)->in_room->area == ch->in_room->area)
 			{
 				if (!str_cmp(arg2, "yes"))
 				{
-					d->character->ghost = 15;
-					send_to_char("You have turned into an invincible ghost for a several minutes.\n\r", d->character);
+					Deref(d->character)->ghost = 15;
+					send_to_char("You have turned into an invincible ghost for a several minutes.\n\r", Deref(d->character));
 				}
 
 				if (!str_cmp(arg2, "no"))
 				{
-					d->character->ghost = 0;
-					send_to_char("You are no longer an invincible ghost.\n\r", d->character);
+					Deref(d->character)->ghost = 0;
+					send_to_char("You are no longer an invincible ghost.\n\r", Deref(d->character));
 				}
 			}
 		}
@@ -536,20 +536,20 @@ void do_ccb(CHAR_DATA *ch, char *argument)
 	{
 		if (d->connected == CON_PLAYING)
 		{
-			if ((d->character != ch
-					&& !IS_SET(d->character->comm, COMM_NOCABAL)
-					&& d->character->cabal
-					&& d->character->cabal == cabal)
-				|| (IS_SET(d->character->comm, COMM_ALL_CABALS)
-					&& d->character != ch))
+			if ((Deref(d->character) != ch
+					&& !IS_SET(Deref(d->character)->comm, COMM_NOCABAL)
+					&& Deref(d->character)->cabal
+					&& Deref(d->character)->cabal == cabal)
+				|| (IS_SET(Deref(d->character)->comm, COMM_ALL_CABALS)
+					&& Deref(d->character) != ch))
 			{
 				buffer = fmt::format("{}{}: {}{}{}\n\r",
 					cabal_table[cabal].who_name,
-					pers(ch, d->character),
-					get_char_color(d->character, "channels"),
+					pers(ch, Deref(d->character)),
+					get_char_color(Deref(d->character), "channels"),
 					arg2,
 					END_COLOR(ch));
-				send_to_char(buffer.c_str(), d->character);
+				send_to_char(buffer.c_str(), Deref(d->character));
 			}
 		}
 	}
@@ -1607,7 +1607,7 @@ bool auto_check_multi(DESCRIPTOR_DATA *d_check, char *host)
 {
 	for (DESCRIPTOR_DATA *d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d == d_check || d->character == nullptr)
+		if (d == d_check || Deref(d->character) == nullptr)
 			continue;
 
 		if (!str_cmp(host, d->host))
@@ -1653,20 +1653,20 @@ void do_pload(CHAR_DATA *ch, char *argument)
 	if (!CFileSystem::Copy(ploadSource, ploadDest))
 		RS.Logger.Warn("Failed to copy [{}] to [{}]", ploadSource, ploadDest);
 
-	d->character->desc = nullptr;
-	d->character->next = char_list;
+	Deref(d->character)->desc = nullptr;
+	Deref(d->character)->next = char_list;
 
-	char_list = d->character;
+	char_list = Deref(d->character);
 
 	d->outsize = 2000;
 	d->outbuf = new char[d->outsize];
 	d->connected = CON_PLAYING;
 
-	reset_char(d->character);
+	reset_char(Deref(d->character));
 
-	victim = d->character;
+	victim = Deref(d->character);
 
-	d->character->pcdata->host = palloc_string("PLOAD");
+	Deref(d->character)->pcdata->host = palloc_string("PLOAD");
 
 	interpret(ch, argument);
 
@@ -1726,11 +1726,11 @@ void zone_echo(AREA_DATA *area, char *echo)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && d->character->in_room != nullptr && d->character->in_room->area == area)
+		if (d->connected == CON_PLAYING && Deref(d->character)->in_room != nullptr && Deref(d->character)->in_room->area == area)
 		{
-			colorconv(buffer, echo, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, echo, Deref(d->character));
+			send_to_char(buffer, Deref(d->character));
+			send_to_char("\n\r", Deref(d->character));
 		}
 	}
 }

@@ -217,16 +217,16 @@ bool run_olc_editor(DESCRIPTOR_DATA *d)
 	switch (d->editor)
 	{
 		case ED_AREA:
-			aedit(d->character, d->incomm);
+			aedit(Deref(d->character), d->incomm);
 			break;
 		case ED_ROOM:
-			redit(d->character, d->incomm);
+			redit(Deref(d->character), d->incomm);
 			break;
 		case ED_OBJECT:
-			oedit(d->character, d->incomm);
+			oedit(Deref(d->character), d->incomm);
 			break;
 		case ED_MOBILE:
-			medit(d->character, d->incomm);
+			medit(Deref(d->character), d->incomm);
 			break;
 		default:
 			return false;

@@ -1491,16 +1491,19 @@ void verb_prog_check_bounties(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && d->character && d->character->in_room != nullptr)
+		if (d->connected == CON_PLAYING && Deref(d->character) && Deref(d->character)->in_room != nullptr)
 		{
-			if (d->character->pcdata && d->character->pcdata->bounty)
+			if (Deref(d->character)->pcdata && Deref(d->character)->pcdata->bounty)
 			{
 				found = true;
 
-				if (d->character == ch)
+				if (Deref(d->character) == ch)
 					sprintf(buf, "Hm, I see your name on this list, do you think it's wise for you to be here?");
 				else
-					sprintf(buf, "%s has %ld gold on %s head.", d->character->name, d->character->pcdata->bounty, his_her[URANGE(0, d->character->sex, 2)]);
+				{
+					CHAR_DATA *marked = Deref(d->character);
+					sprintf(buf, "%s has %ld gold on %s head.", marked->name, marked->pcdata->bounty, his_her[URANGE(0, marked->sex, 2)]);
+				}
 
 				do_say(mob, buf);
 			}

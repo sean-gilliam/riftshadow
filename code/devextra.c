@@ -108,16 +108,16 @@ void do_pswitch(CHAR_DATA *ch, char *argument)
 	if (!CFileSystem::Copy(ploadSource, ploadDest))
 		RS.Logger.Warn("Failed to copy [{}] to [{}]", ploadSource, ploadDest);
 
-	d->character->desc = nullptr;
-	d->character->next = char_list;
-	char_list = d->character;
+	Deref(d->character)->desc = nullptr;
+	Deref(d->character)->next = char_list;
+	char_list = Deref(d->character);
 	d->outsize = 2000;
 	d->outbuf = new char[d->outsize];
 	d->connected = CON_PLAYING;
-	reset_char(d->character);
+	reset_char(Deref(d->character));
 
-	victim = d->character;
-	d->character->pcdata->host = palloc_string("PLOAD");
+	victim = Deref(d->character);
+	Deref(d->character)->pcdata->host = palloc_string("PLOAD");
 }
 
 void do_gold(CHAR_DATA *ch, char *argument)
@@ -218,16 +218,16 @@ void clean_mud()
 
 			if (!load_char_obj(d, tbuf))
 			{
-				free_char(d->character);
+				free_char(Deref(d->character));
 				continue;
 			}
 
-			d->character->desc = nullptr;
+			Deref(d->character)->desc = nullptr;
 
-			if (d->character->level >= 30)
-				perm_death_log(d->character, 4);
+			if (Deref(d->character)->level >= 30)
+				perm_death_log(Deref(d->character), 4);
 
-			delete_char(d->character->true_name, true);
+			delete_char(Deref(d->character)->true_name, true);
 		}
 
 		free_descriptor(d);
@@ -250,7 +250,7 @@ void clean_mud()
 				RS.Logger.Info("Deleting player...");
 			}
 
-			free_char(d->character);
+			free_char(Deref(d->character));
 		}
 
 		free_descriptor(d);
@@ -1043,15 +1043,15 @@ void mob_recho(CHAR_DATA *ch, char *argument)
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room == ch->in_room
-			&& is_awake(d->character)
-			&& d->character != ch)
+			&& Deref(d->character)->in_room == ch->in_room
+			&& is_awake(Deref(d->character))
+			&& Deref(d->character) != ch)
 		{
-			if (get_trust(d->character) >= 55)
-				send_to_char("local mob> ", d->character);
+			if (get_trust(Deref(d->character)) >= 55)
+				send_to_char("local mob> ", Deref(d->character));
 
-			send_to_char(argument, d->character);
-			send_to_char("\n\r", d->character);
+			send_to_char(argument, Deref(d->character));
+			send_to_char("\n\r", Deref(d->character));
 		}
 	}
 }
@@ -1063,13 +1063,13 @@ void area_echo(CHAR_DATA *ch, char *echo)
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
+			&& Deref(d->character)->in_room != nullptr
 			&& ch->in_room != nullptr
-			&& d->character->in_room->area == ch->in_room->area)
+			&& Deref(d->character)->in_room->area == ch->in_room->area)
 		{
-			colorconv(buffer, echo, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, echo, Deref(d->character));
+			send_to_char(buffer, Deref(d->character));
+			send_to_char("\n\r", Deref(d->character));
 		}
 	}
 }
@@ -1081,13 +1081,13 @@ void rarea_echo(ROOM_INDEX_DATA *room, char *echo)
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
+			&& Deref(d->character)->in_room != nullptr
 			&& room != nullptr
-			&& d->character->in_room->area == room->area)
+			&& Deref(d->character)->in_room->area == room->area)
 		{
-			colorconv(buffer, echo, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, echo, Deref(d->character));
+			send_to_char(buffer, Deref(d->character));
+			send_to_char("\n\r", Deref(d->character));
 		}
 	}
 }
@@ -1099,17 +1099,17 @@ void outdoors_echo(AREA_DATA *area, char *echo)
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
+			&& Deref(d->character)->in_room != nullptr
 			&& area != nullptr
-			&& d->character->in_room->area == area
-			&& d->character->in_room->sector_type != SECT_INSIDE
-			&& d->character->in_room->sector_type != SECT_UNDERWATER
-			&& is_awake(d->character)
-			&& !IS_SET(d->character->in_room->room_flags, ROOM_INDOORS))
+			&& Deref(d->character)->in_room->area == area
+			&& Deref(d->character)->in_room->sector_type != SECT_INSIDE
+			&& Deref(d->character)->in_room->sector_type != SECT_UNDERWATER
+			&& is_awake(Deref(d->character))
+			&& !IS_SET(Deref(d->character)->in_room->room_flags, ROOM_INDOORS))
 		{
-			colorconv(buffer, echo, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, echo, Deref(d->character));
+			send_to_char(buffer, Deref(d->character));
+			send_to_char("\n\r", Deref(d->character));
 		}
 	}
 }
@@ -1148,8 +1148,8 @@ char *get_char_color(CHAR_DATA *ch, char *event)
 	if (IS_SET(ch->comm, COMM_LOTS_O_COLOR))
 		return color_table[number_range(0, MAX_COLORS - 1)].color_ascii;
 
-	if (ch->desc != nullptr && ch->desc->original != nullptr)
-		ch = ch->desc->original;
+	if (ch->desc != nullptr && Deref(ch->desc->original) != nullptr)
+		ch = Deref(ch->desc->original);
 
 	if (is_npc(ch))
 		return "";
@@ -1214,9 +1214,9 @@ char *END_COLOR(CHAR_DATA *ch)
 	if (IS_SET(ch->comm, COMM_LOTS_O_COLOR))
 		return color_table[number_range(0, MAX_COLORS - 1)].color_ascii;
 
-	if (ch->desc != nullptr && ch->desc->original != nullptr)
+	if (ch->desc != nullptr && Deref(ch->desc->original) != nullptr)
 	{
-		if (IS_SET(ch->desc->original->comm, COMM_ANSI))
+		if (IS_SET(Deref(ch->desc->original)->comm, COMM_ANSI))
 			return "\x01B[0m";
 		else
 			return "";

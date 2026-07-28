@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "../code/merc.h"
 #include "../code/handler.h"
 #include "../code/act_comm.h"
 #include "../code/entity/char_data.h"
@@ -1745,6 +1746,149 @@ SCENARIO("a mob's quarry does not outlive it", "[hunting]")
 			}
 		}
 
+		ClearTrackers();
+	}
+}
+
+//
+// d->character / d->original -- the descriptor half of the bidirectional pair.
+//
+// This is the only two-way link in the graph: a connected player is
+// d->character == ch and ch->desc == d, and a switched immortal is
+// d->character == the possessed mob, d->original == the immortal, with the
+// mob holding the descriptor and the immortal's own desc null. Exactly one
+// character points back at a descriptor at any moment, and it is always
+// d->character.
+//
+// The two halves of the link are scrubbed very differently:
+//
+//   d->character  cleared inline right after the free, in five places --
+//                 extract_char, and four login-screen rejections in comm.c
+//                 that all read `free_char(d->character); d->character = 0`.
+//   d->original   cleared NOWHERE except do_return, which is a wizard
+//                 returning to their body, not a lifetime event.
+//
+// So `original` is the same shape as hunting and analyzePC -- except that it
+// is not merely compared. check_playing dereferences `dold->original->true_name`
+// for every descriptor in the list on every login attempt, so a stale original
+// is read by the next person to connect.
+//
+
+namespace
+{
+	// Reader and setter both, so this file compiles unchanged on either side of
+	// the type flip -- see the note on the hunting helpers above.
+	CHAR_DATA *Body(DESCRIPTOR_DATA *d)
+	{
+		return Deref(d->character);
+	}
+
+	CHAR_DATA *OriginalBody(DESCRIPTOR_DATA *d)
+	{
+		return Deref(d->original);
+	}
+
+	void Connect(DESCRIPTOR_DATA *d, CHAR_DATA *ch)
+	{
+		d->character = ch->self;
+		ch->desc = d;
+	}
+
+	/// The state do_switch leaves behind: the descriptor drives the mob, the
+	/// immortal is parked in `original`, and only the mob points back.
+	void Possess(DESCRIPTOR_DATA *d, CHAR_DATA *mob, CHAR_DATA *immortal)
+	{
+		d->character = mob->self;
+		d->original = immortal->self;
+		mob->desc = d;
+		immortal->desc = nullptr;
+	}
+}
+
+SCENARIO("a descriptor's body reference does not outlive the body", "[descriptor]")
+{
+	GIVEN("a character on a descriptor")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *player = MakeTracker(room);
+		DESCRIPTOR_DATA *d = new_descriptor();
+
+		// new_descriptor resets a recycled descriptor with `*d = d_zero`, an
+		// all-zero static. Both fields have to read as nothing after that, or a
+		// reused descriptor would inherit the previous connection's body.
+		REQUIRE(Body(d) == nullptr);
+		REQUIRE(OriginalBody(d) == nullptr);
+
+		Connect(d, player);
+
+		REQUIRE(Body(d) == player);
+
+		WHEN("the character is extracted")
+		{
+			extract_char(player, true);
+
+			THEN("the descriptor names nobody")
+			{
+				// Today this holds because extract_char clears it by hand on
+				// the line before free_char. That clear is inline in a lifetime
+				// path, so it is deletable -- and this assertion is what proves
+				// the deletion rather than merely surviving it.
+				REQUIRE(Body(d) == nullptr);
+			}
+
+			THEN("the next character to take the address is not adopted")
+			{
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == player);
+				REQUIRE(Body(d) != newcomer);
+			}
+		}
+
+		free_descriptor(d);
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a switched immortal's original body does not outlive it", "[descriptor]")
+{
+	GIVEN("an immortal switched into a mob")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *immortal = MakeTracker(room);
+		CHAR_DATA *mob = MakeTracker(room);
+		DESCRIPTOR_DATA *d = new_descriptor();
+
+		Possess(d, mob, immortal);
+
+		REQUIRE(Body(d) == mob);
+		REQUIRE(OriginalBody(d) == immortal);
+
+		WHEN("the original body is freed while the switch is still in effect")
+		{
+			// close_socket does exactly this -- `free_char(dclose->original ?
+			// dclose->original : dclose->character)` -- and extract_char clears
+			// only `character`, never `original`.
+			free_char(immortal);
+
+			THEN("the descriptor no longer names the original body")
+			{
+				REQUIRE(OriginalBody(d) == nullptr);
+			}
+
+			THEN("the next character to take the address is not adopted as the original")
+			{
+				// check_playing reads `dold->original->true_name` for every
+				// descriptor on every login, so this one is dereferenced, not
+				// just compared.
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == immortal);
+				REQUIRE(OriginalBody(d) != newcomer);
+			}
+		}
+
+		free_descriptor(d);
 		ClearTrackers();
 	}
 }

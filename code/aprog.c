@@ -386,18 +386,18 @@ void pulse_prog_ruins_shark(AREA_DATA *area)
 	for (d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
-			&& d->character->in_room->area == area
+			&& Deref(d->character)->in_room != nullptr
+			&& Deref(d->character)->in_room->area == area
 			&& number_percent() > 90)
 		{
-			ch = d->character;
+			ch = Deref(d->character);
 
-			if ((d->character->hit * 2) > d->character->max_hit)
+			if ((Deref(d->character)->hit * 2) > Deref(d->character)->max_hit)
 				continue;
 
-			if (d->character->in_room->vnum < 20100
-				|| (d->character->in_room->vnum > 20150 && d->character->in_room->vnum < 20181)
-				|| d->character->in_room->vnum > 20219)
+			if (Deref(d->character)->in_room->vnum < 20100
+				|| (Deref(d->character)->in_room->vnum > 20150 && Deref(d->character)->in_room->vnum < 20181)
+				|| Deref(d->character)->in_room->vnum > 20219)
 			{
 				continue;
 			}

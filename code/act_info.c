@@ -2946,15 +2946,15 @@ void do_whois(CHAR_DATA *ch, char *argument)
 		char const *class_name;
 		char const *imm_lvl;
 
-		if (d->connected != CON_PLAYING || !can_see(ch, d->character))
+		if (d->connected != CON_PLAYING || !can_see(ch, Deref(d->character)))
 			continue;
 
-		auto wch = (d->original != nullptr) ? d->original : d->character;
+		auto wch = (Deref(d->original) != nullptr) ? Deref(d->original) : Deref(d->character);
 
 		if (!can_see(ch, wch))
 			continue;
 
-		if (is_affected(d->character, gsn_disguise))
+		if (is_affected(Deref(d->character), gsn_disguise))
 			continue;
 
 		if (str_cmp(wch->name, wch->true_name)
@@ -3294,12 +3294,12 @@ void do_who(CHAR_DATA *ch, char *argument)
 		 * Check for match against restrictions.
 		 * Don't use trust as that exposes trusted mortals.
 		 */
-		if (d->connected != CON_PLAYING || !can_see(ch, d->character))
+		if (d->connected != CON_PLAYING || !can_see(ch, Deref(d->character)))
 			continue;
 
-		auto wch = d->original != nullptr
-			? d->original
-			: d->character;
+		auto wch = Deref(d->original) != nullptr
+			? Deref(d->original)
+			: Deref(d->character);
 
 		if (!can_see(ch, wch))
 			continue;
@@ -3496,7 +3496,7 @@ void do_count(CHAR_DATA *ch, char *argument)
 	{
 		if (d->connected == CON_PLAYING)
 		{
-			if (can_see(ch, d->character) && !is_switched(d->character))
+			if (can_see(ch, Deref(d->character)) && !is_switched(Deref(d->character)))
 				count++;
 			else
 				not_seen++;
@@ -3693,7 +3693,7 @@ void do_where(CHAR_DATA *ch, char *argument)
 
 		for (auto d = descriptor_list; d; d = d->next)
 		{
-			auto victim = d->character;
+			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr
 				&& !is_npc(victim)
@@ -3728,7 +3728,7 @@ void do_where(CHAR_DATA *ch, char *argument)
 	{
 		for (auto d = descriptor_list; d; d = d->next)
 		{
-			auto victim = d->character;
+			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr
 				&& !is_npc(victim)

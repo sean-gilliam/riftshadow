@@ -1213,10 +1213,10 @@ void check_unholy_communion(CHAR_DATA *ch, char *argument)
 	for (d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected == CON_PLAYING 
-			&& !is_immortal(d->character)
-			&& !is_npc(d->character)
-			&& d->character->in_room->area == ch->in_room->area
-			&& d->character != ch)
+			&& !is_immortal(Deref(d->character))
+			&& !is_npc(Deref(d->character))
+			&& Deref(d->character)->in_room->area == ch->in_room->area
+			&& Deref(d->character) != ch)
 		{
 			send_to_char("A voice hisses in your mind: 'Ssssolitude, mortal.  There are othersss near...'\n\r", ch);
 			return;

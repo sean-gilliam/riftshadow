@@ -1306,11 +1306,11 @@ void pulse_prog_tahlu_mist_ward(CHAR_DATA *mob)
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
-			&& d->character->in_room->area == mob->in_room->area
-			&& is_evil(d->character))
+			&& Deref(d->character)->in_room != nullptr
+			&& Deref(d->character)->in_room->area == mob->in_room->area
+			&& is_evil(Deref(d->character)))
 		{
-			ch = d->character;
+			ch = Deref(d->character);
 			mist = create_mobile(get_mob_index(1616));
 
 			char_to_room(mist, ch->in_room);
@@ -3229,10 +3229,10 @@ void pulse_prog_area_echo_ward(CHAR_DATA *mob)
 	for (d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected != CON_PLAYING
-			|| !d->character->in_room
-			|| d->character->in_room->area != mob->in_room->area
-			|| d->character->in_room->vnum < mob->armor[0]
-			|| d->character->in_room->vnum > mob->armor[1])
+			|| !Deref(d->character)->in_room
+			|| Deref(d->character)->in_room->area != mob->in_room->area
+			|| Deref(d->character)->in_room->vnum < mob->armor[0]
+			|| Deref(d->character)->in_room->vnum > mob->armor[1])
 		{
 			continue;
 		}

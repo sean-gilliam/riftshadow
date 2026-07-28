@@ -750,7 +750,7 @@ void interpret(CHAR_DATA *ch, char *argument)
 
 	if ((!is_npc(ch) && IS_SET(ch->act, PLR_LOG)) || fLogAll || cmd_table[cmd].log == LOG_ALWAYS)
 	{
-		auto buffer = fmt::format("Log {}: {}", ch->desc->original ? ch->desc->original->true_name : ch->true_name, logline);
+		auto buffer = fmt::format("Log {}: {}", Deref(ch->desc->original) ? Deref(ch->desc->original)->true_name : ch->true_name, logline);
 		wiznet(buffer.data(), ch, nullptr, WIZ_SECURE, 0, get_trust(ch));
 		RS.Logger.Info(buffer);
 	}

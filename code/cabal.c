@@ -1292,11 +1292,11 @@ void spell_horde_communion(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	CHAR_DATA *victim = (CHAR_DATA *)vo;
 	AFFECT_DATA af;
 
-	if (is_npc(ch) && (!ch->desc || !ch->desc->original))
+	if (is_npc(ch) && (!ch->desc || !Deref(ch->desc->original)))
 		return;
 
 	if (is_npc(ch))
-		ch = ch->desc->original;
+		ch = Deref(ch->desc->original);
 
 	if (is_affected(victim, gsn_horde_communion))
 	{

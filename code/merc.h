@@ -109,6 +109,9 @@ int remove();
 
 #include "entity/fwd.h"
 #include "entity/limits.h"
+// descriptor_data below carries Handle<CHAR_DATA> members, so the template has
+// to be visible here and not just to whoever includes this header.
+#include "entity/handles.h"
 
 //
 // String and memory management parameters.
@@ -310,8 +313,15 @@ struct descriptor_data
 {
 	DESCRIPTOR_DATA *next;
 	DESCRIPTOR_DATA *snoop_by;
-	CHAR_DATA *character;
-	CHAR_DATA *original;
+	// The body this connection drives, and -- while an immortal is switched
+	// into a mob -- the immortal's own body parked behind it. Non-owning both
+	// ways: a character can be extracted while the connection lives on, so
+	// these are handles rather than pointers. `character` used to be nulled by
+	// hand on each of the five paths that free it; `original` was nulled on
+	// none of them, and check_playing reads its `true_name` for every open
+	// connection on every login attempt.
+	Handle<CHAR_DATA> character;
+	Handle<CHAR_DATA> original;
 	bool valid;
 	char *host;
 	short descriptor;

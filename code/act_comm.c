@@ -337,26 +337,30 @@ void do_cb(CHAR_DATA *ch, char *argument)
 
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && d->character != ch && ((is_same_cabal(ch, d->character) && !IS_SET(d->character->comm, COMM_NOCABAL) && !IS_SET(d->character->in_room->room_flags, ROOM_SILENCE)) || IS_SET(d->character->comm, COMM_ALL_CABALS)))
+		// Read once: this loop only formats and sends, and nothing in it can
+		// extract a listener.
+		CHAR_DATA *listener = Deref(d->character);
+
+		if (d->connected == CON_PLAYING && listener != ch && ((is_same_cabal(ch, listener) && !IS_SET(listener->comm, COMM_NOCABAL) && !IS_SET(listener->in_room->room_flags, ROOM_SILENCE)) || IS_SET(listener->comm, COMM_ALL_CABALS)))
 		{
-			if (IS_SET(d->character->comm, COMM_ANSI))
+			if (IS_SET(listener->comm, COMM_ANSI))
 			{
 				sprintf(buf, "%s%s: %s%s%s\n\r",
 						cabal_table[ch->cabal].who_name,
-						!is_npc(ch) && can_see(d->character, ch) ? ch->true_name : pers(ch, d->character),
-						get_char_color(d->character, "channels"),
+						!is_npc(ch) && can_see(listener, ch) ? ch->true_name : pers(ch, listener),
+						get_char_color(listener, "channels"),
 						argument,
-						END_COLOR(d->character));
+						END_COLOR(listener));
 			}
 			else
 			{
 				sprintf(buf, "%s%s: %s\n\r",
 						cabal_table[ch->cabal].who_name,
-						!is_npc(ch) && can_see(d->character, ch) ? ch->true_name : pers(ch, d->character),
+						!is_npc(ch) && can_see(listener, ch) ? ch->true_name : pers(ch, listener),
 						argument);
 			}
 
-			send_to_char(buf, d->character);
+			send_to_char(buf, listener);
 		}
 	}
 }
@@ -427,7 +431,7 @@ void do_newbie(CHAR_DATA *ch, char *argument)
 		if (is_npc(wch) && wch->desc == nullptr)
 			continue;
 
-		if ((wch->level <= 25 && !IS_SET(wch->comm, COMM_NONEWBIE)) || is_immortal(wch) || is_heroimm(wch) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(wch->desc->original)))
+		if ((wch->level <= 25 && !IS_SET(wch->comm, COMM_NONEWBIE)) || is_immortal(wch) || is_heroimm(wch) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(Deref(wch->desc->original))))
 		{
 			if (IS_SET(wch->comm, COMM_ANSI))
 			{
@@ -495,7 +499,7 @@ void do_builder(CHAR_DATA *ch, char *argument)
 		if (is_npc(wch) && wch->desc == nullptr)
 			continue;
 
-		if (is_immortal(wch) || IS_SET(wch->comm, COMM_BUILDER) || is_heroimm(wch) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(wch->desc->original)))
+		if (is_immortal(wch) || IS_SET(wch->comm, COMM_BUILDER) || is_heroimm(wch) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(Deref(wch->desc->original))))
 		{
 			if (IS_SET(wch->comm, COMM_ANSI))
 			{
@@ -584,7 +588,7 @@ void do_immtalk(CHAR_DATA *ch, char *argument)
 		if (is_npc(wch) && wch->desc == nullptr)
 			continue;
 
-		if ((is_immortal(wch) || IS_SET(wch->comm, COMM_IMMORTAL) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(wch->desc->original))) && get_trust(wch) >= std::max(level, 52))
+		if ((is_immortal(wch) || IS_SET(wch->comm, COMM_IMMORTAL) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(Deref(wch->desc->original)))) && get_trust(wch) >= std::max(level, 52))
 		{
 			if (IS_SET(wch->comm, COMM_ANSI))
 			{
@@ -1122,9 +1126,9 @@ void do_pray(CHAR_DATA *ch, char *argument)
 
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
-		auto victim = d->original ? d->original : d->character;
+		auto victim = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 
-		if (d->connected == CON_PLAYING && d->character != ch && !IS_SET(victim->comm, COMM_SHOUTSOFF) && !IS_SET(victim->comm, COMM_QUIET) && victim->level >= 52)
+		if (d->connected == CON_PLAYING && Deref(d->character) != ch && !IS_SET(victim->comm, COMM_SHOUTSOFF) && !IS_SET(victim->comm, COMM_QUIET) && victim->level >= 52)
 		{
 			sprintf(buf, "%s%s [%d] is PRAYing for: %s%s\n\r",
 					get_char_color(victim, "prays"),
@@ -1132,7 +1136,7 @@ void do_pray(CHAR_DATA *ch, char *argument)
 					ch->in_room->vnum,
 					argument,
 					END_COLOR(victim));
-			send_to_char(buf, d->character);
+			send_to_char(buf, Deref(d->character));
 		}
 	}
 }
@@ -1453,20 +1457,24 @@ void do_yell(CHAR_DATA *ch, char *argument)
 
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && d->character != ch && d->character->in_room != nullptr && d->character->in_room->area == ch->in_room->area && !IS_SET(d->character->comm, COMM_QUIET))
+		// Read once: command_execute below can extract the listener, but it is
+		// the last thing this iteration does with it.
+		CHAR_DATA *listener = Deref(d->character);
+
+		if (d->connected == CON_PLAYING && listener != ch && listener->in_room != nullptr && listener->in_room->area == ch->in_room->area && !IS_SET(listener->comm, COMM_QUIET))
 		{
-			if (IS_SET(d->character->in_room->room_flags, ROOM_SILENCE))
+			if (IS_SET(listener->in_room->room_flags, ROOM_SILENCE))
 				continue;
 
 			/* Can't hear yells while asleep, MORGLUM */
-			if (!is_awake(d->character))
+			if (!is_awake(listener))
 				continue;
 
-			sprintf(buf, "$n yells '%s$t%s'", get_char_color(d->character, "yells"), END_COLOR(d->character));
-			act_new(buf, ch, argument, d->character, TO_VICT, POS_SLEEPING);
+			sprintf(buf, "$n yells '%s$t%s'", get_char_color(listener, "yells"), END_COLOR(listener));
+			act_new(buf, ch, argument, listener, TO_VICT, POS_SLEEPING);
 
-			if (is_affected(d->character, gsn_word_of_command) && strstr(argument, d->character->pcdata->command[0]))
-				command_execute(d->character);
+			if (is_affected(listener, gsn_word_of_command) && strstr(argument, listener->pcdata->command[0]))
+				command_execute(listener);
 		}
 	}
 
@@ -1482,13 +1490,13 @@ void do_myell(CHAR_DATA *ch, char *argument, CHAR_DATA *attacker)
 		for (d = descriptor_list; d; d = d->next)
 		{
 			if (d->connected == CON_PLAYING
-				&&  d->character->in_room != nullptr && ch->in_room != nullptr
-				&&  d->character->in_room->area == ch->in_room->area
-				&&  d->character != ch
-				&& !IS_SET(d->character->in_room->room_flags, ROOM_SILENCE))
+				&&  Deref(d->character)->in_room != nullptr && ch->in_room != nullptr
+				&&  Deref(d->character)->in_room->area == ch->in_room->area
+				&&  Deref(d->character) != ch
+				&& !IS_SET(Deref(d->character)->in_room->room_flags, ROOM_SILENCE))
 			{
-					send_to_char(form_table[ch->pcdata->shifted].yell,d->character);
-					send_to_char("\n\r",d->character);
+					send_to_char(form_table[ch->pcdata->shifted].yell,Deref(d->character));
+					send_to_char("\n\r",Deref(d->character));
 			}
 		}
 
@@ -1907,7 +1915,7 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 	/* toast evil cheating bastards */
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		auto tch = d->original ? d->original : d->character;
+		auto tch = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 		if (tch && tch->id == id)
 		{
 			extract_char(tch, true);

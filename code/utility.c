@@ -513,7 +513,7 @@ char* pers (CHAR_DATA *ch, CHAR_DATA *looker)
 	if (can_see(looker, ch) && !is_affected(looker, gsn_plasma_arc))
 		return is_npc(ch) ? ch->short_descr : ch->name;
 
-	if (is_immortal(ch) && !is_npc(ch) && ch->invis_level > 50 && (!ch->desc || !ch->desc->original))
+	if (is_immortal(ch) && !is_npc(ch) && ch->invis_level > 50 && (!ch->desc || !Deref(ch->desc->original)))
 		return "An Immortal";
 
 	return "someone";
@@ -525,5 +525,5 @@ bool is_switched (CHAR_DATA *ch)
 	if (ch == nullptr)
 		return false;
 
-	return ch->desc && ch->desc->original;	// ROM OLC
+	return ch->desc && Deref(ch->desc->original);	// ROM OLC
 }

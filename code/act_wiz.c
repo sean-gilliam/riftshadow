@@ -195,19 +195,19 @@ void wiznet(char *string, CHAR_DATA *ch, OBJ_DATA *obj, long flag, long flag_ski
 	for (DESCRIPTOR_DATA *d = descriptor_list; d != nullptr; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character
-			&& is_immortal(d->character)
-			&& IS_SET(d->character->wiznet, WIZ_ON)
-			&& (!flag || IS_SET(d->character->wiznet, flag))
-			&& (!flag_skip || !IS_SET(d->character->wiznet, flag_skip))
-			&& get_trust(d->character) >= min_level
-			&& d->character != ch)
+			&& Deref(d->character)
+			&& is_immortal(Deref(d->character))
+			&& IS_SET(Deref(d->character)->wiznet, WIZ_ON)
+			&& (!flag || IS_SET(Deref(d->character)->wiznet, flag))
+			&& (!flag_skip || !IS_SET(Deref(d->character)->wiznet, flag_skip))
+			&& get_trust(Deref(d->character)) >= min_level
+			&& Deref(d->character) != ch)
 		{
-			if (IS_SET(d->character->wiznet, WIZ_PREFIX))
-				send_to_char("--> ", d->character);
+			if (IS_SET(Deref(d->character)->wiznet, WIZ_PREFIX))
+				send_to_char("--> ", Deref(d->character));
 
-			sprintf(str, "%s%s%s", get_char_color(d->character, "wiznet"), string, END_COLOR(d->character));
-			act_new(str, d->character, obj, ch, TO_CHAR, POS_DEAD);
+			sprintf(str, "%s%s%s", get_char_color(Deref(d->character), "wiznet"), string, END_COLOR(Deref(d->character)));
+			act_new(str, Deref(d->character), obj, ch, TO_CHAR, POS_DEAD);
 		}
 	}
 }
@@ -1165,16 +1165,16 @@ void do_echo(CHAR_DATA *ch, char *argument)
 	{
 		if (d->connected == CON_PLAYING)
 		{
-			colorconv(buffer, argument, d->character);
+			colorconv(buffer, argument, Deref(d->character));
 
-			if (get_trust(d->character) >= get_trust(ch))
+			if (get_trust(Deref(d->character)) >= get_trust(ch))
 			{
-				send_to_char(ch->name, d->character);
-				send_to_char(" globals: ", d->character);
+				send_to_char(ch->name, Deref(d->character));
+				send_to_char(" globals: ", Deref(d->character));
 			}
 
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			send_to_char(buffer, Deref(d->character));
+			send_to_char("\n\r", Deref(d->character));
 		}
 	}
 }
@@ -1192,11 +1192,11 @@ void do_immecho(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && (d->character->level > 51))
+		if (d->connected == CON_PLAYING && (Deref(d->character)->level > 51))
 		{
-			colorconv(buffer, argument, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, argument, Deref(d->character));
+			send_to_char(buffer, Deref(d->character));
+			send_to_char("\n\r", Deref(d->character));
 		}
 	}
 }
@@ -1214,15 +1214,15 @@ void do_recho(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && d->character->in_room == ch->in_room)
+		if (d->connected == CON_PLAYING && Deref(d->character)->in_room == ch->in_room)
 		{
-			colorconv(buffer, argument, d->character);
+			colorconv(buffer, argument, Deref(d->character));
 
-			if (get_trust(d->character) >= get_trust(ch) && !is_npc(ch))
-				send_to_char("local> ", d->character);
+			if (get_trust(Deref(d->character)) >= get_trust(ch) && !is_npc(ch))
+				send_to_char("local> ", Deref(d->character));
 
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			send_to_char(buffer, Deref(d->character));
+			send_to_char("\n\r", Deref(d->character));
 		}
 	}
 }
@@ -1241,17 +1241,17 @@ void do_zecho(CHAR_DATA *ch, char *argument)
 	for (d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
+			&& Deref(d->character)->in_room != nullptr
 			&& ch->in_room != nullptr
-			&& d->character->in_room->area == ch->in_room->area)
+			&& Deref(d->character)->in_room->area == ch->in_room->area)
 		{
-			colorconv(buffer, argument, d->character);
+			colorconv(buffer, argument, Deref(d->character));
 
-			if (get_trust(d->character) >= get_trust(ch) && !is_npc(ch))
-				send_to_char("zone> ", d->character);
+			if (get_trust(Deref(d->character)) >= get_trust(ch) && !is_npc(ch))
+				send_to_char("zone> ", Deref(d->character));
 
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			send_to_char(buffer, Deref(d->character));
+			send_to_char("\n\r", Deref(d->character));
 		}
 	}
 }
@@ -1334,11 +1334,11 @@ void do_transfer(CHAR_DATA *ch, char *argument)
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
 			if (d->connected == CON_PLAYING
-				&& d->character != ch
-				&& d->character->in_room != nullptr
-				&& can_see(ch, d->character))
+				&& Deref(d->character) != ch
+				&& Deref(d->character)->in_room != nullptr
+				&& can_see(ch, Deref(d->character)))
 			{
-				auto buffer = fmt::format("{} {}", d->character->name, arg2);
+				auto buffer = fmt::format("{} {}", Deref(d->character)->name, arg2);
 				do_transfer(ch, buffer.data());
 			}
 		}
@@ -3318,20 +3318,20 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
-			if (d->character != nullptr
+			if (Deref(d->character) != nullptr
 				&& d->connected == CON_PLAYING
-				&& d->character->in_room != nullptr
-				&& can_see(ch, d->character)
-				&& can_see_room(ch, d->character->in_room))
+				&& Deref(d->character)->in_room != nullptr
+				&& can_see(ch, Deref(d->character))
+				&& can_see_room(ch, Deref(d->character)->in_room))
 			{
-				victim = d->character;
+				victim = Deref(d->character);
 				count++;
 
-				if (d->original != nullptr)
+				if (Deref(d->original) != nullptr)
 				{
 					sprintf(buf, "%3d) %s (in the body of %s) is in %s [%d]\n\r",
 						count,
-						d->original->true_name,
+						Deref(d->original)->true_name,
 						victim->short_descr,
 						get_room_name(victim->in_room),
 						victim->in_room->vnum);
@@ -3431,7 +3431,7 @@ void reboot_now(CHAR_DATA *ch)
 	for (d = descriptor_list; d != nullptr; d = d_next)
 	{
 		d_next = d->next;
-		vch = d->original ? d->original : d->character;
+		vch = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 
 		if (vch != nullptr && d->connected == 0)
 		{
@@ -3640,7 +3640,7 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 	{
 		for (d = ch->desc->snoop_by; d != nullptr; d = d->snoop_by)
 		{
-			if (d->character == victim || d->original == victim)
+			if (Deref(d->character) == victim || Deref(d->original) == victim)
 			{
 				send_to_char("No snoop loops.\n\r", ch);
 				return;
@@ -3672,7 +3672,7 @@ void do_switch(CHAR_DATA *ch, char *argument)
 	if (ch->desc == nullptr)
 		return;
 
-	if (ch->desc->original != nullptr)
+	if (Deref(ch->desc->original) != nullptr)
 	{
 		send_to_char("You are already switched.\n\r", ch);
 		return;
@@ -3716,8 +3716,8 @@ void do_switch(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "$N switches into %s.", victim->short_descr);
 	wiznet(buf, ch, nullptr, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
 
-	ch->desc->character = victim;
-	ch->desc->original = ch;
+	ch->desc->character = victim->self;
+	ch->desc->original = ch->self;
 	victim->desc = ch->desc;
 	// The possessed mob borrows the immortal's pcdata (it's an NPC, so its own
 	// pcdata is null). Ownership stays with the original body; do_return calls
@@ -3743,7 +3743,7 @@ void do_return(CHAR_DATA *ch, char *argument)
 	if (ch->desc == nullptr)
 		return;
 
-	if (ch->desc->original == nullptr)
+	if (Deref(ch->desc->original) == nullptr)
 	{
 		send_to_char("You aren't switched.\n\r", ch);
 		return;
@@ -3759,12 +3759,12 @@ void do_return(CHAR_DATA *ch, char *argument)
 
 	sprintf(buf, "$N returns from %s.", ch->short_descr);
 
-	wiznet(buf, ch->desc->original, 0, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
+	wiznet(buf, Deref(ch->desc->original), 0, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
 
 	ch->pcdata.release();		// relinquish the borrowed pcdata WITHOUT freeing it
 	ch->desc->character = ch->desc->original;
 	ch->desc->original = nullptr;
-	ch->desc->character->desc = ch->desc;
+	Deref(ch->desc->character)->desc = ch->desc;
 	ch->desc = nullptr;
 }
 
@@ -4309,7 +4309,7 @@ void do_restore(CHAR_DATA *ch, char *argument)
 
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
-			victim = d->character;
+			victim = Deref(d->character);
 
 			if (victim == nullptr || is_npc(victim))
 				continue;
@@ -5824,11 +5824,11 @@ void do_sockets(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->character != nullptr
-			&& ((!d->original && can_see(ch, d->character))
-				|| (d->original && can_see(ch, d->original)))
-			&& (!IS_SET(d->character->comm, COMM_NOSOCKET) || get_trust(ch) == MAX_LEVEL)
-			&& (arg[0] == '\0' || is_name(arg, d->character->true_name) || bDis))
+		if (Deref(d->character) != nullptr
+			&& ((!Deref(d->original) && can_see(ch, Deref(d->character)))
+				|| (Deref(d->original) && can_see(ch, Deref(d->original))))
+			&& (!IS_SET(Deref(d->character)->comm, COMM_NOSOCKET) || get_trust(ch) == MAX_LEVEL)
+			&& (arg[0] == '\0' || is_name(arg, Deref(d->character)->true_name) || bDis))
 		{
 			count++;
 
@@ -5856,15 +5856,15 @@ void do_sockets(CHAR_DATA *ch, char *argument)
 				d->connected == (CON_READ_MOTD) ? "Getting motd" :
 				d->connected == (CON_CHOOSE_WEAPON) ? "Choosing weapon" :
 				d->connected == (CON_GET_CABAL) ? "Getting cabal" : "null",
-				(int)((current_time - d->character->logon) / 60),
-				d->original
-					? (d->original->true_name)
-						? d->original->true_name
-						: d->original->name
-					: d->character
-						? (d->character->true_name)
-							? d->character->true_name
-							: d->character->name
+				(int)((current_time - Deref(d->character)->logon) / 60),
+				Deref(d->original)
+					? (Deref(d->original)->true_name)
+						? Deref(d->original)->true_name
+						: Deref(d->original)->name
+					: Deref(d->character)
+						? (Deref(d->character)->true_name)
+							? Deref(d->character)->true_name
+							: Deref(d->character)->name
 						: "(none)",
 				bDis && get_trust(ch) > 58 ? d->host : "unknown");
 		}
@@ -5915,7 +5915,7 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->character != nullptr && can_see(ch, d->character))
+		if (Deref(d->character) != nullptr && can_see(ch, Deref(d->character)))
 		{
 			CHARLIST[i].des = d;
 			i++;
@@ -5952,14 +5952,14 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 			sprintf(buf + strlen(buf), "[%3d %2d] %s@%s\n\r",
 				CHARLIST[j].des->descriptor,
 				CHARLIST[j].des->connected,
-				CHARLIST[j].des->original
-					? CHARLIST[j].des->original->true_name
-						? CHARLIST[j].des->original->true_name
-						: CHARLIST[j].des->original->name
-					: CHARLIST[j].des->character
-						? CHARLIST[j].des->character->true_name
-							? CHARLIST[j].des->character->true_name
-							: CHARLIST[j].des->character->name
+				Deref(CHARLIST[j].des->original)
+					? Deref(CHARLIST[j].des->original)->true_name
+						? Deref(CHARLIST[j].des->original)->true_name
+						: Deref(CHARLIST[j].des->original)->name
+					: Deref(CHARLIST[j].des->character)
+						? Deref(CHARLIST[j].des->character)->true_name
+							? Deref(CHARLIST[j].des->character)->true_name
+							: Deref(CHARLIST[j].des->character)->name
 						: "(none)",
 				(get_trust(ch) >= 55) ? CHARLIST[j].des->host : "unknown");
 		}
@@ -5975,10 +5975,10 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 		sprintf(buf + strlen(buf), "[%3d %2d] %s@%s\n\r",
 			CHARLIST[j].des->descriptor,
 			CHARLIST[j].des->connected,
-			CHARLIST[j].des->original
-				? CHARLIST[j].des->original->name
-				: CHARLIST[j].des->character
-					? CHARLIST[j].des->character->name : "(none)",
+			Deref(CHARLIST[j].des->original)
+				? Deref(CHARLIST[j].des->original)->name
+				: Deref(CHARLIST[j].des->character)
+					? Deref(CHARLIST[j].des->character)->name : "(none)",
 			(get_trust(ch) >= 55) ? CHARLIST[j].des->host : "unknown");
 	}
 

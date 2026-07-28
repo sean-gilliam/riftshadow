@@ -246,8 +246,8 @@ void game_loop_unix(int control)
 				FD_CLR(d->descriptor, &in_set);
 				FD_CLR(d->descriptor, &out_set);
 
-				if (d->character && d->character->level > 1)
-					save_char_obj(d->character);
+				if (Deref(d->character) && Deref(d->character)->level > 1)
+					save_char_obj(Deref(d->character));
 
 				d->outtop = 0;
 				close_socket(d);
@@ -264,15 +264,15 @@ void game_loop_unix(int control)
 
 			if (FD_ISSET(d->descriptor, &in_set))
 			{
-				if (d->character != nullptr)
-					d->character->timer = 0;
+				if (Deref(d->character) != nullptr)
+					Deref(d->character)->timer = 0;
 
 				if (!read_from_descriptor(d))
 				{
 					FD_CLR(d->descriptor, &out_set);
 
-					if (d->character != nullptr && d->character->level > 1)
-						save_char_obj(d->character);
+					if (Deref(d->character) != nullptr && Deref(d->character)->level > 1)
+						save_char_obj(Deref(d->character));
 
 					d->outtop = 0;
 					close_socket(d);
@@ -280,42 +280,51 @@ void game_loop_unix(int control)
 				}
 			}
 
-			if (d->character != nullptr && d->character->wait > 0)
-				--d->character->wait;
+			if (Deref(d->character) != nullptr && Deref(d->character)->wait > 0)
+				--Deref(d->character)->wait;
 
-			if (d->character != nullptr && d->character->wait <= 0 && d->character->pcdata->pending)
+			if (Deref(d->character) != nullptr && Deref(d->character)->wait <= 0 && Deref(d->character)->pcdata->pending)
 			{
+				CHAR_DATA *player;
 				int i = 0;
-				interpret(d->character, d->character->pcdata->queue[0]);
 
-				if (!d->character) // Cal: Silly Morglum.  But what if we just interpreted a "quit"?
-					continue;	   // then d->character is null and we just crashed. :(
+				interpret(Deref(d->character), Deref(d->character)->pcdata->queue[0]);
 
-				for (i = 1; i < d->character->pcdata->write_next; i++)
+				// The queued command can be "quit", which extracts the
+				// character out from under us -- so read the connection again
+				// here rather than before the call. Everything below this point
+				// only shuffles the command queue and cannot free anything, so
+				// the one read covers all of it.
+				player = Deref(d->character);
+
+				if (!player)
+					continue;
+
+				for (i = 1; i < player->pcdata->write_next; i++)
 				{
 					if (i > MAX_QUEUE - 1) break;
-					strcpy(d->character->pcdata->queue[(i - 1)], d->character->pcdata->queue[i]);
+					strcpy(player->pcdata->queue[(i - 1)], player->pcdata->queue[i]);
 				}
 
-				d->character->pcdata->write_next--;
+				player->pcdata->write_next--;
 
-				for (i = d->character->pcdata->write_next; i < MAX_QUEUE; i++)
+				for (i = player->pcdata->write_next; i < MAX_QUEUE; i++)
 				{
-					d->character->pcdata->queue[i][0] = '\0';
+					player->pcdata->queue[i][0] = '\0';
 				}
 
-				if (d->character->pcdata->write_next == 0)
-					d->character->pcdata->pending= false;
+				if (player->pcdata->write_next == 0)
+					player->pcdata->pending = false;
 
 				continue;
 				/*
-					d->character->pcdata->queue[d->character->pcdata->read_next][0] = '\0';
-					d->character->pcdata->read_next++;
+					Deref(d->character)->pcdata->queue[Deref(d->character)->pcdata->read_next][0] = '\0';
+					Deref(d->character)->pcdata->read_next++;
 
-					if (d->character->pcdata->read_next > 19)
-						d->character->pcdata->read_next = 0;
-					if (d->character->pcdata->queue[d->character->pcdata->read_next][0] == '\0')
-						d->character->pcdata->pending= false;
+					if (Deref(d->character)->pcdata->read_next > 19)
+						Deref(d->character)->pcdata->read_next = 0;
+					if (Deref(d->character)->pcdata->queue[Deref(d->character)->pcdata->read_next][0] == '\0')
+						Deref(d->character)->pcdata->pending= false;
 				*/
 			}
 
@@ -323,7 +332,7 @@ void game_loop_unix(int control)
 			if (d->incomm[0] != '\0')
 			{
 				d->fcommand = true;
-				stop_idling(d->character);
+				stop_idling(Deref(d->character));
 
 				/* OLC */
 				if (d->showstr_point)
@@ -332,11 +341,11 @@ void game_loop_unix(int control)
 				}
 				else if (d->pString)
 				{
-					string_add(d->character, d->incomm);
+					string_add(Deref(d->character), d->incomm);
 				}
-				else if (d->connected == CON_PLAYING && d->character->pcdata && d->character->pcdata->entering_text)
+				else if (d->connected == CON_PLAYING && Deref(d->character)->pcdata && Deref(d->character)->pcdata->entering_text)
 				{
-					process_text(d->character, d->incomm);
+					process_text(Deref(d->character), d->incomm);
 				}
 				else
 				{
@@ -353,8 +362,8 @@ void game_loop_unix(int control)
 				}
 				/*		if (d->showstr_point)
 							show_string(d,d->incomm);
-						else if ( d->connected == CON_PLAYING && d->character->pcdata &&
-				   d->character->pcdata->entering_text ) process_text(d->character, d->incomm); else if ( d->connected
+						else if ( d->connected == CON_PLAYING && Deref(d->character)->pcdata &&
+				   Deref(d->character)->pcdata->entering_text ) process_text(Deref(d->character), d->incomm); else if ( d->connected
 				   == CON_PLAYING ) substitute_alias( d, d->incomm ); else nanny( d, d->incomm );
 				*/
 				d->incomm[0] = '\0';
@@ -377,8 +386,8 @@ void game_loop_unix(int control)
 			{
 				if (!process_output(d, true))
 				{
-					if (d->character != nullptr && d->character->level > 1)
-						save_char_obj(d->character);
+					if (Deref(d->character) != nullptr && Deref(d->character)->level > 1)
+						save_char_obj(Deref(d->character));
 
 					d->outtop = 0;
 					close_socket(d);
@@ -582,7 +591,7 @@ void close_socket(DESCRIPTOR_DATA *dclose)
 		}
 	}
 
-	if ((ch = dclose->character) != nullptr)
+	if ((ch = Deref(dclose->character)) != nullptr)
 	{
 		RS.Logger.Info("Closing link to {}.", ch->name);
 
@@ -603,7 +612,7 @@ void close_socket(DESCRIPTOR_DATA *dclose)
 		}
 		else
 		{
-			free_char(dclose->original ? dclose->original : dclose->character);
+			free_char(Deref(dclose->original) ? Deref(dclose->original) : Deref(dclose->character));
 		}
 	}
 
@@ -813,7 +822,7 @@ bool process_output(DESCRIPTOR_DATA *d, bool fPrompt)
 		CHAR_DATA *ch;
 		CHAR_DATA *victim;
 
-		ch = d->character;
+		ch = Deref(d->character);
 
 		/* battle prompt */
 		if ((victim = Deref(ch->fighting)) != nullptr)
@@ -842,13 +851,13 @@ bool process_output(DESCRIPTOR_DATA *d, bool fPrompt)
 			}
 		}
 
-		ch = d->original ? d->original : d->character;
+		ch = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 		if (!IS_SET(ch->comm, COMM_COMPACT))
 			write_to_buffer(d, "\n\r", 2);
 		if (!is_npc(ch) && ch->pcdata->entering_text)
 			write_to_buffer(d, ": ", 2);
 		else if (IS_SET(ch->comm, COMM_PROMPT))
-			bust_a_prompt(d->character);
+			bust_a_prompt(Deref(d->character));
 
 		if (IS_SET(ch->comm, COMM_TELNET_GA))
 			write_to_buffer(d, go_ahead_str, 0);
@@ -865,8 +874,8 @@ bool process_output(DESCRIPTOR_DATA *d, bool fPrompt)
 	 */
 	if (d->snoop_by != nullptr)
 	{
-		if (d->character != nullptr)
-			write_to_buffer(d->snoop_by, d->character->name, 0);
+		if (Deref(d->character) != nullptr)
+			write_to_buffer(d->snoop_by, Deref(d->character)->name, 0);
 
 		write_to_buffer(d->snoop_by, "> ", 2);
 		write_to_buffer(d->snoop_by, d->outbuf, d->outtop);
@@ -1083,9 +1092,9 @@ void bust_a_prompt(CHAR_DATA *ch)
 					for (d = descriptor_list; d != nullptr; d = d->next)
 					{
 						if (d->connected == CON_PLAYING
-							&& d->character->in_room != nullptr
-							&& d->character->in_room->area == ch->in_room->area
-							&& !is_immortal(d->character))
+							&& Deref(d->character)->in_room != nullptr
+							&& Deref(d->character)->in_room->area == ch->in_room->area
+							&& !is_immortal(Deref(d->character)))
 						{
 							number_people++;
 						}
@@ -1107,9 +1116,9 @@ void bust_a_prompt(CHAR_DATA *ch)
 					for (d = descriptor_list; d != nullptr; d = d->next)
 					{
 						if (d->connected == CON_PLAYING
-							&& d->character->in_room != nullptr
-							&& d->character->in_room->area == ch->in_room->area
-							&& can_see(ch, d->character))
+							&& Deref(d->character)->in_room != nullptr
+							&& Deref(d->character)->in_room->area == ch->in_room->area
+							&& can_see(ch, Deref(d->character)))
 						{
 							number_people++;
 						}
@@ -1131,7 +1140,7 @@ void bust_a_prompt(CHAR_DATA *ch)
 
 					for (d = descriptor_list; d != nullptr; d = d->next)
 					{
-						if (d->connected == CON_PLAYING && can_see(ch, d->character))
+						if (d->connected == CON_PLAYING && can_see(ch, Deref(d->character)))
 							number_people++;
 					}
 
@@ -1319,7 +1328,7 @@ bool output_buffer(DESCRIPTOR_DATA *d)
 				act = true;
 				break;
 			case 'n':
-				if (d->character && is_ansi(d->character))
+				if (Deref(d->character) && is_ansi(Deref(d->character)))
 					sprintf(buf2, "%s", ANSI_NORMAL);
 				else
 					buf2[0] = '\0';
@@ -1335,7 +1344,7 @@ bool output_buffer(DESCRIPTOR_DATA *d)
 
 		if (act)
 		{
-			if (d->character && is_ansi(d->character))
+			if (Deref(d->character) && is_ansi(Deref(d->character)))
 			{
 				sprintf(buf2, "%s", color_value_string(color, bold, flash));
 				color_code = true;
@@ -1467,7 +1476,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 		argument++;
 	}
 
-	ch = d->character;
+	ch = Deref(d->character);
 
 	switch (d->connected)
 	{
@@ -1503,7 +1512,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			}
 
 			fOld = load_char_obj(d, argument);
-			ch = d->character;
+			ch = Deref(d->character);
 
 			if (IS_SET(ch->act, PLR_DENY))
 			{
@@ -1578,8 +1587,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				case 'n':
 					write_to_buffer(d, "Thank you.  Please select a more suitable name: ", 0);
 
-					free_char(d->character);
-					d->character = nullptr;
+					free_char(Deref(d->character));
 					d->connected = CON_GET_NAME;
 					return;
 				default:
@@ -1667,15 +1675,21 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 					for (d_old = descriptor_list; d_old != nullptr; d_old = d_next)
 					{
 						d_next = d_old->next;
-						if (d_old == d || d_old->character == nullptr)
+						CHAR_DATA *oldDriving = Deref(d_old->character);
+						CHAR_DATA *oldSwitchedFrom = Deref(d_old->original);
+						char *oldName;
+
+						if (d_old == d || oldDriving == nullptr)
 							continue;
 
-						if (str_cmp((ch->true_name ? ch->true_name : ch->name), d_old->original
-							? d_old->original->name
-							: (d_old->character->true_name ? d_old->character->true_name : d_old->character->name)))
-						{
+						oldName = oldSwitchedFrom
+							? oldSwitchedFrom->name
+							: (oldDriving->true_name ? oldDriving->true_name : oldDriving->name);
+
+						// str_cmp is true when the names DIFFER, so this skips
+						// every connection that is not the same player.
+						if (str_cmp((ch->true_name ? ch->true_name : ch->name), oldName))
 							continue;
-						}
 
 						close_socket(d_old);
 					}
@@ -1685,10 +1699,9 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 
 					write_to_buffer(d, "Reconnect attempt failed.\n\rName: ", 0);
 
-					if (d->character != nullptr)
+					if (Deref(d->character) != nullptr)
 					{
-						free_char(d->character);
-						d->character = nullptr;
+						free_char(Deref(d->character));
 					}
 
 					d->connected = CON_GET_NAME;
@@ -1697,10 +1710,9 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				case 'N':
 					write_to_buffer(d, "Name: ", 0);
 
-					if (d->character != nullptr)
+					if (Deref(d->character) != nullptr)
 					{
-						free_char(d->character);
-						d->character = nullptr;
+						free_char(Deref(d->character));
 					}
 
 					d->connected = CON_GET_NAME;
@@ -1745,8 +1757,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				case 'n':
 				case 'N':
 					write_to_buffer(d, "Ok, what IS it, then? ", 0);
-					free_char(d->character);
-					d->character = nullptr;
+					free_char(Deref(d->character));
 					d->connected = CON_GET_NAME;
 					break;
 				default:
@@ -2961,16 +2972,22 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 	CHAR_DATA *ch, *fch, *fch_next;
 	OBJ_DATA *obj;
 
+	// The half-built character sitting on the login screen, which this function
+	// either copies a password out of or replaces with the reconnected body.
+	// Read once -- nothing below frees it until the free_char that ends its
+	// life, and nothing reads it after that.
+	CHAR_DATA *pending = Deref(d->character);
+
 	for (ch = char_list; ch != nullptr; ch = ch->next)
 	{
 		if (!is_npc(ch)
 			&& (!fConn || ch->desc == nullptr)
-			&& !str_cmp((d->character->true_name ? d->character->true_name : d->character->name), (ch->true_name ? ch->true_name : ch->name)))
+			&& !str_cmp((pending->true_name ? pending->true_name : pending->name), (ch->true_name ? ch->true_name : ch->name)))
 		{
 			if (fConn == false)
 			{
-				free_pstring(d->character->pcdata->pwd);
-				d->character->pcdata->pwd = palloc_string(ch->pcdata->pwd);
+				free_pstring(pending->pcdata->pwd);
+				pending->pcdata->pwd = palloc_string(ch->pcdata->pwd);
 			}
 			else
 			{
@@ -2979,14 +2996,14 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 					fch_next = fch->next;
 					if (is_npc(fch)
 						&& (is_affected(fch, gsn_animate_dead) || is_affected_by(fch, AFF_CHARM))
-						&& Deref(fch->master) == d->character)
+						&& Deref(fch->master) == pending)
 					{
 						extract_char(fch, true);
 					}
 				}
 
-				free_char(d->character);
-				d->character = ch;
+				free_char(pending);
+				d->character = ch->self;
 
 				ch->desc = d;
 				ch->timer = 0;
@@ -3025,11 +3042,18 @@ bool check_playing(DESCRIPTOR_DATA *d, char *name)
 
 	for (dold = descriptor_list; dold; dold = dold->next)
 	{
+		// A switched immortal answers to the name of their own body, not the
+		// mob they are driving -- hence the original-first pick. The guard
+		// stays on `character`, as it always has: this loop is looking for
+		// connections that are driving somebody.
+		CHAR_DATA *driving = Deref(dold->character);
+		CHAR_DATA *switchedFrom = Deref(dold->original);
+
 		if (dold != d
-			&& dold->character != nullptr
+			&& driving != nullptr
 			&& dold->connected != CON_GET_NAME
 			&& dold->connected != CON_GET_OLD_PASSWORD
-			&& !str_cmp(name, dold->original ? dold->original->true_name : dold->character->true_name))
+			&& !str_cmp(name, switchedFrom ? switchedFrom->true_name : driving->true_name))
 		{
 			write_to_buffer(d, "That character is already playing.\n\r", 0);
 			write_to_buffer(d, "Do you wish to connect anyway (Y/N)?", 0);
@@ -3126,8 +3150,8 @@ void show_string(struct descriptor_data *d, char *input)
 		return;
 	}
 
-	if (d->character)
-		show_lines = d->character->lines;
+	if (Deref(d->character))
+		show_lines = Deref(d->character)->lines;
 	else
 		show_lines = 0;
 
@@ -3202,18 +3226,18 @@ void act_area(const char *format, CHAR_DATA *ch, CHAR_DATA *victim)
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character
-			&& d->character->in_room != nullptr
-			&& d->character->in_room->area == ch->in_room->area
-			&& !IS_SET(d->character->comm, COMM_QUIET))
+			&& Deref(d->character)
+			&& Deref(d->character)->in_room != nullptr
+			&& Deref(d->character)->in_room->area == ch->in_room->area
+			&& !IS_SET(Deref(d->character)->comm, COMM_QUIET))
 		{
-			if (IS_SET(d->character->in_room->room_flags, ROOM_SILENCE))
+			if (IS_SET(Deref(d->character)->in_room->room_flags, ROOM_SILENCE))
 				continue;
 
-			if (!is_awake(d->character))
+			if (!is_awake(Deref(d->character)))
 				continue;
 
-			to = d->character;
+			to = Deref(d->character);
 
 			if ((!is_npc(to) && to->desc == nullptr))
 				continue;

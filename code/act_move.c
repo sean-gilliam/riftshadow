@@ -597,7 +597,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	{
 		for (auto d = descriptor_list; d; d = d->next)
 		{
-			auto victim = d->character;
+			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr
 				&& !is_npc(victim)

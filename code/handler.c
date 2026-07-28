@@ -496,11 +496,11 @@ int get_skill(CHAR_DATA *ch, int sn)
 	CHAR_DATA *original = ch;
 	CHAR_DATA *opponent;
 
-	if (is_npc(ch) && ch->desc && ch->desc->original && IS_SET(ch->comm, COMM_SWITCHSKILLS))
+	if (is_npc(ch) && ch->desc && Deref(ch->desc->original) && IS_SET(ch->comm, COMM_SWITCHSKILLS))
 		using_switched = true;
 
 	if (using_switched)
-		ch = ch->desc->original;
+		ch = Deref(ch->desc->original);
 
 	if (sn == -1) /* shorthand for level based skills */
 	{
@@ -849,8 +849,8 @@ void reset_char(CHAR_DATA *ch)
  */
 int get_trust(CHAR_DATA *ch)
 {
-	if (ch->desc != nullptr && ch->desc->original != nullptr)
-		ch = ch->desc->original;
+	if (ch->desc != nullptr && Deref(ch->desc->original) != nullptr)
+		ch = Deref(ch->desc->original);
 
 	if (ch->trust)
 		return ch->trust;
@@ -2306,7 +2306,7 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 		total_wealth -= ch->pIndexData->wealth;
 	}
 
-	if (ch->desc != nullptr && ch->desc->original != nullptr)
+	if (ch->desc != nullptr && Deref(ch->desc->original) != nullptr)
 	{
 		do_return(ch, "");
 		ch->desc = nullptr;
@@ -2347,9 +2347,6 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 			return;
 		}
 	}
-
-	if (ch->desc != nullptr)
-		ch->desc->character = nullptr;
 
 	free_char(ch);
 }

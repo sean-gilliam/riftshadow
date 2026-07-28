@@ -903,18 +903,18 @@ void time_update(void)
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
 			if (d->connected == CON_PLAYING
-				&& d->character->in_room
-				&& d->character->in_room->sector_type != SECT_UNDERWATER
-				&& is_outside(d->character)
-				&& is_awake(d->character)
-				&& !is_editing(d->character)
-				&& !(is_affected_area(d->character->in_room->area, gsn_whiteout))
-				&& !(is_affected_area(d->character->in_room->area, gsn_cyclone))
-				&& !(is_affected_by(d->character, AFF_BLIND)))
+				&& Deref(d->character)->in_room
+				&& Deref(d->character)->in_room->sector_type != SECT_UNDERWATER
+				&& is_outside(Deref(d->character))
+				&& is_awake(Deref(d->character))
+				&& !is_editing(Deref(d->character))
+				&& !(is_affected_area(Deref(d->character)->in_room->area, gsn_whiteout))
+				&& !(is_affected_area(Deref(d->character)->in_room->area, gsn_cyclone))
+				&& !(is_affected_by(Deref(d->character), AFF_BLIND)))
 			{
-				colorconv(colbuf, buf, d->character);
-				send_to_char(colbuf, d->character);
-				send_to_char("\n\r", d->character);
+				colorconv(colbuf, buf, Deref(d->character));
+				send_to_char(colbuf, Deref(d->character));
+				send_to_char("\n\r", Deref(d->character));
 			}
 		}
 	}
