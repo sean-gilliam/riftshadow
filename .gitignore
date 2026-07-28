@@ -94,3 +94,7 @@ bld/
 [Ll]og/
 [Ll]ogs/
 
+
+# Python bytecode (tests/smoke helpers)
+__pycache__/
+*.pyc
