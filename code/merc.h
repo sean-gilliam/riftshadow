@@ -326,7 +326,6 @@ struct descriptor_data
 	// connection on every login attempt.
 	Handle<CHAR_DATA> character;
 	Handle<CHAR_DATA> original;
-	bool valid;
 	char *host;
 	short descriptor;
 	short connected;

@@ -181,9 +181,10 @@ TEST_CASE("a handle to a freed entity is not null, but derefs to null", "[handle
 }
 
 //
-// Removing something twice is a silent no-op today (`if (!(p && p->valid))
-// return;` in the free_X functions). Preserve that: the second Remove must not
-// bump the generation again, or it would burn a generation per stray call.
+// Removing something twice is a silent no-op, which the free_X functions now
+// depend on directly: their double-free guard *is* `Deref(p->self) != p`, so
+// the second Remove must not bump the generation again or it would burn a
+// generation per stray call.
 //
 TEST_CASE("removing an already-expired handle is a no-op", "[handle]")
 {

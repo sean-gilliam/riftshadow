@@ -82,8 +82,6 @@ DESCRIPTOR_DATA *new_descriptor(void)
 
 	*d = d_zero;
 
-	d->valid = true;
-
 	// After the reset, which zeroes the old handle along with everything else.
 	d->self = descriptorHandles.Add(d);
 
@@ -92,15 +90,17 @@ DESCRIPTOR_DATA *new_descriptor(void)
 
 void free_descriptor(DESCRIPTOR_DATA *d)
 {
-	if (!(d != nullptr && d->valid))
+	// The slot map answers "is this a live connection this module handed out",
+	// which is what the old `valid` bool was for and one thing more: a
+	// descriptor that was never registered has a null handle, so a stack-built
+	// one cannot be pushed onto the free list by mistake.
+	if (d == nullptr || Deref(d->self) != d)
 		return;
 
 	free_pstring(d->host);
 
 	if (d->outbuf)
 		delete[] d->outbuf;
-
-	d->valid = false;
 
 	// Expires every handle to this connection. Must happen before it goes on
 	// the free list, since new_descriptor can hand the same address straight
@@ -459,8 +459,6 @@ OBJ_DATA *new_obj(void)
 
 	*obj = obj_zero;
 
-	obj->valid = true;
-
 	// After the reset, which zeroes the old handle along with everything else.
 	obj->self = objectHandles.Add(obj);
 
@@ -469,7 +467,7 @@ OBJ_DATA *new_obj(void)
 
 void free_obj(OBJ_DATA *obj)
 {
-	if (!(obj != nullptr && obj->valid))
+	if (obj == nullptr || Deref(obj->self) != obj)
 		return;
 
 	obj->affected.clear();
@@ -482,7 +480,6 @@ void free_obj(OBJ_DATA *obj)
 	free_pstring(obj->short_descr);
 
 	// free_pstring( obj->owner     );
-	obj->valid = false;
 
 	// Expires every handle to this object. Must happen before it goes on the
 	// free list, since new_obj can hand the same address straight back out.
@@ -517,8 +514,6 @@ CHAR_DATA *new_char(void)
 	// `*ch = ch_zero` copy-assign; move-assigning a value-initialized
 	// temporary zeroes the PODs and frees/clears the owned members.
 	*ch = CHAR_DATA();
-
-	ch->valid = true;
 
 	// After the reset, which zeroes the old handle along with everything else.
 	ch->self = charHandles.Add(ch);
@@ -570,7 +565,7 @@ void free_char(CHAR_DATA *ch)
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
 
-	if (!(ch != nullptr && ch->valid) || !ch)
+	if (ch == nullptr || Deref(ch->self) != ch)
 		return;
 
 	if (is_npc(ch))
@@ -612,8 +607,6 @@ void free_char(CHAR_DATA *ch)
 
 	ch->next = char_free;
 	char_free = ch;
-
-	ch->valid = false;
 }
 
 std::unique_ptr<PC_DATA> new_pcdata(void)
@@ -621,7 +614,6 @@ std::unique_ptr<PC_DATA> new_pcdata(void)
 	auto pcdata = std::make_unique<PC_DATA>();	// value-init zeroes every POD field
 
 	pcdata->buffer = new BUFFER;
-	pcdata->valid = true;
 
 	return pcdata;
 }

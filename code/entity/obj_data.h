@@ -35,7 +35,6 @@ struct obj_data
 	ROOM_INDEX_DATA *in_room;
 	RUNE_DATA *rune;
 	bool has_rune;
-	bool valid;
 	char *talked;
 	char *owner;
 	char *name;

@@ -19,7 +19,6 @@ struct pc_data
 {
 	PC_DATA *next;
 	BUFFER *buffer;
-	bool valid;
 	bool newbie;
 	char *pwd;
 	char *bamfin;

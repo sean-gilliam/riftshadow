@@ -813,6 +813,67 @@ SCENARIO("a recycled character address does not resurrect an old handle", "[hand
 	}
 }
 
+SCENARIO("freeing a character twice is a silent no-op", "[handles]")
+{
+	GIVEN("a character that has already been freed")
+	{
+		CHAR_DATA *ch = new_char();
+
+		free_char(ch);
+
+		WHEN("it is freed again, as the old `valid` bool used to allow")
+		{
+			// This is the half of `valid` that was never about weak references:
+			// it guarded free_char against running twice over the same struct,
+			// which would free its strings twice and put it on char_free twice.
+			// The handle answers the same question -- `Deref(ch->self) != ch`
+			// once the slot is retired -- so the bool became redundant rather
+			// than merely replaceable.
+			free_char(ch);
+
+			THEN("the character is on the free list exactly once")
+			{
+				// If the guard had failed, ch would be its own ->next and
+				// new_char would return the same address twice running.
+				CHAR_DATA *first = new_char();
+				CHAR_DATA *second = new_char();
+
+				REQUIRE(first == ch);
+				REQUIRE(second != first);
+
+				free_char(first);
+				free_char(second);
+			}
+		}
+	}
+}
+
+SCENARIO("freeing a character the slot maps never issued does nothing", "[handles]")
+{
+	GIVEN("a stack-built character, as a test factory produces")
+	{
+		CHAR_DATA ch;
+
+		WHEN("it is handed to free_char")
+		{
+			// It has a null self handle, so it never resolves to itself and the
+			// guard rejects it. The old bool did the same by being false, but
+			// only because value-initialisation happened to zero it; here it is
+			// the type's stated invariant rather than a coincidence.
+			free_char(&ch);
+
+			THEN("it is not adopted onto the free list")
+			{
+				CHAR_DATA *fresh = new_char();
+
+				REQUIRE(fresh != &ch);
+
+				free_char(fresh);
+			}
+		}
+	}
+}
+
 SCENARIO("new_obj registers an object and free_obj expires it", "[handles]")
 {
 	GIVEN("an object from new_obj")
@@ -935,7 +996,6 @@ SCENARIO("a character stops sitting on furniture that leaves the room", "[on]")
 			{
 				// This is the whole reason the clear above cannot be replaced
 				// by a liveness check: the object did not die, it moved.
-				REQUIRE(chair->valid);
 				REQUIRE(Deref(chair->self) == chair);
 			}
 		}
@@ -1152,7 +1212,6 @@ SCENARIO("a mob that gives up the hunt does not disturb the quarry", "[last_foug
 			THEN("the hunter is no longer tracking but the quarry is untouched")
 			{
 				REQUIRE(Tracking(hunter) == nullptr);
-				REQUIRE(quarry->valid);
 				REQUIRE(Deref(quarry->self) == quarry);
 			}
 		}
@@ -1268,7 +1327,6 @@ SCENARIO("the reply sweep does not disturb the character being replied to", "[re
 			THEN("the listener has no reply but the speaker is untouched")
 			{
 				REQUIRE(Replying(listener) == nullptr);
-				REQUIRE(speaker->valid);
 				REQUIRE(Deref(speaker->self) == speaker);
 			}
 		}
@@ -1404,7 +1462,6 @@ SCENARIO("die_follower detaches ordinary followers", "[follower]")
 
 			THEN("the master is still perfectly alive")
 			{
-				REQUIRE(master->valid);
 				REQUIRE(Deref(master->self) == master);
 			}
 		}
@@ -1498,7 +1555,6 @@ SCENARIO("stop_follower clears the master's pet when the pet stops following", "
 
 			THEN("the pet itself is still alive")
 			{
-				REQUIRE(pet->valid);
 				REQUIRE(Deref(pet->self) == pet);
 			}
 		}
@@ -1954,7 +2010,6 @@ SCENARIO("losing the link leaves the body in the world", "[chdesc]")
 			THEN("the body is still alive and simply has no connection")
 			{
 				REQUIRE(Connection(player) == nullptr);
-				REQUIRE(player->valid);
 				REQUIRE(Deref(player->self) == player);
 			}
 		}
@@ -2099,7 +2154,6 @@ SCENARIO("a slain player is still in the world, so extract_char is not a lifetim
 
 			THEN("the opponent is still alive")
 			{
-				REQUIRE(opponent->valid);
 				REQUIRE(Deref(opponent->self) == opponent);
 			}
 
@@ -2252,7 +2306,6 @@ SCENARIO("a slain player is still trustworthy as far as the world is concerned",
 
 			THEN("the trusted player is still alive")
 			{
-				REQUIRE(trusted->valid);
 				REQUIRE(Deref(trusted->self) == trusted);
 			}
 
@@ -2569,7 +2622,6 @@ SCENARIO("a slain player is still in the world, so their affects still name them
 
 			THEN("the caster is still alive")
 			{
-				REQUIRE(caster->valid);
 				REQUIRE(Deref(caster->self) == caster);
 			}
 

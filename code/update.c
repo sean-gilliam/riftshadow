@@ -1356,6 +1356,14 @@ void char_update(void)
 		}
 		else
 		{
+			// Held across the loop because a tick can free the character, and
+			// free_char clears ch->self on the way out -- so reading the handle
+			// back off `ch` afterwards would be reading the freed struct, and
+			// would read the *replacement's* handle if the address had already
+			// been reissued. This copy keeps the generation the loop started
+			// with, which is exactly the case a handle exists to catch.
+			Handle<CHAR_DATA> ticking = ch->self;
+
 			for (auto it = ch->affected.begin(); it != ch->affected.end(); )
 			{
 				auto next = std::next(it);
@@ -1373,7 +1381,7 @@ void char_update(void)
 
 					/* A tick can extract (free) the character, clearing its
 					 * affect list; stop before touching the stale iterator. */
-					if (!ch->valid || (!ghost && ch->ghost > 0))
+					if (Deref(ticking) != ch || (!ghost && ch->ghost > 0))
 						break;
 
 					if (!paf)
@@ -1392,7 +1400,7 @@ void char_update(void)
 					if (paf->tick_fun)
 						(*paf->tick_fun)(ch, paf);
 
-					if (!ch->valid || (!ghost && ch->ghost > 0))
+					if (Deref(ticking) != ch || (!ghost && ch->ghost > 0))
 						break;
 				}
 				else if (paf->type == gsn_entwine
@@ -1524,6 +1532,11 @@ void obj_update(void)
 				affect_strip_obj(obj, gsn_immolate);
 		}
 
+		// Held across the loop for the same reason as char_update's: free_obj
+		// clears obj->self, so the handle has to be copied before the tick that
+		// might run it.
+		Handle<OBJ_DATA> ticking = obj->self;
+
 		/* go through affects and decrement */
 		for (auto it = obj->affected.begin(); it != obj->affected.end(); )
 		{
@@ -1537,7 +1550,7 @@ void obj_update(void)
 			/* A tick can extract (free) the object — e.g. a spent crystal
 			 * crumbling to dust — which clears its affect list. Stop before
 			 * touching the now-invalidated iterator. */
-			if (!obj->valid)
+			if (Deref(ticking) != obj)
 				break;
 
 			if (paf->duration > 0)

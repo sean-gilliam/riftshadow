@@ -107,8 +107,6 @@ SCENARIO("stop_fighting with fBoth ends the fight on both sides", "[stop_fightin
 			{
 				// This is the whole reason the clear cannot be replaced by a
 				// liveness check: nobody died, the fight just ended.
-				REQUIRE(ch->valid);
-				REQUIRE(victim->valid);
 				REQUIRE(Deref(ch->self) == ch);
 				REQUIRE(Deref(victim->self) == victim);
 			}
