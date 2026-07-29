@@ -183,9 +183,12 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 			{
 				act("The smoke parts for you allowing you passage.", ch, 0, 0, TO_CHAR);
 			}
-			else if (Deref(raf->owner) == Deref(ch->master) && automatic)
+			else
 			{
-				act("You follow $N through the smoke.", ch, 0, Deref(ch->master), TO_CHAR);
+				CHAR_DATA *master = Deref(ch->master);
+
+				if (Deref(raf->owner) == master && automatic)
+					act("You follow $N through the smoke.", ch, 0, master, TO_CHAR);
 			}
 		}
 		else
@@ -266,9 +269,11 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		return;
 	}
 
+	CHAR_DATA *master = Deref(ch->master);
+
 	if (is_affected_by(ch, AFF_CHARM)
-		&& Deref(ch->master) != nullptr
-		&& in_room == Deref(ch->master)->in_room)
+		&& master != nullptr
+		&& in_room == master->in_room)
 	{
 		send_to_char("What?  And leave your beloved master?\n\r", ch);
 		return;
@@ -665,8 +670,11 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		auto owner = ch;
 		imaf = affect_find(ch->affected, gsn_impale);
-		if (imaf && Deref(imaf->owner))
-			owner = Deref(imaf->owner);
+
+		CHAR_DATA *impaler = imaf ? Deref(imaf->owner) : nullptr;
+
+		if (impaler)
+			owner = impaler;
 
 		damage_new(owner, ch, dice(3, 3), TYPE_UNDEFINED, DAM_NONE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "Your gaping wound*");
 
@@ -728,7 +736,9 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		{
 			if (raf.type == gsn_riptide && raf.location == APPLY_ROOM_NONE && raf.modifier == 1)
 			{
-				if (is_safe_new(Deref(raf.owner), ch, false) || Deref(raf.owner) == ch)
+				CHAR_DATA *rafOwner = Deref(raf.owner);
+
+				if (is_safe_new(rafOwner, ch, false) || rafOwner == ch)
 					break;
 
 				ROOM_INDEX_DATA *riptideroom = nullptr;
@@ -775,10 +785,12 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_affected_by(ch, AFF_FLYING))
 			break;
 
-		if (is_same_cabal(ch, Deref(raf->owner)) || is_same_group(ch, Deref(raf->owner)))
+		CHAR_DATA *rafOwner = Deref(raf->owner);
+
+		if (is_same_cabal(ch, rafOwner) || is_same_group(ch, rafOwner))
 			break;
 
-		if (is_safe(ch, Deref(raf->owner)))
+		if (is_safe(ch, rafOwner))
 			break;
 
 		if (number_percent() <= (5 * (get_curr_stat(ch, STAT_DEX) - 15)))
@@ -808,7 +820,9 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		auto raf = affect_find_room(to_room->affected, gsn_quicksand);
 
-		if (is_safe_new(Deref(raf->owner), ch, false) || is_same_group(Deref(raf->owner), ch) || is_same_cabal(Deref(raf->owner), ch))
+		CHAR_DATA *rafOwner = Deref(raf->owner);
+
+		if (is_safe_new(rafOwner, ch, false) || is_same_group(rafOwner, ch) || is_same_cabal(rafOwner, ch))
 			break;
 
 		if (is_affected(ch, gsn_ultradiffusion))
@@ -845,7 +859,9 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	{
 		auto raf = affect_find_room(to_room->affected, gsn_stalactites);
 
-		if (is_safe_new(Deref(raf->owner), ch, false) || is_same_group(Deref(raf->owner), ch) || is_same_cabal(Deref(raf->owner), ch))
+		CHAR_DATA *rafOwner = Deref(raf->owner);
+
+		if (is_safe_new(rafOwner, ch, false) || is_same_group(rafOwner, ch) || is_same_cabal(rafOwner, ch))
 			break;
 
 		if (is_affected(ch, gsn_ultradiffusion))
@@ -1028,11 +1044,13 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 				CALL_IEVENT(obj, TRAP_IGREET, ch, obj);
 		}
 
-		if (is_npc(fch) && Deref(fch->last_fought) == ch && number_percent() > 60)
+		CHAR_DATA *lastFought = Deref(fch->last_fought);
+
+		if (is_npc(fch) && lastFought == ch && number_percent() > 60)
 		{
 			track_attack(fch, ch);
 		}
-		else if (is_npc(fch) && Deref(fch->last_fought) == ch)
+		else if (is_npc(fch) && lastFought == ch)
 		{
 			RS.Queue.AddToQueue((number_percent() > 25) ? 1 : 2, "move_char", "track_attack", track_attack, fch, ch);
 		}

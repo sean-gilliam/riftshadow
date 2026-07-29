@@ -5992,19 +5992,22 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 		if (!strcmp(CHARLIST[j].des->host, CHARLIST[j + 1].des->host)
 			|| (j != 0 && !strcmp(CHARLIST[j].des->host, CHARLIST[j - 1].des->host)))
 		{
+			CHAR_DATA *original = Deref(CHARLIST[j].des->original);
+			CHAR_DATA *player = Deref(CHARLIST[j].des->character);
+
 			count++;
 
 			sprintf(buf + strlen(buf), "[%3d %2d] %s@%s\n\r",
 				CHARLIST[j].des->descriptor,
 				CHARLIST[j].des->connected,
-				Deref(CHARLIST[j].des->original)
-					? Deref(CHARLIST[j].des->original)->true_name
-						? Deref(CHARLIST[j].des->original)->true_name
-						: Deref(CHARLIST[j].des->original)->name
-					: Deref(CHARLIST[j].des->character)
-						? Deref(CHARLIST[j].des->character)->true_name
-							? Deref(CHARLIST[j].des->character)->true_name
-							: Deref(CHARLIST[j].des->character)->name
+				original
+					? original->true_name
+						? original->true_name
+						: original->name
+					: player
+						? player->true_name
+							? player->true_name
+							: player->name
 						: "(none)",
 				(get_trust(ch) >= 55) ? CHARLIST[j].des->host : "unknown");
 		}
@@ -6016,14 +6019,17 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 	*/
 	if (!strcmp(CHARLIST[j].des->host, CHARLIST[j - 1].des->host))
 	{
+		CHAR_DATA *original = Deref(CHARLIST[j].des->original);
+		CHAR_DATA *player = Deref(CHARLIST[j].des->character);
+
 		count++;
 		sprintf(buf + strlen(buf), "[%3d %2d] %s@%s\n\r",
 			CHARLIST[j].des->descriptor,
 			CHARLIST[j].des->connected,
-			Deref(CHARLIST[j].des->original)
-				? Deref(CHARLIST[j].des->original)->name
-				: Deref(CHARLIST[j].des->character)
-					? Deref(CHARLIST[j].des->character)->name : "(none)",
+			original
+				? original->name
+				: player
+					? player->name : "(none)",
 			(get_trust(ch) >= 55) ? CHARLIST[j].des->host : "unknown");
 	}
 

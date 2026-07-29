@@ -902,19 +902,21 @@ void time_update(void)
 	{
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
+			CHAR_DATA *wch = Deref(d->character);
+
 			if (d->connected == CON_PLAYING
-				&& Deref(d->character)->in_room
-				&& Deref(d->character)->in_room->sector_type != SECT_UNDERWATER
-				&& is_outside(Deref(d->character))
-				&& is_awake(Deref(d->character))
-				&& !is_editing(Deref(d->character))
-				&& !(is_affected_area(Deref(d->character)->in_room->area, gsn_whiteout))
-				&& !(is_affected_area(Deref(d->character)->in_room->area, gsn_cyclone))
-				&& !(is_affected_by(Deref(d->character), AFF_BLIND)))
+				&& wch->in_room
+				&& wch->in_room->sector_type != SECT_UNDERWATER
+				&& is_outside(wch)
+				&& is_awake(wch)
+				&& !is_editing(wch)
+				&& !(is_affected_area(wch->in_room->area, gsn_whiteout))
+				&& !(is_affected_area(wch->in_room->area, gsn_cyclone))
+				&& !(is_affected_by(wch, AFF_BLIND)))
 			{
-				colorconv(colbuf, buf, Deref(d->character));
-				send_to_char(colbuf, Deref(d->character));
-				send_to_char("\n\r", Deref(d->character));
+				colorconv(colbuf, buf, wch);
+				send_to_char(colbuf, wch);
+				send_to_char("\n\r", wch);
 			}
 		}
 	}
@@ -1250,9 +1252,11 @@ void char_update(void)
 			colorconv(buf1, "{GYou are now level 20.{x\n\r", ch);
 			send_to_char(buf1, ch);
 
-			if (Deref(ch->pet))
+			CHAR_DATA *pet = Deref(ch->pet);
+
+			if (pet)
 			{
-				sprintf(buf1, "Remember, you can ask your familiar questions.  For example, 'say %s, how do I get to my guild?'.\n\r", Deref(ch->pet)->short_descr);
+				sprintf(buf1, "Remember, you can ask your familiar questions.  For example, 'say %s, how do I get to my guild?'.\n\r", pet->short_descr);
 				send_to_char(buf1, ch);
 			}
 		}
@@ -3070,7 +3074,7 @@ bool do_mob_cast(CHAR_DATA *ch)
 	{
 		for (victim = ch->in_room->people; victim != nullptr; victim = victim->next_in_room)
 		{
-			if (victim && !is_npc(victim) && Deref(victim->fighting) && Deref(victim->fighting) == ch)
+			if (victim && !is_npc(victim) && Deref(victim->fighting) == ch)
 				in_room++;
 		}
 
