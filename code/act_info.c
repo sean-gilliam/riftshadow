@@ -189,7 +189,11 @@ char *format_obj_to_char(OBJ_DATA *obj, CHAR_DATA *ch, bool fShort)
 	if (is_affected_obj(obj, gsn_stash) && is_immortal(ch))
 	{
 		OBJ_AFFECT_DATA *oaf = affect_find_obj(obj->affected, gsn_stash);
-		sprintf(buf, "(Stashed by %s) ", oaf->owner->name);
+		CHAR_DATA *stasher = Deref(oaf->owner);
+
+		// An object outlives whoever stashed it, and nothing removes the affect
+		// when they go, so this is a routine case rather than a defensive one.
+		sprintf(buf, "(Stashed by %s) ", stasher ? stasher->name : "someone gone");
 	}
 
 	if (is_obj_stat(obj, ITEM_NOSHOW) && is_immortal(ch))
@@ -1003,7 +1007,7 @@ bool check_blind(CHAR_DATA *ch)
 	{
 		auto paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
-		if (paf && paf->owner != ch)
+		if (paf && Deref(paf->owner) != ch)
 		{
 			send_to_char("You can't see a thing through the snow!\n\r", ch);
 			return false;
@@ -1855,7 +1859,7 @@ void do_look(CHAR_DATA *ch, char *argument)
 		{
 			for (auto &raf : ch->in_room->affected)
 			{
-				if (raf.type == gsn_riptide && raf.owner == ch && raf.location == APPLY_ROOM_NONE &&
+				if (raf.type == gsn_riptide && Deref(raf.owner) == ch && raf.location == APPLY_ROOM_NONE &&
 					raf.modifier == 1)
 				{
 					sprintf(buf, "%sThe calm surface of the water belies the deadly riptide churning beneath!%s\n\r",
@@ -1865,7 +1869,7 @@ void do_look(CHAR_DATA *ch, char *argument)
 					send_to_char(buf, ch);
 					break;
 				}
-				else if (raf.type == gsn_riptide && raf.owner == ch && raf.location == APPLY_ROOM_NONE &&
+				else if (raf.type == gsn_riptide && Deref(raf.owner) == ch && raf.location == APPLY_ROOM_NONE &&
 						 raf.modifier == 2)
 				{
 					sprintf(buf, "%sThe waters swirl menacingly, ready to receive the riptide's prey.%s\n\r",
@@ -1884,14 +1888,14 @@ void do_look(CHAR_DATA *ch, char *argument)
 
 			for (i = 0; i < MAX_TRACKS; i++)
 			{
-				if (ch->in_room->tracks[i].prey != af->owner)
+				if (ch->in_room->tracks[i].prey != Deref(af->owner))
 					continue;
 
 				direction = (char *)flag_name_lookup(ch->in_room->tracks[i].direction, direction_table);
 
 				sprintf(buf, "%sThrough the veil of your rage, you sense %s's tracks leading %s.%s\n\r",
 					get_char_color(ch, "lightred"),
-					af->owner->name,
+					Deref(af->owner)->name,
 					direction,
 					END_COLOR(ch));
 

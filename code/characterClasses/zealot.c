@@ -42,7 +42,7 @@ void spell_infidels_weight(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	af.duration = level / 4;
 	af.location = APPLY_CARRY_WEIGHT;
 	af.modifier = mod;
-	af.owner = ch;
+	af.owner = ch->self;
 	new_affect_to_char(victim, &af);
 
 	act("You burden $N with the weight of a thousand infidels!", ch, 0, victim, TO_CHAR);
@@ -115,7 +115,7 @@ void spell_burning_vision(int sn, int level, CHAR_DATA *ch, void *vo, int target
 		af.level = level;
 		af.duration = 20;
 		af.modifier = 4;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.tick_fun = burning_vision_tick;
 		af.mod_name = MOD_VISION;
 		new_affect_to_char(victim, &af);
@@ -162,7 +162,7 @@ void spell_divine_malison(int sn, int level, CHAR_DATA *ch, void *vo, int target
 		return;
 	}
 
-	if (victim && (paf = affect_find(victim->affected, gsn_divine_ward)) != nullptr && paf->owner == ch)
+	if (victim && (paf = affect_find(victim->affected, gsn_divine_ward)) != nullptr && Deref(paf->owner) == ch)
 	{
 		act("Your deity already protects you from $N!", ch, 0, victim, TO_CHAR);
 		return;
@@ -199,6 +199,6 @@ void spell_divine_malison(int sn, int level, CHAR_DATA *ch, void *vo, int target
 	af.level = level;
 	af.duration = level / 4;
 	af.modifier = reduction;
-	af.owner = ch;
+	af.owner = ch->self;
 	affect_to_char(victim, &af);
 }

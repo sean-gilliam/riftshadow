@@ -638,7 +638,7 @@ int get_skill(CHAR_DATA *ch, int sn)
 	{
 		af = affect_find(opponent->affected, gsn_traitors_luck);
 
-		if (ch == af->owner)
+		if (ch == Deref(af->owner))
 			skill += 20;
 	}
 
@@ -930,7 +930,7 @@ int get_curr_stat(CHAR_DATA *ch, int stat)
 	{
 		af = affect_find(opponent->affected, gsn_traitors_luck);
 
-		if (ch == af->owner)
+		if (ch == Deref(af->owner))
 			mod = 2;
 	}
 
@@ -1623,7 +1623,7 @@ void char_from_room(CHAR_DATA *ch)
 	{
 		af = affect_find_room(prev_room->affected, gsn_gravity_well);
 
-		if (ch == af->owner)
+		if (ch == Deref(af->owner))
 			gravity_well_explode(prev_room, af);
 	}
 	if (!is_affected(ch, gsn_pull) && (check_entwine(ch, 1) || check_entwine(ch, 2)))
@@ -1638,7 +1638,7 @@ void char_from_room(CHAR_DATA *ch)
 			}
 		}
 
-		do_uncoil(aaf->owner, "automagic");
+		do_uncoil(Deref(aaf->owner), "automagic");
 	}
 	else if (!is_affected(ch, gsn_pull) && check_entwine(ch, 0))
 	{
@@ -2238,7 +2238,6 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 {
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
-	CHAR_DATA *tch;
 	ROOM_INDEX_DATA *room;
 
 	if (ch->in_room == nullptr)
@@ -2251,17 +2250,6 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 		RS.Logger.Warn("Extract_char: in_room is nullptr.  {}{}.",
 			is_npc(ch) ? "Vnum is " : "Name is ",
 			is_npc(ch) ? vn : ch->name);
-	}
-	// Clears the inbound references that are still raw pointers and so cannot
-	// expire on their own. Handle-typed references to this character need no
-	// pass here: they stop resolving when free_char retires its slot.
-	for (tch = char_list; tch != nullptr; tch = tch->next)
-	{
-		for (auto &af : tch->affected)
-		{
-			if (af.owner == ch)
-				af.owner = nullptr;
-		}
 	}
 
 	nuke_pets(ch);
@@ -2311,13 +2299,21 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 		ch->desc = nullptr;
 	}
 
+	// A character's room affects end with them. This is not the reference
+	// expiring -- that happens on its own now -- it is the effect itself being
+	// destroyed, which a handle cannot do: a disowned wall of fire goes on
+	// burning everyone who walks in, and every consumer of raf->owner in
+	// act_move.c and update.c hands it straight to damage_new and is_safe.
+	//
+	// It sits below the altar return deliberately, so it fires only when the
+	// character is really being freed. A slain player keeps what they placed.
 	for (room = top_affected_room; room; room = room->aff_next)
 	{
 		for (auto it = room->affected.begin(); it != room->affected.end(); )
 		{
 			auto next = std::next(it);
 
-			if (it->owner == ch)
+			if (Deref(it->owner) == ch)
 				affect_remove_room(room, &*it);
 
 			it = next;
@@ -2838,7 +2834,7 @@ bool can_see(CHAR_DATA *ch, CHAR_DATA *victim)
 	{
 		paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
-		if (paf && paf->owner != ch)
+		if (paf && Deref(paf->owner) != ch)
 			return false;
 	}
 
@@ -2923,7 +2919,7 @@ bool can_see_obj(CHAR_DATA *ch, OBJ_DATA *obj)
 	{
 		oaf = affect_find_obj(obj->affected, gsn_stash);
 
-		if (oaf->owner != ch && !is_immortal(ch))
+		if (Deref(oaf->owner) != ch && !is_immortal(ch))
 			return false;
 	}
 
@@ -2943,7 +2939,7 @@ bool can_see_obj(CHAR_DATA *ch, OBJ_DATA *obj)
 	{
 		paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
-		if (paf && paf->owner != ch)
+		if (paf && Deref(paf->owner) != ch)
 			return false;
 	}
 

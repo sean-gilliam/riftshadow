@@ -586,6 +586,8 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 
 		paf.aftype = isAftSpell(paf.aftype);
 
+		CHAR_DATA *owner = Deref(paf.owner);
+
 		fprintf(fp, "Affc '%s' %3d %3d %3d %3d %3d %s %3d %s '%s'\n",
 			skill_table[paf.type].name,
 			paf.where,
@@ -595,7 +597,7 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 			paf.location,
 			print_flags(paf.bitvector),
 			paf.aftype,
-			paf.owner ? paf.owner->name : "none", paf.name ? paf.name : "none");
+			owner ? owner->name : "none", paf.name ? paf.name : "none");
 	}
 
 	if (!ch->pcdata->trophy.empty()
@@ -864,6 +866,8 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 
 		paf.aftype = isAftSpell(paf.aftype);
 
+		CHAR_DATA *owner = Deref(paf.owner);
+
 		fprintf(fp, "Affc '%s' %3d %3d %3d %3d %3d %s %d %s\n",
 			skill_table[paf.type].name,
 			paf.where,
@@ -873,7 +877,7 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 			paf.location,
 			print_flags(paf.bitvector),
 			paf.aftype,
-			paf.owner ? paf.owner->name : "none");
+			owner ? owner->name : "none");
 	}
 
 	// Save only applies the object has beyond its prototype. The list was a
@@ -1263,13 +1267,13 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf.owner = wch;
+							paf.owner = wch->self;
 							break;
 						}
 					}
 
 					if (!str_cmp(ch->name, owner))
-						paf.owner = ch;
+						paf.owner = ch->self;
 
 					afname = fread_word(fp);
 
@@ -1913,13 +1917,13 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 					owner = fread_word(fp);
 
 					if (strcmp(owner, "none")) // safe default
-						paf.owner = ch;
+						paf.owner = ch->self;
 
 					for (wch = char_list; wch; wch = wch->next)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf.owner = wch;
+							paf.owner = wch->self;
 							break;
 						}
 					}
@@ -2134,13 +2138,13 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf.owner = wch;
+							paf.owner = wch->self;
 							break;
 						}
 					}
 
 					if (!str_cmp(ch->name, owner))
-						paf.owner = ch;
+						paf.owner = ch->self;
 
 					obj->affected.push_front(paf);
 					fMatch = true;

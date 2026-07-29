@@ -1194,7 +1194,7 @@ void get_prog_bad_idea(OBJ_DATA *obj, CHAR_DATA *ch)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_MALADY;
 		af.type = gsn_plague;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = 50;
 		af.duration = 30;
 		af.location = APPLY_STR;
@@ -1218,7 +1218,7 @@ void get_prog_bad_idea(OBJ_DATA *obj, CHAR_DATA *ch)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_MALADY;
 		af.type = gsn_imprisonvoice;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = 99;
 		af.duration = -1;
 		af.location = APPLY_NONE;
@@ -1312,7 +1312,7 @@ void fight_prog_horde_lion(OBJ_DATA *obj, CHAR_DATA *ch)
 	af.modifier = 0;
 	af.level = ch->level - 5;
 	af.duration = ch->level / 7;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.tick_fun = bleeding_tick;
 	af.end_fun = nullptr;
 	new_affect_to_char(Deref(ch->fighting), &af);
@@ -1346,7 +1346,7 @@ void fight_prog_horde_wolf(OBJ_DATA *obj, CHAR_DATA *ch)
 		af.modifier = 0;
 		af.level = ch->level - 5;
 		af.duration = ch->level / 10;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.end_fun = nullptr;
 		new_affect_to_char(Deref(ch->fighting), &af);
 	}
@@ -1361,7 +1361,7 @@ void fight_prog_horde_wolf(OBJ_DATA *obj, CHAR_DATA *ch)
 		af.modifier = 0;
 		af.level = ch->level - 5;
 		af.duration = ch->level / 18;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.end_fun = nullptr;
 		new_affect_to_char(Deref(ch->fighting), &af);
 
@@ -1577,7 +1577,7 @@ void verb_prog_tilt_scales(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 		oaf.location = APPLY_OBJ_V1;
 		oaf.type = gsn_bash;
 		oaf.aftype = AFT_SKILL;
-		oaf.owner = ch;
+		oaf.owner = ch->self;
 		affect_to_obj(obj, &oaf);
 	}
 }
@@ -2038,7 +2038,7 @@ void verb_prog_harness_crystal(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (oaf->owner == ch)
+	if (Deref(oaf->owner) == ch)
 	{
 		efficiency = 50;
 	}
@@ -2319,7 +2319,7 @@ void hit_prog_essence_darkness(OBJ_DATA *obj, CHAR_DATA *ch, CHAR_DATA *victim, 
 
 		SET_BIT(af.bitvector, AFF_CURSE);
 
-		af.owner = ch;
+		af.owner = ch->self;
 		affect_to_char(victim, &af);
 
 		af.location = APPLY_SAVES;
@@ -3047,14 +3047,14 @@ void communion_handler(CHAR_DATA *ch)
 
 			cabal_members[CABAL_HORDE]++;
 
-			if (is_immortal(af->owner) && is_immortal(ch))
+			if (is_immortal(Deref(af->owner)) && is_immortal(ch))
 			{
 				Induction record;
-				record.ch = af->owner->true_name;
+				record.ch = Deref(af->owner)->true_name;
 				record.victim = ch->true_name;
 				record.cabal = CABAL_HORDE;
 				record.ctime = current_time;
-				record.chsite = af->owner->pcdata->host;
+				record.chsite = Deref(af->owner)->pcdata->host;
 				record.victimsite = ch->pcdata->host;
 
 				auto inductions = InductionRepository(RS.DbRift);

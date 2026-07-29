@@ -1192,7 +1192,7 @@ void spell_deny_magic(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.type = gsn_deny_magic;
 	af.level = level;
 	af.aftype = AFT_POWER;
-	af.owner = ch;
+	af.owner = ch->self;
 	new_affect_to_char(victim, &af);
 }
 
@@ -1269,7 +1269,7 @@ void spell_medicine(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		af.aftype = AFT_POWER;
 		af.type = gsn_medicine;
 		af.duration = 4;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = level;
 		new_affect_to_char(vch, &af);
 
@@ -1367,7 +1367,7 @@ void spell_horde_communion(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	af.location = 0;
 	af.modifier = 0;
 	af.duration = -1;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.tick_fun = communion_tick;
 	new_affect_to_char(victim, &af);
@@ -1671,13 +1671,13 @@ void spell_crimson_martyr(int sn, int level, CHAR_DATA *ch, void *vo, int target
 
 void retribution_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 {
-	if (af->modifier == 0 || !af->owner || is_safe(af->owner, ch))
+	if (af->modifier == 0 || !Deref(af->owner) || is_safe(Deref(af->owner), ch))
 		return;
 
 	float dam = af->modifier / (af->duration == 0 ? 1 : af->duration);
 
 	send_to_char("Pain courses through your body as zealous retribution is extracted upon you!\n\r", ch);
-	damage_new(af->owner, ch, (int)dam, gsn_retribution, DAM_HOLY, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the retribution of the Phalanx*");
+	damage_new(Deref(af->owner), ch, (int)dam, gsn_retribution, DAM_HOLY, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the retribution of the Phalanx*");
 	af->modifier -= (int)dam;
 }
 
@@ -1706,7 +1706,7 @@ void spell_retribution(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.level = level;
 	af.type = sn;
 	af.tick_fun = retribution_tick;
-	af.owner = ch;
+	af.owner = ch->self;
 	affect_to_char(victim, &af);
 
 	act("You unleash the vengeance of the Phalanx upon $N!", ch, 0, victim, TO_CHAR);

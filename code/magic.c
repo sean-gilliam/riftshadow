@@ -258,7 +258,7 @@ bool saves_spell(int level, CHAR_DATA *victim, int dam_type)
 	if (is_affected(victim, gsn_traitors_luck))
 	{
 		af = affect_find(victim->affected, gsn_traitors_luck);
-		if (opponent && (opponent == af->owner))
+		if (opponent && (opponent == Deref(af->owner)))
 			save -= 50;
 	}
 
@@ -1420,7 +1420,7 @@ void spell_blindness(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.level = level;
 	af.location = APPLY_HITROLL;
 	af.modifier = -4;
-	af.owner = ch;
+	af.owner = ch->self;
 
 	dur = level / 4;
 
@@ -3736,7 +3736,7 @@ void spell_plague(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	SET_BIT(af.bitvector, AFF_PLAGUE);
 
-	af.owner = ch;
+	af.owner = ch->self;
 	af.tick_fun = plague_tick;
 	af.end_fun = nullptr;
 	new_affect_join(victim, &af);
@@ -3791,7 +3791,7 @@ void plague_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 	dam = std::min(ch->level, af->level);
 	dam = std::max((int)(dam * .7), 10);
 
-	damage_new(af->owner, ch, dam, gsn_plague, DAM_DISEASE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "sickness");
+	damage_new(Deref(af->owner), ch, dam, gsn_plague, DAM_DISEASE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "sickness");
 
 	ch->mana -= number_range(af->level / 2, (int)(af->level * 1.5));
 	ch->move -= number_range(af->level / 2, (int)(af->level * 1.5));
@@ -3851,7 +3851,7 @@ void spell_poison(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	SET_BIT(af.bitvector, AFF_POISON);
 
-	af.owner = ch;
+	af.owner = ch->self;
 	af.end_fun = nullptr;
 	af.tick_fun = poison_tick;
 	new_affect_to_char(victim, &af);
@@ -3868,10 +3868,10 @@ void poison_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 	act("$n shivers and suffers.", ch, nullptr, nullptr, TO_ROOM);
 	send_to_char("You shiver and suffer.\n\r", ch);
 
-	if (!af->owner)
-		af->owner = ch;
+	if (!Deref(af->owner))
+		af->owner = ch->self;
 
-	damage_new(af->owner, ch, af->level, gsn_poison, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "poison");
+	damage_new(Deref(af->owner), ch, af->level, gsn_poison, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "poison");
 }
 
 void spell_protection(int sn, int level, CHAR_DATA *ch, void *vo, int target)
@@ -4985,7 +4985,7 @@ void spell_nether_breath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		af.modifier = level / 3;
 		af.duration = 12;
 		af.level = level;
-		af.owner = ch;
+		af.owner = ch->self;
 
 		SET_BIT(af.bitvector, AFF_CURSE);
 
@@ -5134,7 +5134,7 @@ void sanguine_blind(CHAR_DATA *ch, CHAR_DATA *victim)
 	af.type = gsn_blindness;
 	af.name = palloc_string("infected eyes");
 	af.level = ch->level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.duration = number_percent() > 50 ? 1 : 0;
 	af.location = 0;
 	af.modifier = 0;
@@ -5273,7 +5273,7 @@ void spell_consecrate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.duration = number_range(4, 6);
 	raf.location = APPLY_NONE;
 	raf.modifier = 0;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = nullptr;
 	raf.tick_fun = nullptr;
 	new_affect_to_room(ch->in_room, &raf);
@@ -5928,7 +5928,7 @@ void spell_forget(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.aftype = AFT_SPELL;
 	af.type = sn;
 	af.modifier = 0;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.duration = level / 10;
 	af.location = 0;
 	af.level = level;
@@ -6635,7 +6635,7 @@ void spell_talismanic_aura(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	af.duration = 8;
 	af.location = APPLY_DAM_MOD;
 	af.modifier = -(short)(ch->level * reduction);
-	af.owner = ch;
+	af.owner = ch->self;
 	af.end_fun = talismanic_end;
 	af.mod_name = MOD_PROTECTION;
 

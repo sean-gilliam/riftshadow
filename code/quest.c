@@ -1021,7 +1021,7 @@ void give_prog_starvin_pete(CHAR_DATA *mob, CHAR_DATA *ch, OBJ_DATA *obj)
 			if (!str_cmp(material_table[obj->pIndexData->material_index].mat_name, "meat"))
 			{
 				if (is_affected(mob, gsn_bash)
-					&& ((paf = affect_find(mob->affected, gsn_bash)) != nullptr && (ch == paf->owner)))
+					&& ((paf = affect_find(mob->affected, gsn_bash)) != nullptr && (ch == Deref(paf->owner))))
 				{
 					act("$n gobbles down $p noisily.", mob, obj, ch, TO_ALL);
 					do_say(mob, "Pete got no more money for you.");
@@ -1046,7 +1046,7 @@ void give_prog_starvin_pete(CHAR_DATA *mob, CHAR_DATA *ch, OBJ_DATA *obj)
 				af.aftype = AFT_INVIS;
 				af.type = gsn_bash;
 				af.duration = 2;
-				af.owner = ch;
+				af.owner = ch->self;
 			}
 			else
 			{

@@ -1260,7 +1260,7 @@ void WAIT_STATE(CHAR_DATA *ch, int npulse)
 	{
 		raf = affect_find_room(ch->in_room->affected, gsn_gravity_well);
 
-		if (ch == raf->owner)
+		if (ch == Deref(raf->owner))
 			wait += PULSE_VIOLENCE;
 	}
 
@@ -2890,7 +2890,7 @@ void do_snare(CHAR_DATA *ch, char *argument)
 	af.duration = 24;
 	af.location = APPLY_NONE;
 	af.modifier = 0;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.end_fun = nullptr;
 	af.tick_fun = nullptr;
 	new_affect_to_room(ch->in_room, &af);

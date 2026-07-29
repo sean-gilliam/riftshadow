@@ -89,7 +89,7 @@ bool check_arms(CHAR_DATA *ch, OBJ_DATA *obj)
 					|| paf.type == gsn_arms_of_wrath
 					|| paf.type == gsn_arms_of_purity
 					|| paf.type == gsn_arms_of_judgement)
-				&& paf.owner != ch)
+				&& Deref(paf.owner) != ch)
 			{
 				act("$p shocks you, falling from your numb hands.", ch, obj, 0, TO_CHAR);
 				act("$n drops $p.", ch, obj, 0, TO_ROOM);
@@ -1592,7 +1592,7 @@ void do_pour(CHAR_DATA *ch, char *argument)
 			oaf.location = 0;
 			oaf.modifier = 0;
 			oaf.duration = 4;
-			oaf.owner = ch;
+			oaf.owner = ch->self;
 			oaf.end_fun = puddle_evaporate;
 			oaf.tick_fun = 0;
 			affect_to_obj(puddle, &oaf);
@@ -1759,7 +1759,7 @@ void do_drink(CHAR_DATA *ch, char *argument)
 
 			SET_BIT(af.bitvector, AFF_POISON);
 
-			af.owner = ch;
+			af.owner = ch->self;
 			af.tick_fun = poison_tick;
 			affect_join(ch, &af);
 		}
@@ -1848,7 +1848,7 @@ void do_eat(CHAR_DATA *ch, char *argument)
 					af.location = APPLY_STR;
 					af.modifier = -5;
 					SET_BIT(af.bitvector, AFF_POISON);
-					af.owner = ch;
+					af.owner = ch->self;
 					af.tick_fun = poison_tick;
 					affect_join(ch, &af);
 				}

@@ -189,7 +189,7 @@ void spell_gravity_well(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.duration = level / 6;
 	raf.location = 0;
 	raf.modifier = 0;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.tick_fun = nullptr;
 	raf.end_fun = gravity_well_explode;
 	new_affect_to_room(ch->in_room, &raf);
@@ -212,7 +212,7 @@ void spell_gravity_well(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	aaf.duration = -1;
 	aaf.location = 0;
 	aaf.modifier = 0;
-	aaf.owner = ch;
+	aaf.owner = ch->self;
 	aaf.tick_fun = nullptr;
 	aaf.end_fun = nullptr;
 	affect_to_area(ch->in_room->area, &aaf);
@@ -220,7 +220,7 @@ void spell_gravity_well(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void gravity_well_explode(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 {
-	CHAR_DATA *victim, *v_next, *ch = af->owner;
+	CHAR_DATA *victim, *v_next, *ch = Deref(af->owner);
 	OBJ_DATA *well;
 	int dam;
 	bool wasinroom = true;
@@ -305,7 +305,7 @@ void spell_cyclone(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	aaf.duration = 6;
 	aaf.location = 0;
 	aaf.modifier = 0;
-	aaf.owner = ch;
+	aaf.owner = ch->self;
 	aaf.tick_fun = cyclone_begin_tick;
 	aaf.end_fun = cyclone_begin;
 	affect_to_area(ch->in_room->area, &aaf);
@@ -372,7 +372,7 @@ void spell_chill(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		af.aftype = AFT_MALADY;
 		af.type = sn;
 		af.location = APPLY_STR;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.duration = 10;
 		af.level = level;
 		af.modifier = -2;
@@ -505,7 +505,7 @@ void spell_conflagration(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.duration = 20;
 	raf.location = APPLY_ROOM_SECT;
 	raf.modifier = SECT_CONFLAGRATION - ch->in_room->sector_type;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = conflag_burnout;
 	raf.pulse_fun = conflagration_pulse;
 	raf.tick_fun = nullptr;
@@ -607,7 +607,7 @@ void conflagration_pulse(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 			if (dam <= 1)
 				continue;
 
-			damage_new(af->owner, vch, dam, TYPE_UNDEFINED, DAM_FIRE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the raging wildfire*");
+			damage_new(Deref(af->owner), vch, dam, TYPE_UNDEFINED, DAM_FIRE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the raging wildfire*");
 		}
 	}
 
@@ -1036,7 +1036,7 @@ void spell_vacuum(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.duration = -1;
 	raf.location = 0;
 	raf.modifier = 0;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = vacuum_end_fun;
 	raf.tick_fun = nullptr;
 	new_affect_to_room(ch->in_room, &raf);
@@ -1116,12 +1116,12 @@ void vacuum_end_fun(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 	{
 		vch_next = vch->next_in_room;
 
-		if (is_safe(af->owner, vch))
+		if (is_safe(Deref(af->owner), vch))
 			continue;
 
 		WAIT_STATE(vch, PULSE_VIOLENCE);
 
-		damage_new(af->owner, vch, (3 * af->level) / roomcount, TYPE_HIT + attack_lookup("asphyxiation"), DAM_ENERGY, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the vacuum*");
+		damage_new(Deref(af->owner), vch, (3 * af->level) / roomcount, TYPE_HIT + attack_lookup("asphyxiation"), DAM_ENERGY, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the vacuum*");
 
 		if (vch)
 			pplcount++;
@@ -1163,7 +1163,7 @@ void vacuum_end_fun(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 							{
 								vch_next = vch->next_in_room;
 
-								if (j == randperson && !is_safe_new(af->owner, vch, false))
+								if (j == randperson && !is_safe_new(Deref(af->owner), vch, false))
 									smacked = vch;
 								j++;
 							}
@@ -1174,7 +1174,7 @@ void vacuum_end_fun(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 
 						act("$p is sucked into the room, striking $n!", smacked, obj, 0, TO_ROOM);
 						act("$p is sucked into the room, striking you!", smacked, obj, 0, TO_CHAR);
-						damage_new(af->owner, smacked, dice(get_true_weight(obj) + 1, 9), TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the flying debris*");
+						damage_new(Deref(af->owner), smacked, dice(get_true_weight(obj) + 1, 9), TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the flying debris*");
 						objcount++;
 					}
 				}
@@ -1202,7 +1202,7 @@ void vacuum_end_fun(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 					if (is_npc(vch) && IS_SET(vch->act, ACT_SENTINEL))
 						continue;
 
-					if (!is_npc(vch) && is_safe_new(af->owner, vch, false))
+					if (!is_npc(vch) && is_safe_new(Deref(af->owner), vch, false))
 						continue;
 
 					direction = flag_name_lookup(reverse_d(i), direction_table);
@@ -1421,7 +1421,7 @@ void spell_immolate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 			oaf.where = TO_OBJ_AFFECTS;
 			oaf.aftype = AFT_SPELL;
 			oaf.type = gsn_immolate;
-			oaf.owner = ch;
+			oaf.owner = ch->self;
 			oaf.level = level;
 			oaf.location = 0;
 			oaf.modifier = 0;
@@ -1613,7 +1613,7 @@ void spell_earthquake(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 			raf.duration = 1;
 			raf.location = 0;
 			raf.modifier = 0;
-			raf.owner = ch;
+			raf.owner = ch->self;
 			raf.end_fun = nullptr;
 			raf.tick_fun = nullptr;
 			new_affect_to_room(ch->in_room, &raf);
@@ -1973,7 +1973,7 @@ void spell_interference(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	aaf.duration = dice(2, 3) + 5;
 	aaf.location = 0;
 	aaf.modifier = 0;
-	aaf.owner = ch;
+	aaf.owner = ch->self;
 	aaf.tick_fun = nullptr;
 	aaf.end_fun = interference_end;
 	affect_to_area(area, &aaf);
@@ -1985,7 +1985,7 @@ void spell_interference(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.duration = 48;
 	af.location = 0;
 	af.modifier = 0;
-	af.owner = ch;
+	af.owner = ch->self;
 	affect_to_char(ch, &af);
 
 	send_to_char("You blanket the area with a veil of electrical interference.\n\r", ch);
@@ -2326,7 +2326,7 @@ void spell_flood(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		raf.duration = duration;
 		raf.location = APPLY_ROOM_SECT;
 		raf.modifier = SECT_WATER - to_room->sector_type;
-		raf.owner = ch;
+		raf.owner = ch->self;
 		raf.end_fun = flood_recede;
 		raf.tick_fun = nullptr;
 		new_affect_to_room(to_room, &raf);
@@ -2403,7 +2403,7 @@ void spell_tidalwave(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 				raf.duration = -1;
 				raf.location = APPLY_ROOM_NONE;
 				raf.modifier = std::max((i * 2) - 1, 2);
-				raf.owner = ch;
+				raf.owner = ch->self;
 				raf.end_fun = nullptr;
 				raf.tick_fun = nullptr;
 				new_affect_to_room(to_room, &raf);
@@ -2437,7 +2437,7 @@ void spell_tidalwave(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 				raf.duration = -1;
 				raf.location = APPLY_ROOM_NONE;
 				raf.modifier = std::max((i * 2) - 1, 2);
-				raf.owner = ch;
+				raf.owner = ch->self;
 				raf.end_fun = nullptr;
 				raf.tick_fun = nullptr;
 				new_affect_to_room(to_room, &raf);
@@ -2530,12 +2530,12 @@ void spell_riptide(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		{
 			for (auto &raf : room->affected)
 			{
-				if (raf.type == sn && raf.owner == ch && raf.location == APPLY_ROOM_NONE && raf.modifier == 1)
+				if (raf.type == sn && Deref(raf.owner) == ch && raf.location == APPLY_ROOM_NONE && raf.modifier == 1)
 				{
 					first_room = room;
 					fraf = &raf;
 				}
-				else if (raf.type == sn && raf.owner == ch && raf.location == APPLY_ROOM_NONE && raf.modifier == 2)
+				else if (raf.type == sn && Deref(raf.owner) == ch && raf.location == APPLY_ROOM_NONE && raf.modifier == 2)
 				{
 					second_room = room;
 				}
@@ -2583,7 +2583,7 @@ void spell_riptide(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		nraf.duration = 24;
 		nraf.location = APPLY_ROOM_NONE;
 		nraf.modifier = 2;
-		nraf.owner = ch;
+		nraf.owner = ch->self;
 		nraf.end_fun = riptide_two_end;
 		nraf.tick_fun = nullptr;
 		new_affect_to_room(ch->in_room, &nraf);
@@ -2613,7 +2613,7 @@ void spell_riptide(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		nraf.duration = 4;
 		nraf.location = APPLY_ROOM_NONE;
 		nraf.modifier = 1;
-		nraf.owner = ch;
+		nraf.owner = ch->self;
 		nraf.end_fun = riptide_one_end;
 		nraf.tick_fun = nullptr;
 		new_affect_to_room(ch->in_room, &nraf);
@@ -2622,7 +2622,7 @@ void spell_riptide(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void riptide_one_end(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 {
-	act("Your control over your riptide's water currents wanes.", af->owner, nullptr, nullptr, TO_CHAR);
+	act("Your control over your riptide's water currents wanes.", Deref(af->owner), nullptr, nullptr, TO_CHAR);
 
 	if (room->people)
 		act("The ripples in the water cease.", room->people, nullptr, nullptr, TO_ALL);
@@ -3553,7 +3553,7 @@ void spell_enervate_agitate_helper(int sn, int level, CHAR_DATA *ch, void *vo, i
 		else
 			af.tick_fun = nullptr;
 
-		af.owner = ch;
+		af.owner = ch->self;
 
 		if (victim->pcdata->energy_state == 1)
 			SET_BIT(af.bitvector, AFF_HASTE);
@@ -3572,7 +3572,7 @@ void spell_enervate_agitate_helper(int sn, int level, CHAR_DATA *ch, void *vo, i
 		af.location = APPLY_DEX;
 		af.modifier = -4 + (es + 2) * 2;
 		af.end_fun = nullptr;
-		af.owner = ch;
+		af.owner = ch->self;
 		new_affect_to_char(victim, &af);
 	}
 
@@ -3619,8 +3619,8 @@ void agitate_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 		act("$n collapses in a heap, wisps of smoke rising from $s charred corpse.", ch, 0, 0, TO_ROOM);
 		send_to_char("You crumple to the ground, your consciousness fading away, as your body collapses under the heat.\n\r", ch);
 
-		if (af->owner)
-			raw_kill(af->owner, ch);
+		if (Deref(af->owner))
+			raw_kill(Deref(af->owner), ch);
 		else
 			raw_kill(ch, ch);
 
@@ -3631,13 +3631,13 @@ void agitate_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 	{
 		send_to_char("Your body is wracked by searing pains!\n\r", ch);
 
-		if (!af->owner)
-			af->owner = ch;
+		if (!Deref(af->owner))
+			af->owner = ch->self;
 
 		dam = ch->pcdata->energy_state;
 		dam = dice(dam == 2 ? 5 : dam == 3 ? 10 : dam == 4 ? 20 : 5, 10);
 
-		damage_new(af->owner, ch, dam, gsn_agitate, DAM_FIRE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "agitation");
+		damage_new(Deref(af->owner), ch, dam, gsn_agitate, DAM_FIRE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "agitation");
 	}
 }
 
@@ -3953,7 +3953,7 @@ void spell_acid_stream(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.type = gsn_acid_stream;
 	af.level = level;
-	af.owner = ch;
+	af.owner = ch->self;
 
 	switch (location)
 	{
@@ -4055,7 +4055,7 @@ void spell_acid_vein(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	oaf.duration = level * 3;
 	oaf.end_fun = acid_end;
 	oaf.level = level;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	affect_to_obj(weapon, &oaf);
 
 	act("You coat $p with acid.", ch, weapon, 0, TO_CHAR);
@@ -4247,7 +4247,7 @@ void spell_attract(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.type = sn;
 	af.level = level;
 	af.location = 0;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.modifier = 0;
 	af.duration = dice(4, 2) + level / 5;
 	af.tick_fun = attract_tick;
@@ -4267,10 +4267,10 @@ void attract_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 	act("Your skin tingles briefly, and a bolt arcs down from the dark skies above!", ch, nullptr, ch, TO_CHAR);
 	act("The skies light up as lightning arcs like quicksilver towards $N!", ch, nullptr, ch, TO_ROOM);
 
-	if (!af->owner)
-		af->owner = ch;
+	if (!Deref(af->owner))
+		af->owner = ch->self;
 
-	damage_new(af->owner, ch, dice(af->level, 4), gsn_attract, DAM_LIGHTNING, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the lightning strike*");
+	damage_new(Deref(af->owner), ch, dice(af->level, 4), gsn_attract, DAM_LIGHTNING, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the lightning strike*");
 
 	if (!is_awake(ch))
 		ch->position = POS_STANDING;
@@ -4587,7 +4587,7 @@ void spell_caustic_vapor(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.duration = 20;
 	raf.location = 0;
 	raf.modifier = 0;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = caustic_vapor_burnout;
 	raf.tick_fun = nullptr;
 	new_affect_to_room(ch->in_room, &raf);
@@ -4639,7 +4639,7 @@ void spell_smokescreen(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.duration = level / 5;
 	raf.location = 0;
 	raf.modifier = 0;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = smokescreen_end;
 	raf.tick_fun = nullptr;
 	new_affect_to_room(ch->in_room, &raf);
@@ -4684,7 +4684,7 @@ void spell_smother(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		SET_BIT(af.bitvector, AFF_BLIND);
 
 		af.mod_name = MOD_VISION;
-		af.owner = ch;
+		af.owner = ch->self;
 		affect_to_char(victim, &af);
 	}
 
@@ -4936,7 +4936,7 @@ void spell_blanket(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.duration = 24;
 	raf.location = APPLY_ROOM_SECT;
 	raf.modifier = SECT_SNOW - ch->in_room->sector_type;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = blanket_melt;
 	raf.tick_fun = nullptr;
 	new_affect_to_room(ch->in_room, &raf);
@@ -5275,7 +5275,7 @@ void spell_unbreakable(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.type = gsn_unbreakable;
 	af.aftype = AFT_SPELL;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.modifier = 0;
 	af.duration = level / 4;
 	af.location = 0;
@@ -5362,7 +5362,7 @@ void spell_whiteout(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	aaf.duration = 2;
 	aaf.location = APPLY_AREA_TEMP;
 	aaf.modifier = Temperature::Cold - area->temp;
-	aaf.owner = ch;
+	aaf.owner = ch->self;
 	aaf.end_fun = whiteout_end;
 	aaf.tick_fun = nullptr;
 	affect_to_area(area, &aaf);
@@ -5384,7 +5384,7 @@ void spell_whiteout(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.duration = 36;
 	af.location = 0;
 	af.modifier = 0;
-	af.owner = ch;
+	af.owner = ch->self;
 	affect_to_char(ch, &af);
 }
 
@@ -5536,7 +5536,7 @@ void spell_icelance(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		af.aftype = AFT_MALADY;
 		af.tick_fun = bleeding_tick;
 		af.end_fun = nullptr;
-		af.owner = ch;
+		af.owner = ch->self;
 		new_affect_to_char(victim, &af);
 
 		act("Blood spills forth from your gaping wound!", victim, 0, 0, TO_CHAR);
@@ -5584,7 +5584,7 @@ void spell_freeze_door(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.aftype = AFT_SPELL;
 	raf.level = level;
 	raf.duration = 8;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.modifier = door;
 	raf.end_fun = door_unfreeze;
 	new_affect_to_room(ch->in_room, &raf);
@@ -5636,7 +5636,7 @@ void spell_frost_growth(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.aftype = AFT_SPELL;
 	raf.level = level;
 	raf.duration = level / 3;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = ground_thaw;
 	new_affect_to_room(ch->in_room, &raf);
 }
@@ -5681,7 +5681,7 @@ void spell_bind_feet(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.aftype = AFT_SPELL;
 	af.level = level;
 	af.duration = level / 10;
-	af.owner = ch;
+	af.owner = ch->self;
 	affect_to_char(victim, &af);
 }
 
@@ -5710,7 +5710,7 @@ void spell_glaciate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.duration = 3 + level / 7;
 	raf.location = APPLY_ROOM_SECT;
 	raf.modifier = SECT_ICE - ch->in_room->sector_type;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = glaciate_melt;
 	raf.tick_fun = nullptr;
 	new_affect_to_room(room, &raf);
@@ -5785,7 +5785,7 @@ void spell_stalactites(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.location = 0;
 	raf.modifier = dice(1, 6);
 	raf.duration = level / 5;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = nullptr;
 	raf.tick_fun = nullptr;
 	new_affect_to_room(ch->in_room, &raf);
@@ -5837,7 +5837,7 @@ void spell_ice_blast(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 					oaf.location = 0;
 					oaf.modifier = 0;
 					oaf.duration = level / 6;
-					oaf.owner = ch;
+					oaf.owner = ch->self;
 					oaf.end_fun = container_defrost;
 					oaf.tick_fun = nullptr;
 					affect_to_obj(obj, &oaf);
@@ -5913,7 +5913,7 @@ void spell_icy_carapace(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.level = level;
 	af.duration = (int)((float)level * 0.7);
 	af.modifier = (int)((float)level * 0.82);
-	af.owner = ch;
+	af.owner = ch->self;
 	affect_to_char(ch, &af);
 
 	af.location = APPLY_DEX;
@@ -5967,7 +5967,7 @@ void spell_sheath_of_ice(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	oaf.modifier = std::max(5, wield->weight * (level / 50));
 	oaf.duration = level / 5;
 	oaf.level = level;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	oaf.end_fun = ice_sheath_melt;
 	oaf.tick_fun = nullptr;
 	oaf.pulse_fun = nullptr;
@@ -6006,7 +6006,7 @@ void spell_ironskin(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SPELL;
 	af.type = gsn_ironskin;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.location = APPLY_AC;
 	af.modifier = level / 3;
@@ -6099,7 +6099,7 @@ void spell_burden(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SPELL;
 	af.type = gsn_burden;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.location = APPLY_CARRY_WEIGHT;
 	af.modifier = (level * victim->carry_weight) / 50;
@@ -6480,7 +6480,7 @@ void spell_cloak_of_mist(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.type = gsn_cloak_of_mist;
 	af.aftype = AFT_SPELL;
 	af.level = level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.location = 0;
 	af.modifier = 0;
 	af.duration = level / 4;
@@ -6543,7 +6543,7 @@ void spell_creeping_tomb(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	init_affect(&af);
 	af.where = TO_AFFECTS;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.aftype = AFT_SPELL;
 	af.type = gsn_creeping_tomb;
 	af.level = level + 15;
@@ -6600,7 +6600,7 @@ void spell_pass_without_trace(int sn, int level, CHAR_DATA *ch, void *vo, int ta
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SPELL;
 	af.type = gsn_pass_without_trace;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.duration = level / 6;
 	af.location = 0;
@@ -6633,7 +6633,7 @@ void spell_quicksand(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.where = TO_ROOM_AFFECTS;
 	raf.aftype = AFT_SPELL;
 	raf.type = gsn_quicksand;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.level = level;
 	raf.location = 0;
 	raf.duration = 24;
@@ -6646,7 +6646,7 @@ void spell_quicksand(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_TIMER;
 	af.type = gsn_quicksand;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.duration = 48;
 	affect_to_char(ch, &af);
@@ -6736,7 +6736,7 @@ void spell_rust(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	oaf.where = TO_OBJ_APPLY;
 	oaf.type = gsn_rust;
 	oaf.aftype = AFT_SPELL;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	oaf.level = level;
 	oaf.duration = level / 4;
 	oaf.location = APPLY_DEX;
@@ -6819,7 +6819,7 @@ void spell_airy_water(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.where = TO_ROOM_AFFECTS;
 	raf.type = gsn_airy_water;
 	raf.aftype = AFT_SPELL;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.level = level;
 	raf.duration = 12;
 	raf.location = 0;
@@ -6850,7 +6850,7 @@ void spell_cooling_mist(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_RESIST;
 	af.aftype = AFT_SPELL;
 	af.type = gsn_cooling_mist;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.location = 0;
 	af.modifier = 0;
@@ -6967,7 +6967,7 @@ void spell_prismatic_spray(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 		af.where = TO_AFFECTS;
 		af.type = gsn_poison;
 		af.aftype = AFT_MALADY;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = level;
 		af.location = APPLY_STR;
 		af.modifier = -5;
@@ -6989,7 +6989,7 @@ void spell_prismatic_spray(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 		af.where = TO_AFFECTS;
 		af.type = gsn_blindness;
 		af.aftype = AFT_SPELL;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = level;
 		af.location = APPLY_HITROLL;
 		af.modifier = -4;
@@ -7059,7 +7059,7 @@ void spell_earthfade(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.aftype = AFT_SPELL;
 	af.type = gsn_earthfade;
 	af.level = level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.modifier = 0;
 	af.location = 0;
 	af.duration = level / 5;
@@ -7241,7 +7241,7 @@ void spell_sphere_of_plasma(int sn, int level, CHAR_DATA *ch, void *vo, int targ
 	af.aftype = AFT_SPELL;
 	af.type = sn;
 	af.level = level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.location = 0;
 	af.modifier = dice(level / 13, 2);
 	af.duration = level / 5;
@@ -7270,7 +7270,7 @@ void spell_plasma_cube(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.where = TO_ROOM_AFFECTS;
 	raf.type = sn;
 	raf.aftype = AFT_SPELL;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.level = level;
 	raf.duration = 12;
 	raf.location = 0;
@@ -7306,7 +7306,7 @@ void spell_essence_of_plasma(int sn, int level, CHAR_DATA *ch, void *vo, int tar
 	raf.where = TO_ROOM_AFFECTS;
 	raf.aftype = AFT_SPELL;
 	raf.type = gsn_essence_of_plasma;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.level = level;
 	raf.location = 0;
 	raf.duration = 12;
@@ -7319,7 +7319,7 @@ void spell_essence_of_plasma(int sn, int level, CHAR_DATA *ch, void *vo, int tar
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_TIMER;
 	af.type = gsn_essence_of_plasma;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.location = 0;
 	af.duration = 12;
@@ -7338,7 +7338,7 @@ void essence_of_plasma_pulse(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 
 	for (victim = room->people; victim; victim = victim->next_in_room)
 	{
-		if (!is_safe_new(af->owner, victim, false))
+		if (!is_safe_new(Deref(af->owner), victim, false))
 			valid_target = true;
 	}
 
@@ -7349,7 +7349,7 @@ void essence_of_plasma_pulse(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 	{
 		for (victim = room->people; victim; victim = victim->next_in_room)
 		{
-			if (is_safe_new(af->owner, victim, false))
+			if (is_safe_new(Deref(af->owner), victim, false))
 				continue;
 
 			if (number_percent() < 80)
@@ -7371,7 +7371,7 @@ void essence_of_plasma_pulse(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 	act("The ball of plasma hurtles about wildly, discharging pure energy into you!", victim, 0, 0, TO_CHAR);
 	act("The ball of plasma hurtles about wildly, discharging pure energy into $n!", victim, 0, 0, TO_ROOM);
 
-	damage_new(af->owner, victim, dam, gsn_essence_of_plasma, DAM_ENERGY, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the essence of plasma*");
+	damage_new(Deref(af->owner), victim, dam, gsn_essence_of_plasma, DAM_ENERGY, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the essence of plasma*");
 
 	if (!fighting && !is_npc(victim))
 		stop_fighting(victim, true);
@@ -7392,8 +7392,8 @@ void essence_of_plasma_end(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 
 void plasma_thread_end(CHAR_DATA *ch, AFFECT_DATA *paf)
 {
-	if (paf->owner)
-		act("The thread of plasma no longer connects you to $N.", ch, nullptr, paf->owner, TO_CHAR);
+	if (Deref(paf->owner))
+		act("The thread of plasma no longer connects you to $N.", ch, nullptr, Deref(paf->owner), TO_CHAR);
 }
 
 void spell_plasma_thread(int sn, int level, CHAR_DATA *ch, void *vo, int target)
@@ -7448,7 +7448,7 @@ void spell_plasma_thread(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SPELL;
 	af.type = sn;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.location = 0;
 	af.duration = 2;
@@ -7460,7 +7460,7 @@ void spell_plasma_thread(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SPELL;
 	af.type = sn;
-	af.owner = victim;
+	af.owner = victim->self;
 	af.level = level;
 	af.location = 0;
 	af.duration = 2;
@@ -7481,7 +7481,7 @@ void check_plasma_thread(CHAR_DATA *ch, int direction)
 
 	if (af != nullptr)
 	{
-		victim = af->owner;
+		victim = Deref(af->owner);
 
 		if (victim == nullptr)
 		{
@@ -7730,7 +7730,7 @@ void spell_fashion_crystal(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	oaf.where = TO_OBJ_AFFECTS;
 	oaf.type = gsn_fashion_crystal;
 	oaf.aftype = AFT_SPELL;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	oaf.level = level;
 	oaf.location = 0;
 	oaf.modifier = mana;
@@ -7769,7 +7769,7 @@ void spell_farsee(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.aftype = AFT_SPELL;
 	af.type = gsn_farsee;
 	af.level = level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.location = 0;
 	af.modifier = 0;
 	af.duration = level / 4;
@@ -7923,7 +7923,7 @@ void spell_rotating_ward(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.type = gsn_rotating_ward;
 	af.aftype = AFT_SPELL;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.modifier = charges;
 	af.duration = level / 2;
@@ -7981,7 +7981,7 @@ void mana_infusion_helper(CHAR_DATA *ch, CHAR_DATA *victim)
 	af.location = 0;
 	af.duration = number_range(1, 3);
 	af.modifier = 0;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.tick_fun = infusion_tick;
 	affect_to_char(victim, &af);
 }
@@ -8014,7 +8014,7 @@ void spell_mana_infusion(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af1.type = gsn_mana_infusion;
 	af1.aftype = AFT_INVIS;
 	af1.duration = 2;
-	af1.owner = ch;
+	af1.owner = ch->self;
 	new_affect_to_char(victim, &af1);
 
 	RS.Queue.AddToQueue(2, "spell_mana_infusion", "damage_queued", damage_queued, ch, victim, level, DAM_OTHER, HIT_UNBLOCKABLE, HIT_NOADD, dammod, "the escaping mana*");
@@ -8031,5 +8031,9 @@ void infusion_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 	act("You writhe in pain as the mana continues to flow out of you.", ch, 0, 0, TO_CHAR);
 	act("$n writhes in pain as the mana continues to flow out of $m.", ch, 0, 0, TO_ROOM);
 
-	damage_new(af->owner ? af->owner : ch, ch, af->owner ? af->owner->level / 2 : ch->level / 2, gsn_mana_sickness, true, DAM_OTHER, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the escaping mana*");
+	// One read: both uses are arguments to the same call, so nothing runs
+	// between them.
+	CHAR_DATA *owner = Deref(af->owner);
+
+	damage_new(owner ? owner : ch, ch, owner ? owner->level / 2 : ch->level / 2, gsn_mana_sickness, true, DAM_OTHER, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the escaping mana*");
 }

@@ -1219,7 +1219,7 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 		}
 
 		if (ch != victim)
-			damage_new(ch, laf->owner, (int)(dam * 0.25f), gsn_empathy, DAM_INTERNAL, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "spiritual link");
+			damage_new(ch, Deref(laf->owner), (int)(dam * 0.25f), gsn_empathy, DAM_INTERNAL, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "spiritual link");
 
 		dam *= .75;
 	}
@@ -1293,16 +1293,16 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 	{
 		af = affect_find(victim->affected, gsn_holy_shroud);
 
-		if (af->owner == victim && is_evil(ch))
+		if (Deref(af->owner) == victim && is_evil(ch))
 			dam *= .5;
 
-		if (af->owner == victim && !is_evil(ch))
+		if (Deref(af->owner) == victim && !is_evil(ch))
 			dam *= .8;
 
-		if (af->owner != victim && is_evil(ch))
+		if (Deref(af->owner) != victim && is_evil(ch))
 			dam *= .75;
 
-		if (af->owner != victim && !is_evil(ch))
+		if (Deref(af->owner) != victim && !is_evil(ch))
 			dam *= .9;
 	}
 
@@ -1319,7 +1319,7 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 
 	if (ch != nullptr
 		&& (af = affect_find(ch->affected, gsn_divine_ward)) != nullptr
-		&& af->owner == victim
+		&& Deref(af->owner) == victim
 		&& dam_type != DAM_TRUESTRIKE)
 	{
 		if (af->modifier == 1)
@@ -1438,8 +1438,8 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 
 	/* retribution */
 	AFFECT_DATA *paf = affect_find(ch->affected, gsn_retribution);
-	if (paf && paf->owner == victim)
-		paf->modifier = std::min((int)dam + paf->modifier, paf->owner->level * 8);
+	if (paf && Deref(paf->owner) == victim)
+		paf->modifier = std::min((int)dam + paf->modifier, Deref(paf->owner)->level * 8);
 
 	/*
 	 * Hurt the victim.
@@ -9228,10 +9228,10 @@ void bleeding_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 
 	send_to_char("You continue bleeding from your wounds.\n\r", ch);
 
-	if (!af->owner)
-		af->owner = ch;
+	if (!Deref(af->owner))
+		af->owner = ch->self;
 
-	damage_new(af->owner, ch, af->level, gsn_bleeding, DAM_OTHER, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
+	damage_new(Deref(af->owner), ch, af->level, gsn_bleeding, DAM_OTHER, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
 }
 
 void do_gore(CHAR_DATA *ch, char *argument)
@@ -9317,7 +9317,7 @@ void do_gore(CHAR_DATA *ch, char *argument)
 			af.type = gsn_bleeding;
 			af.aftype = AFT_MALADY;
 			af.level = ch->level;
-			af.owner = ch;
+			af.owner = ch->self;
 			af.duration = 4;
 			af.location = APPLY_STR;
 			af.modifier = -ch->level / 10;
@@ -9397,7 +9397,7 @@ void do_headbutt(CHAR_DATA *ch, char *argument)
 			af.where = TO_AFFECTS;
 			af.type = gsn_headbutt;
 			af.aftype = AFT_SKILL;
-			af.owner = ch;
+			af.owner = ch->self;
 			af.level = ch->level;
 			af.duration = 2;
 
@@ -9420,7 +9420,7 @@ void do_headbutt(CHAR_DATA *ch, char *argument)
 			af.where = TO_AFFECTS;
 			af.type = gsn_headbutt;
 			af.aftype = AFT_SKILL;
-			af.owner = ch;
+			af.owner = ch->self;
 			af.level = ch->level;
 			af.duration = 2;
 

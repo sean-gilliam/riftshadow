@@ -1552,11 +1552,11 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 	if (!af)
 		return;
 
-	if (mob->pIndexData->vnum == MOB_VNUM_BARBAS && attacker != af->owner && af->owner)
+	if (mob->pIndexData->vnum == MOB_VNUM_BARBAS && attacker != Deref(af->owner) && Deref(af->owner))
 	{
 		do_say(mob, "Bah, ya bloody fool, you'll pay for this!");
 
-		sprintf(buf, "%s I'll be back for ye another time, weakling.", af->owner->name);
+		sprintf(buf, "%s I'll be back for ye another time, weakling.", Deref(af->owner)->name);
 		do_tell(mob, buf);
 
 		act("$n vanishes in a crimson flash!", mob, 0, 0, TO_ROOM);
@@ -1567,31 +1567,31 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 		char_to_room(mob, get_room_index(3));
 
 		RS.Queue.AddToQueue(1, "attack_prog_lesser_demon", "delay_extract", delay_extract, mob);
-		af->owner->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_NONE;
+		Deref(af->owner)->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_NONE;
 		return;
 	}
 
 	if (mob->pIndexData->vnum == MOB_VNUM_BARBAS)
 		return;
 
-	if (attacker == af->owner)
+	if (attacker == Deref(af->owner))
 	{
 		switch (mob->pIndexData->vnum)
 		{
 			case MOB_VNUM_BARBAS:
-				af->owner->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_FAILED;
 				break;
 			case MOB_VNUM_FURCAS:
-				af->owner->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_FAILED;
 				break;
 			case MOB_VNUM_MALAPHAR:
-				af->owner->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_FAILED;
 				break;
 			case MOB_VNUM_AAMON:
-				af->owner->pcdata->lesserdata[LESSER_AAMON] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_AAMON] = FAVOR_FAILED;
 				break;
 			case MOB_VNUM_IPOS:
-				af->owner->pcdata->lesserdata[LESSER_IPOS] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_IPOS] = FAVOR_FAILED;
 				break;
 			default:
 				return;
@@ -1610,24 +1610,24 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 		return;
 	}
 
-	if (attacker != af->owner)
+	if (attacker != Deref(af->owner))
 	{
 		switch (mob->pIndexData->vnum)
 		{
 			case MOB_VNUM_BARBAS:
-				af->owner->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_NONE;
 				break;
 			case MOB_VNUM_FURCAS:
-				af->owner->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_NONE;
 				break;
 			case MOB_VNUM_MALAPHAR:
-				af->owner->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_NONE;
 				break;
 			case MOB_VNUM_AAMON:
-				af->owner->pcdata->lesserdata[LESSER_AAMON] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_AAMON] = FAVOR_NONE;
 				break;
 			case MOB_VNUM_IPOS:
-				af->owner->pcdata->lesserdata[LESSER_IPOS] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_IPOS] = FAVOR_NONE;
 				break;
 			default:
 				return;
@@ -1636,7 +1636,7 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 		sprintf(buf, "%s, you fool, you'll pay for this!", attacker->name);
 		do_say(mob, buf);
 
-		sprintf(buf, "%s I'll be back for ye another time, weakling.", af->owner->name);
+		sprintf(buf, "%s I'll be back for ye another time, weakling.", Deref(af->owner)->name);
 		do_tell(mob, buf);
 
 		act("$n vanishes in a crimson flash!", mob, 0, 0, TO_ROOM);
@@ -1712,7 +1712,7 @@ bool death_prog_barbas(CHAR_DATA *mob, CHAR_DATA *killer)
 
 	act("Emitting a ghastly grunt, Barbas falls to the ground in a heap and disappears.", mob, 0, 0, TO_ROOM);
 
-	if (killer != af->owner)
+	if (killer != Deref(af->owner))
 		return false;
 
 	send_to_char("You feel a gluttonous lust enter your body as you stand victorious!\n\r", killer);
@@ -1733,7 +1733,7 @@ void speech_prog_aamon(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	if (!af)
 		return;
 
-	if (ch != af->owner)
+	if (ch != Deref(af->owner))
 		return;
 
 	lowspeech = talloc_string(lowstring(speech));
@@ -1845,7 +1845,7 @@ void greet_prog_furcas(CHAR_DATA *mob, CHAR_DATA *ch)
 	if (!af)
 		return;
 
-	if (ch != af->owner)
+	if (ch != Deref(af->owner))
 		return;
 
 	act("Eyes wide with amazement and fear, $n leaps backward away from you!", mob, 0, ch, TO_VICT);
@@ -1870,10 +1870,10 @@ void speech_prog_ipos(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	if (!af)
 		return;
 
-	if (!af->owner)
+	if (!Deref(af->owner))
 		return;
 
-	if (ch != af->owner)
+	if (ch != Deref(af->owner))
 		return;
 
 	if (af->modifier > 4)
@@ -1938,10 +1938,10 @@ void speech_prog_oze(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	AFFECT_DATA *af = affect_find(mob->affected, gsn_greater_demon);
 	char buf[MSL];
 
-	if (!af || !af->owner)
+	if (!af || !Deref(af->owner))
 		return;
 
-	if (ch != af->owner)
+	if (ch != Deref(af->owner))
 		return;
 
 	if (!str_prefix("yes", speech))
@@ -1988,10 +1988,10 @@ void speech_prog_gamygyn(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	char buf[MSL];
 	std::string buffer;
 
-	if (!paf || !paf->owner)
+	if (!paf || !Deref(paf->owner))
 		return;
 
-	if (ch != paf->owner)
+	if (ch != Deref(paf->owner))
 		return;
 
 	if (!str_prefix("yes", speech))
@@ -2011,7 +2011,7 @@ void speech_prog_gamygyn(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_gamygyn_soul;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = 60;
 		af.duration = 1000;
 		af.modifier = 0;
@@ -2042,10 +2042,10 @@ void speech_prog_orobas(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	char buf[MSL];
 	std::string buffer;
 
-	if (!paf || !paf->owner)
+	if (!paf || !Deref(paf->owner))
 		return;
 
-	if (ch != paf->owner)
+	if (ch != Deref(paf->owner))
 		return;
 
 	if (!str_prefix("yes", speech))
@@ -2071,7 +2071,7 @@ void speech_prog_orobas(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_orobas_soul;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = 60;
 		af.duration = 1000;
 		af.modifier = 0;
@@ -2101,10 +2101,10 @@ void speech_prog_geryon(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	AFFECT_DATA *paf = affect_find(mob->affected, gsn_greater_demon);
 	char buf[MSL];
 
-	if (!paf || !paf->owner)
+	if (!paf || !Deref(paf->owner))
 		return;
 
-	if (ch != paf->owner)
+	if (ch != Deref(paf->owner))
 		return;
 
 	if (!str_prefix("eye", speech))
@@ -2157,10 +2157,10 @@ void speech_prog_cimeries(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 {
 	AFFECT_DATA *paf = affect_find(mob->affected, gsn_greater_demon);
 
-	if (!paf || !paf->owner)
+	if (!paf || !Deref(paf->owner))
 		return;
 
-	if (ch != paf->owner)
+	if (ch != Deref(paf->owner))
 		return;
 
 	if (!str_prefix("ear", speech))
@@ -2501,7 +2501,7 @@ void pulse_prog_wizard_summon(CHAR_DATA *mob)
 			paf = nullptr;
 			for (auto &paf_elem : mob->affected)
 			{
-				if (paf_elem.type == gsn_bash && paf_elem.owner == vch)
+				if (paf_elem.type == gsn_bash && Deref(paf_elem.owner) == vch)
 				{
 					found = true;
 					paf = &paf_elem;
@@ -2536,7 +2536,7 @@ void pulse_prog_wizard_summon(CHAR_DATA *mob)
 			af.where = TO_AFFECTS;
 			af.modifier = 10;
 			af.duration = -1;
-			af.owner = vch;
+			af.owner = vch->self;
 			af.type = gsn_bash;
 			affect_to_char(mob, &af);
 		}
@@ -3463,7 +3463,7 @@ void pulse_prog_glass(CHAR_DATA *mob)
 		af.type = gsn_bleeding;
 		af.aftype = AFT_MALADY;
 		af.level = mob->level;
-		af.owner = Deref(mob->leader);
+		af.owner = mob->leader;
 		af.end_fun = nullptr;
 		new_affect_to_char(victim, &af);
 
@@ -3478,7 +3478,7 @@ void pulse_prog_glass(CHAR_DATA *mob)
 		caf.type = gsn_trophy;
 		caf.level = mob->level;
 		caf.aftype = AFT_SKILL;
-		caf.owner = Deref(mob->leader);
+		caf.owner = mob->leader;
 		caf.end_fun = nullptr;
 		new_affect_to_char(mob, &caf);
 	}
@@ -3618,7 +3618,7 @@ void greet_prog_face_sucker(CHAR_DATA *mob, CHAR_DATA *ch)
 	af.type = gsn_blindness;
 	af.location = APPLY_HITROLL;
 	af.modifier = -10;
-	af.owner = mob;
+	af.owner = mob->self;
 	af.duration = 6;
 	af.pulse_fun = sucker_pulse;
 

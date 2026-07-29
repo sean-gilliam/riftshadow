@@ -2303,6 +2303,8 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 
 	for (auto &paf : obj->affected)
 	{
+		CHAR_DATA *owner = Deref(paf.owner);
+
 		if (paf.aftype == AFT_SKILL)
 			sprintf(buf2, "Skill");
 		else if (paf.aftype == AFT_POWER)
@@ -2329,7 +2331,7 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 			(paf.duration == 0) ? "" : (paf.duration == -1) ? "" : ".5",
 			(paf.where == TO_OBJ_AFFECTS) ? "aff" : (paf.where == TO_OBJ_APPLY) ? "apply" : "?",
 			oaffect_bit_name(paf.bitvector),
-			(paf.owner) ? paf.owner->name : "none", paf.level);
+			owner ? owner->name : "none", paf.level);
 		send_to_char(buffer.c_str(), ch);
 	}
 }
@@ -2478,6 +2480,8 @@ void do_astat(CHAR_DATA *ch, char *argument)
 
 		for (auto &paf : area->affected)
 		{
+			CHAR_DATA *owner = Deref(paf.owner);
+
 			if (paf.aftype == AFT_SKILL)
 				sprintf(buf, "Skill: '%s' ", skill_table[paf.type].name);
 			else if (paf.aftype == AFT_POWER)
@@ -2495,7 +2499,7 @@ void do_astat(CHAR_DATA *ch, char *argument)
 				(paf.duration == -1) ? paf.duration : paf.duration / 2,
 				"flag",
 				"nullptr",
-				paf.owner != nullptr ? paf.owner->name : "none",
+				owner ? owner->name : "none",
 				paf.level);
 			send_to_char(buf, ch);
 		}
@@ -3046,6 +3050,8 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 
 	for (auto &paf : victim->affected)
 	{
+		CHAR_DATA *owner = Deref(paf.owner);
+
 		if (paf.aftype == AFT_SPELL)
 			sprintf(buf2, "Spell");
 		else if (paf.aftype == AFT_SKILL)
@@ -3080,7 +3086,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 			paf.where == TO_IMMUNE || paf.where == TO_RESIST || paf.where == TO_VULN
 				? imm_bit_name(paf.bitvector)
 				: affect_bit_name(paf.bitvector),
-			paf.owner != nullptr ? paf.owner->true_name : "none", paf.level);
+			owner ? owner->true_name : "none", paf.level);
 		send_to_char(buffer.c_str(), ch);
 	}
 
@@ -7171,6 +7177,8 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 
 		for (auto &paf : ch->in_room->affected)
 		{
+			CHAR_DATA *owner = Deref(paf.owner);
+
 			if (paf.aftype == AFT_SPELL)
 				sprintf(buf, "Spell: '%s' ", skill_table[paf.type].name);
 
@@ -7194,7 +7202,7 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 				paf.duration / 2,
 				paf.where == TO_ROOM_FLAGS ? "flag" : paf.where == TO_ROOM_CONST ? "const" : "aff",
 				"nullptr",
-				paf.owner != nullptr ? paf.owner->name : "none",
+				owner ? owner->name : "none",
 				paf.level);
 			send_to_char(buf, ch);
 		}

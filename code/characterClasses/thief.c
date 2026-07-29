@@ -403,7 +403,7 @@ void do_blackjack(CHAR_DATA *ch, char *argument)
 	init_affect(&af);
 	af.where = TO_AFFECTS;
 	af.level = ch->level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.location = 0;
 	af.type = gsn_blackjack;
 	af.modifier = 0;
@@ -1092,7 +1092,7 @@ void do_tripwire(CHAR_DATA *ch, char *argument)
 		raf.aftype = AFT_SKILL;
 		raf.level = ch->level;
 		raf.duration = 5;
-		raf.owner = ch;
+		raf.owner = ch->self;
 		raf.modifier = door;
 		new_affect_to_room(ch->in_room, &raf);
 
@@ -1387,7 +1387,7 @@ void do_stash(CHAR_DATA *ch, char *argument)
 		oaf.aftype = AFT_SKILL;
 		oaf.level = ch->level;
 		oaf.duration = -1;
-		oaf.owner = ch;
+		oaf.owner = ch->self;
 		affect_to_obj(obj, &oaf);
 
 		check_improve(ch, gsn_stash, true, 1);
@@ -1469,7 +1469,7 @@ void do_disguise(CHAR_DATA *ch, char *argument)
 	oaf.aftype = AFT_SKILL;
 	oaf.level = ch->level;
 	oaf.duration = -1;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	affect_to_obj(corpse, &oaf);
 
 	if (number_percent() < skill)
@@ -1495,7 +1495,7 @@ void do_disguise(CHAR_DATA *ch, char *argument)
 		init_affect(&af);
 		af.where = TO_AFFECTS;
 		af.type = gsn_disguise;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = ch->level;
 		af.aftype = AFT_INVIS;
 		af.duration = ch->level;
@@ -1603,7 +1603,7 @@ void do_search(CHAR_DATA *ch, char *argument)
 				if (ch->Class()->GetIndex() == CLASS_THIEF)
 					chance += (ch->level / 2);
 
-				if (oaf.owner != ch && (number_percent() < chance))
+				if (Deref(oaf.owner) != ch && (number_percent() < chance))
 				{
 					affect_strip_obj(obj, gsn_stash);
 					act("You stumble across $p which seemed to be hidden from your eye.", ch, obj, 0, TO_CHAR);
@@ -1706,7 +1706,7 @@ void do_counterfeit(CHAR_DATA *ch, char *argument)
 	oaf.aftype = AFT_SKILL;
 	oaf.level = ch->level;
 	oaf.duration = ch->level;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	oaf.end_fun = counterfeit_end;
 	affect_to_obj(copy, &oaf);
 
@@ -2385,7 +2385,7 @@ void do_knife(CHAR_DATA *ch, char *argument)
 			af.modifier = 0;
 			af.aftype = AFT_INVIS;
 			af.tick_fun = bleeding_tick;
-			af.owner = ch;
+			af.owner = ch->self;
 			new_affect_to_char(victim, &af);
 		}
 	}
@@ -2474,7 +2474,7 @@ void do_bluff(CHAR_DATA *ch, char *argument)
 		}
 
 		af.aftype = AFT_SKILL;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.mod_name = MOD_APPEARANCE;
 		new_affect_to_char(ch, &af);
 

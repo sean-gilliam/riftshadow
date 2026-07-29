@@ -3,6 +3,7 @@
 
 #include "fwd.h"
 #include "limits.h"
+#include "../stdlibs/handle.h"
 
 //
 // An affect.
@@ -12,12 +13,12 @@
 // rule-of-5 (bodies in recycle.c). Parents hold these by value in a
 // std::list<AFFECT_DATA> (ch->affected, obj->charaffs, and the two Tier-0
 // prototype lists obj_index->affected / obj_index->charaffs). `owner` is a
-// non-owning CHAR_DATA back-reference and stays a raw pointer (scrubbed on
-// extract_char). std::list, not vector: callers cache an element pointer
+// non-owning CHAR_DATA back-reference and expires on its own when that
+// character is freed. std::list, not vector: callers cache an element pointer
 // returned by affect_find across later list mutations.
 struct affect_data
 {
-	CHAR_DATA *owner = nullptr;
+	Handle<CHAR_DATA> owner;
 	char *name = nullptr;
 	short where = 0;
 	short type = 0;
@@ -49,10 +50,12 @@ struct affect_data
 
 // A room affect. Plain value type; a room owns these by value in a
 // std::list<ROOM_AFFECT_DATA> (room->affected). `owner` is a non-owning
-// CHAR_DATA back-reference and stays a raw pointer.
+// CHAR_DATA back-reference. Note extract_char still deletes a character's room
+// affects outright: the affect keeps damaging whoever walks in, so losing the
+// attribution is not the same as the effect ending.
 struct room_affect_data
 {
-	CHAR_DATA *owner = nullptr;
+	Handle<CHAR_DATA> owner;
 	short where = 0;
 	short type = 0;
 	short level = 0;
@@ -72,10 +75,12 @@ struct room_affect_data
 
 // An area affect. Plain value type; an area owns these by value in a
 // std::list<AREA_AFFECT_DATA> (area->affected). `owner` is a non-owning
-// CHAR_DATA back-reference and stays a raw pointer.
+// CHAR_DATA back-reference and expires on its own when that character is
+// freed; nothing has ever scrubbed it, and an area affect outlives the fight
+// that spawned it by design.
 struct area_affect_data
 {
-	CHAR_DATA *owner = nullptr;
+	Handle<CHAR_DATA> owner;
 	short where = 0;
 	short type = 0;
 	short level = 0;
@@ -94,7 +99,7 @@ struct area_affect_data
 // CHAR_DATA back-reference and stays a raw pointer.
 struct obj_affect_data
 {
-	CHAR_DATA *owner = nullptr;
+	Handle<CHAR_DATA> owner;
 	short where = 0;
 	short type = 0;
 	short level = 0;

@@ -549,7 +549,7 @@ void do_hobble(CHAR_DATA *ch, char *argument)
 					af2.aftype = AFT_INVIS;
 					af2.tick_fun = bleeding_tick;
 					af2.end_fun = nullptr;
-					af2.owner = ch;
+					af2.owner = ch->self;
 					new_affect_to_char(victim, &af2);
 					break;
 				case WEAPON_SWORD:
@@ -572,7 +572,7 @@ void do_hobble(CHAR_DATA *ch, char *argument)
 					af2.aftype = AFT_INVIS;
 					af2.tick_fun = bleeding_tick;
 					af2.end_fun = nullptr;
-					af2.owner = ch;
+					af2.owner = ch->self;
 					new_affect_to_char(victim, &af2);
 					break;
 				case WEAPON_FLAIL:
@@ -834,7 +834,7 @@ void do_crippling_blow(CHAR_DATA *ch, char *argument)
 					af2.aftype = AFT_INVIS;
 					af2.tick_fun = bleeding_tick;
 					af2.end_fun = nullptr;
-					af2.owner = ch;
+					af2.owner = ch->self;
 					new_affect_to_char(victim, &af2);
 					break;
 				case WEAPON_SWORD:
@@ -857,7 +857,7 @@ void do_crippling_blow(CHAR_DATA *ch, char *argument)
 					af2.aftype = AFT_INVIS;
 					af2.tick_fun = bleeding_tick;
 					af2.end_fun = nullptr;
-					af2.owner = ch;
+					af2.owner = ch->self;
 					new_affect_to_char(victim, &af2);
 					break;
 				case WEAPON_FLAIL:
@@ -1224,7 +1224,7 @@ void do_bleed(CHAR_DATA *ch, char *argument)
 			af.aftype = AFT_MALADY;
 			af.end_fun = nullptr;
 			af.tick_fun = bleeding_tick;
-			af.owner = ch;
+			af.owner = ch->self;
 			new_affect_to_char(victim, &af);
 		}
 
@@ -1534,7 +1534,7 @@ void do_uppercut(CHAR_DATA *ch, char *argument)
 				af.where = TO_AFFECTS;
 				af.level = ch->level;
 				af.duration = duration;
-				af.owner = ch;
+				af.owner = ch->self;
 				af.type = gsn_uppercut;
 				af.aftype = AFT_MALADY;
 				af.mod_name = MOD_SPEECH;
@@ -1670,7 +1670,7 @@ void do_dart(CHAR_DATA *ch, char *argument)
 
 		af.where = TO_AFFECTS;
 		af.level = ch->level;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.end_fun = nullptr;
 
 		if (!is_affected(victim, af.type))
@@ -1795,7 +1795,7 @@ void do_impale(CHAR_DATA *ch, char *argument)
 				af.duration = ch->level / 9;
 				af.location = APPLY_STR;
 				af.modifier = -ch->level / 8;
-				af.owner = ch;
+				af.owner = ch->self;
 				new_affect_to_char(victim, &af);
 
 				af.location = APPLY_DEX;
@@ -1809,7 +1809,7 @@ void do_impale(CHAR_DATA *ch, char *argument)
 			iaf.aftype = AFT_INVIS;
 			iaf.duration = -1;
 			iaf.level = ch->level;
-			iaf.owner = ch;
+			iaf.owner = ch->self;
 			new_affect_to_char(victim, &iaf);
 
 			extract_obj(weapon);
@@ -1831,7 +1831,7 @@ void do_impale(CHAR_DATA *ch, char *argument)
 				af.duration = ch->level / 8;
 				af.location = APPLY_STR;
 				af.modifier = -ch->level / 8;
-				af.owner = ch;
+				af.owner = ch->self;
 				new_affect_to_char(victim, &af);
 
 				af.location = APPLY_DEX;
@@ -1998,7 +1998,7 @@ void do_hurl(CHAR_DATA *ch, char *argument)
 				af.duration = 2;
 				af.location = APPLY_NONE;
 				af.modifier = 0;
-				af.owner = ch;
+				af.owner = ch->self;
 				affect_to_char(victim, &af);
 			}
 		}
@@ -2033,7 +2033,7 @@ void do_hurl(CHAR_DATA *ch, char *argument)
 				af.duration = 2;
 				af.location = APPLY_NONE;
 				af.modifier = 0;
-				af.owner = ch;
+				af.owner = ch->self;
 				affect_to_char(victim, &af);
 			}
 		}
@@ -2242,7 +2242,7 @@ void do_overhead(CHAR_DATA *ch, char *argument)
 			af.aftype = AFT_INVIS;
 			af.tick_fun = bleeding_tick;
 			af.end_fun = nullptr;
-			af.owner = ch;
+			af.owner = ch->self;
 			af.level = ch->level;
 
 			switch (weapon->value[0])
@@ -2343,8 +2343,8 @@ void do_extract(CHAR_DATA *ch, char *argument)
 	owner = ch;
 	af = affect_find(ch->affected, gsn_impale);
 
-	if (af && af->owner)
-		owner = af->owner;
+	if (af && Deref(af->owner))
+		owner = Deref(af->owner);
 
 	damage_new(owner, ch, dam, gsn_impale, DAM_OTHER, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the extraction*");
 	affect_strip(ch, gsn_impale);
@@ -3485,7 +3485,7 @@ void do_entwine(CHAR_DATA *ch, char *argument)
 		}
 
 		af.aftype = AFT_SKILL;
-		af.owner = ch;
+		af.owner = ch->self;
 		affect_to_char(victim, &af);
 
 		init_affect(&af);
@@ -3496,7 +3496,7 @@ void do_entwine(CHAR_DATA *ch, char *argument)
 		af.location = APPLY_NONE;
 		af.modifier = 0;
 		af.aftype = AFT_INVIS;
-		af.owner = victim;
+		af.owner = victim->self;
 		affect_to_char(ch, &af);
 
 		act("You crack your whip, deftly coiling it about $N's $t and pulling it taut!", ch, arm ? "arm" : leg ? "leg" : "", victim, TO_CHAR);
@@ -3564,14 +3564,14 @@ void do_uncoil(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	guy = af->owner;
+	guy = Deref(af->owner);
 
 	if (guy != nullptr)
 	{
 		af2 = nullptr;
 		for (auto &af2_elem : guy->affected)
 		{
-			if (af2_elem.type == gsn_entwine && af2_elem.owner == ch)
+			if (af2_elem.type == gsn_entwine && Deref(af2_elem.owner) == ch)
 			{
 				af2 = &af2_elem;
 				break;
@@ -3670,12 +3670,12 @@ void do_pull(CHAR_DATA *ch, char *argument)
 			}
 		}
 
-		guy = af->owner;
+		guy = Deref(af->owner);
 
 		af2 = nullptr;
 		for (auto &af2_elem : guy->affected)
 		{
-			if (af2_elem.type == gsn_entwine && af2_elem.owner == ch)
+			if (af2_elem.type == gsn_entwine && Deref(af2_elem.owner) == ch)
 			{
 				af2 = &af2_elem;
 				break;

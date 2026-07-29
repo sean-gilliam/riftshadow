@@ -2274,3 +2274,329 @@ SCENARIO("a slain player is still trustworthy as far as the world is concerned",
 		ClearTrackers();
 	}
 }
+
+//
+// The four affect `owner` fields -- AFFECT_DATA, ROOM_AFFECT_DATA,
+// AREA_AFFECT_DATA and OBJ_AFFECT_DATA.
+//
+// `owner` is "who caused this", and it is read for damage attribution, for
+// is_safe/is_same_group/is_same_cabal checks, for messaging, and in a handful
+// of places for "has the causer died". Four containers hold affects that carry
+// one -- ch->affected, room->affected, area->affected, obj->affected -- plus
+// obj->charaffs, which holds AFFECT_DATA on an object rather than a character.
+//
+// Only ONE of those five was ever scrubbed. extract_char walked char_list and
+// nulled `owner` in every ch->affected list; the room affects owned by the
+// dying character were removed outright by a second walk over
+// top_affected_room. Area affects, object affects and obj->charaffs were never
+// touched at all, so their owners simply dangled -- and free_char recycles
+// addresses, so "dangled" means "started naming whoever was allocated next".
+//
+// The two walks are not the same kind of thing, and the conversion treats them
+// differently. See the scenarios below.
+//
+
+namespace
+{
+	CHAR_DATA *AffectOwner(const AFFECT_DATA &af)
+	{
+		return Deref(af.owner);
+	}
+
+	CHAR_DATA *AffectOwner(const ROOM_AFFECT_DATA &raf)
+	{
+		return Deref(raf.owner);
+	}
+
+	CHAR_DATA *AffectOwner(const AREA_AFFECT_DATA &aaf)
+	{
+		return Deref(aaf.owner);
+	}
+
+	CHAR_DATA *AffectOwner(const OBJ_AFFECT_DATA &oaf)
+	{
+		return Deref(oaf.owner);
+	}
+
+	// The setter half of the pair. Every assignment in these scenarios goes
+	// through it for the same reason every read goes through AffectOwner: this
+	// file has to compile and run identically either side of the type flip, so
+	// the only things that may mention the field's type are these two bodies.
+	template <typename AffectT>
+	void SetAffectOwner(AffectT &af, CHAR_DATA *owner)
+	{
+		af.owner = owner->self;
+	}
+
+	AFFECT_DATA &GiveCharAffect(CHAR_DATA *victim, CHAR_DATA *owner, int type)
+	{
+		AFFECT_DATA af;
+		init_affect(&af);
+
+		af.type = static_cast<short>(type);
+		af.duration = 10;
+		SetAffectOwner(af, owner);
+
+		victim->affected.push_back(af);
+
+		return victim->affected.back();
+	}
+
+	OBJ_AFFECT_DATA &GiveObjAffect(OBJ_DATA *obj, CHAR_DATA *owner, int type)
+	{
+		OBJ_AFFECT_DATA oaf;
+		init_affect_obj(&oaf);
+
+		oaf.type = static_cast<short>(type);
+		oaf.duration = 10;
+		SetAffectOwner(oaf, owner);
+
+		obj->affected.push_back(oaf);
+
+		return obj->affected.back();
+	}
+
+	AREA_AFFECT_DATA &GiveAreaAffect(AREA_DATA *area, CHAR_DATA *owner, int type)
+	{
+		AREA_AFFECT_DATA aaf;
+		init_affect_area(&aaf);
+
+		aaf.type = static_cast<short>(type);
+		aaf.duration = 10;
+		SetAffectOwner(aaf, owner);
+
+		area->affected.push_back(aaf);
+
+		return area->affected.back();
+	}
+
+	ROOM_AFFECT_DATA &GiveRoomAffect(ROOM_INDEX_DATA *room, CHAR_DATA *owner, int type)
+	{
+		ROOM_AFFECT_DATA raf;
+		init_affect_room(&raf);
+
+		raf.type = static_cast<short>(type);
+		raf.duration = 10;
+		SetAffectOwner(raf, owner);
+
+		room->affected.push_back(raf);
+
+		// affect_to_room does this as a side effect of adding the first affect,
+		// and extract_char's second walk only visits rooms on this list.
+		if (top_affected_room != room && room->aff_next == nullptr)
+		{
+			room->aff_next = top_affected_room;
+			top_affected_room = room;
+		}
+
+		return room->affected.back();
+	}
+
+	void ClearAffectedRooms()
+	{
+		top_affected_room = nullptr;
+	}
+}
+
+SCENARIO("an affect does not remember a caster who has left the world", "[affectowner]")
+{
+	GIVEN("a mob carrying an affect cast by another")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *caster = MakeTracker(room);
+		CHAR_DATA *victim = MakeTracker(room);
+		CHAR_DATA *bystander = MakeTracker(room);
+
+		AFFECT_DATA &af = GiveCharAffect(victim, caster, 1);
+		AFFECT_DATA &unrelated = GiveCharAffect(bystander, victim, 1);
+
+		REQUIRE(AffectOwner(af) == caster);
+
+		WHEN("the caster is pulled from the world")
+		{
+			extract_char(caster, true);
+
+			THEN("the affect names nobody")
+			{
+				REQUIRE(AffectOwner(af) == nullptr);
+			}
+
+			THEN("an affect owned by somebody else is left alone")
+			{
+				REQUIRE(AffectOwner(unrelated) == victim);
+			}
+
+			THEN("it still names nobody once the address is reissued")
+			{
+				// The whole point. free_char pushes onto a free list, so the
+				// next new_char hands back the caster's address; a raw
+				// back-reference would silently start naming the newcomer.
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == caster);
+				REQUIRE(AffectOwner(af) != newcomer);
+				REQUIRE(AffectOwner(af) == nullptr);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("an object's affect does not remember a caster who has left the world", "[affectowner]")
+{
+	GIVEN("an object carrying an affect cast by a character")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *caster = MakeTracker(room);
+		OBJ_DATA *obj = new_obj();
+
+		OBJ_AFFECT_DATA &oaf = GiveObjAffect(obj, caster, 1);
+
+		REQUIRE(AffectOwner(oaf) == caster);
+
+		WHEN("the caster is pulled from the world")
+		{
+			// Nothing has ever scrubbed this one -- extract_char's walk only
+			// ever visited ch->affected -- so before the conversion the field
+			// held a freed pointer here, and named the next character to take
+			// the address.
+			extract_char(caster, true);
+
+			THEN("the affect names nobody")
+			{
+				REQUIRE(AffectOwner(oaf) == nullptr);
+			}
+
+			THEN("it still names nobody once the address is reissued")
+			{
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == caster);
+				REQUIRE(AffectOwner(oaf) != newcomer);
+			}
+		}
+
+		free_obj(obj);
+		ClearTrackers();
+	}
+}
+
+SCENARIO("an area's affect does not remember a caster who has left the world", "[affectowner]")
+{
+	GIVEN("an area carrying an affect cast by a character")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *caster = MakeTracker(room);
+
+		AREA_AFFECT_DATA &aaf = GiveAreaAffect(room->area, caster, 1);
+
+		REQUIRE(AffectOwner(aaf) == caster);
+
+		WHEN("the caster is pulled from the world")
+		{
+			// Never scrubbed either, and area affects are the longest-lived of
+			// the four -- a zone-wide effect outlasts the fight that spawned it
+			// by design.
+			extract_char(caster, true);
+
+			THEN("the affect names nobody")
+			{
+				REQUIRE(AffectOwner(aaf) == nullptr);
+			}
+
+			THEN("it still names nobody once the address is reissued")
+			{
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == caster);
+				REQUIRE(AffectOwner(aaf) != newcomer);
+			}
+		}
+
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a room affect placed by a character dies with them", "[affectowner]")
+{
+	GIVEN("a room carrying an affect placed by a character")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *caster = MakeTracker(room);
+		CHAR_DATA *other = MakeTracker(room);
+
+		GiveRoomAffect(room, caster, 1);
+		GiveRoomAffect(room, other, 2);
+
+		REQUIRE(room->affected.size() == 2);
+
+		WHEN("the caster is pulled from the world")
+		{
+			extract_char(caster, true);
+
+			THEN("their room affect is removed outright, not merely disowned")
+			{
+				// This is the one walk in extract_char that survives the
+				// conversion, and it survives because it does not expire a
+				// reference -- it destroys the affect. A handle would leave the
+				// wall of fire burning in the room with nobody to attribute it
+				// to, and every consumer of raf->owner in act_move.c and
+				// update.c passes it straight to damage_new and is_safe.
+				REQUIRE(room->affected.size() == 1);
+				REQUIRE(AffectOwner(room->affected.front()) == other);
+			}
+		}
+
+		ClearAffectedRooms();
+		ClearTrackers();
+	}
+}
+
+SCENARIO("a slain player is still in the world, so their affects still name them", "[affectowner]")
+{
+	GIVEN("a mob carrying an affect cast by a player")
+	{
+		auto room = MakeTrackingRoom();
+		CHAR_DATA *caster = MakeNamedPlayer(room, "Alice");
+		CHAR_DATA *victim = MakeTracker(room);
+
+		AFFECT_DATA &af = GiveCharAffect(victim, caster, 1);
+
+		WHEN("the caster is extracted the way raw_kill does it, without pulling them")
+		{
+			extract_char(caster, false);
+
+			THEN("the caster is still alive")
+			{
+				REQUIRE(caster->valid);
+				REQUIRE(Deref(caster->self) == caster);
+			}
+
+			THEN("the affect still names them")
+			{
+				// This is the assertion that changes sides, and it is
+				// deliberate. extract_char's walk sat ABOVE the early return
+				// that sends a slain player to the altar without freeing them,
+				// so it nulled `owner` for a character who was still alive.
+				//
+				// Unlike last_fight_opponent and pcdata->trusting, that is not
+				// a game rule wearing lifetime clothing, and the evidence is
+				// that the readers disagree with it: update.c's mark of wrath
+				// asks `paf->owner->ghost > 0` -- literally "has my marked foe
+				// died" -- which can only be answered if `owner` still resolves
+				// after a death. The walk nulled it first, so that check was a
+				// null dereference rather than a rule. ap.c's burning_pulse
+				// (`owner->level`) and act_info.c's mark display
+				// (`af->owner->name`) are the same shape.
+				//
+				// So nothing is relocated to raw_kill for this field. The walk
+				// is deleted and the reference is left to expire on its own,
+				// which happens only when the caster is really gone.
+				REQUIRE(AffectOwner(af) == caster);
+			}
+		}
+
+		ClearTrackers();
+	}
+}

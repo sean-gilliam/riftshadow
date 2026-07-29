@@ -260,7 +260,7 @@ void spell_hex(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	hex.aftype = AFT_MALADY;
 	hex.type = sn;
 	hex.level = level;
-	hex.owner = ch;
+	hex.owner = ch->self;
 	hex.location = APPLY_SAVING_SPELL;
 	hex.modifier = 30;
 	hex.duration = level / 6;
@@ -752,7 +752,7 @@ void visceral_four(CHAR_DATA *ch)
 	af.aftype = AFT_SPELL;
 	af.level = ch->level;
 	af.duration = 60;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.end_fun = nullptr;
 	af.location = APPLY_HIT;
 	af.modifier = ch->level * 8;
@@ -1657,7 +1657,7 @@ bool check_bond(CHAR_DATA *ch, CHAR_DATA *mob)
 		init_affect(&af);
 		af.where = TO_AFFECTS;
 		af.duration = -1;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.type = gsn_unholy_bond;
 		af.aftype = AFT_SKILL;
 		affect_to_char(mob, &af);

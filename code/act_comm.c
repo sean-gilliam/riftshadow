@@ -1889,7 +1889,7 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 				}
 			}
 
-			if (laf->owner == ch)
+			if (Deref(laf->owner) == ch)
 				affect_strip(wch, gsn_empathy);
 		}
 
@@ -2349,7 +2349,7 @@ void do_group(CHAR_DATA *ch, char *argument)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_traitors_luck;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = ch->level;
 		af.duration = -1;
 		SET_BIT(af.bitvector, AFF_PERMANENT);
@@ -2365,7 +2365,7 @@ void do_group(CHAR_DATA *ch, char *argument)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_traitors_luck;
-		af.owner = victim;
+		af.owner = victim->self;
 		af.level = ch->level;
 		af.duration = -1;
 		SET_BIT(af.bitvector, AFF_PERMANENT);

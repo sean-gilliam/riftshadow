@@ -179,11 +179,11 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		if (raf != nullptr)
 		{
-			if (raf->owner == ch)
+			if (Deref(raf->owner) == ch)
 			{
 				act("The smoke parts for you allowing you passage.", ch, 0, 0, TO_CHAR);
 			}
-			else if (raf->owner == Deref(ch->master) && automatic)
+			else if (Deref(raf->owner) == Deref(ch->master) && automatic)
 			{
 				act("You follow $N through the smoke.", ch, 0, Deref(ch->master), TO_CHAR);
 			}
@@ -665,8 +665,8 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		auto owner = ch;
 		imaf = affect_find(ch->affected, gsn_impale);
-		if (imaf && imaf->owner)
-			owner = imaf->owner;
+		if (imaf && Deref(imaf->owner))
+			owner = Deref(imaf->owner);
 
 		damage_new(owner, ch, dice(3, 3), TYPE_UNDEFINED, DAM_NONE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "Your gaping wound*");
 
@@ -699,7 +699,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_affected_by(ch, AFF_FLYING))
 			return;
 
-		if (raf->owner == ch)
+		if (Deref(raf->owner) == ch)
 		{
 			act("You gracefully step over your tripwire.", ch, 0, 0, TO_CHAR);
 		}
@@ -708,7 +708,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 			twchance = (get_skill(ch, gsn_tripwire) / 5);
 			twchance += (get_curr_stat(ch, STAT_DEX) + get_curr_stat(ch, STAT_INT) - 30) * 2;
 
-			if (!is_safe(raf->owner, ch) && (number_percent() > twchance))
+			if (!is_safe(Deref(raf->owner), ch) && (number_percent() > twchance))
 			{
 				act("You trip over a wire and fall flat on your face!", ch, 0, 0, TO_CHAR);
 				act("$n trips over a wire and falls flat on $s face!", ch, 0, 0, TO_ROOM);
@@ -728,7 +728,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		{
 			if (raf.type == gsn_riptide && raf.location == APPLY_ROOM_NONE && raf.modifier == 1)
 			{
-				if (is_safe_new(raf.owner, ch, false) || raf.owner == ch)
+				if (is_safe_new(Deref(raf.owner), ch, false) || Deref(raf.owner) == ch)
 					break;
 
 				ROOM_INDEX_DATA *riptideroom = nullptr;
@@ -738,7 +738,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 					{
 						for (auto &raf_two : room->affected)
 						{
-							if (raf_two.type == gsn_riptide && raf_two.owner == raf.owner &&
+							if (raf_two.type == gsn_riptide && Deref(raf_two.owner) == Deref(raf.owner) &&
 								raf_two.location == APPLY_ROOM_NONE && raf_two.modifier == 2)
 								riptideroom = room;
 						}
@@ -775,10 +775,10 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_affected_by(ch, AFF_FLYING))
 			break;
 
-		if (is_same_cabal(ch, raf->owner) || is_same_group(ch, raf->owner))
+		if (is_same_cabal(ch, Deref(raf->owner)) || is_same_group(ch, Deref(raf->owner)))
 			break;
 
-		if (is_safe(ch, raf->owner))
+		if (is_safe(ch, Deref(raf->owner)))
 			break;
 
 		if (number_percent() <= (5 * (get_curr_stat(ch, STAT_DEX) - 15)))
@@ -793,7 +793,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		WAIT_STATE(ch, (ch->carry_weight / 150) * PULSE_VIOLENCE);
 
-		damage_new(raf->owner, ch, 5 + ch->carry_weight / 6, TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the fall*");
+		damage_new(Deref(raf->owner), ch, 5 + ch->carry_weight / 6, TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the fall*");
 
 		stop_fighting(ch, true);
 
@@ -808,7 +808,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		auto raf = affect_find_room(to_room->affected, gsn_quicksand);
 
-		if (is_safe_new(raf->owner, ch, false) || is_same_group(raf->owner, ch) || is_same_cabal(raf->owner, ch))
+		if (is_safe_new(Deref(raf->owner), ch, false) || is_same_group(Deref(raf->owner), ch) || is_same_cabal(Deref(raf->owner), ch))
 			break;
 
 		if (is_affected(ch, gsn_ultradiffusion))
@@ -829,7 +829,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		qs.where = TO_AFFECTS;
 		qs.aftype = AFT_INVIS;
 		qs.type = gsn_quicksand_sinking;
-		qs.owner = ch;
+		qs.owner = ch->self;
 		qs.level = raf->level;
 		qs.duration = -1;
 		qs.modifier = 1;
@@ -845,7 +845,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	{
 		auto raf = affect_find_room(to_room->affected, gsn_stalactites);
 
-		if (is_safe_new(raf->owner, ch, false) || is_same_group(raf->owner, ch) || is_same_cabal(raf->owner, ch))
+		if (is_safe_new(Deref(raf->owner), ch, false) || is_same_group(Deref(raf->owner), ch) || is_same_cabal(Deref(raf->owner), ch))
 			break;
 
 		if (is_affected(ch, gsn_ultradiffusion))
@@ -858,13 +858,13 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		if (number_percent() > (10 * get_curr_stat(ch, STAT_DEX) - 175))
 		{
-			damage_new(raf->owner, ch, dice(raf->level, 3), gsn_stalactites, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling stalactite*");
+			damage_new(Deref(raf->owner), ch, dice(raf->level, 3), gsn_stalactites, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling stalactite*");
 		}
 		else
 		{
 			act("The mass of ice shatters on the ground as you leap out of the way!", ch, 0, 0, TO_CHAR);
 			act("The mass of ice shatters on the ground as $n leaps out of the way!", ch, 0, 0, TO_ROOM);
-			damage_new(raf->owner, ch, 0, gsn_stalactites, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling stalactite*");
+			damage_new(Deref(raf->owner), ch, 0, gsn_stalactites, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling stalactite*");
 		}
 
 		if (!is_npc(ch))
@@ -886,7 +886,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_immortal(ch))
 			return;
 
-		if (!is_safe(raf->owner, ch) && !is_affected(ch, gsn_neutralize))
+		if (!is_safe(Deref(raf->owner), ch) && !is_affected(ch, gsn_neutralize))
 		{
 			send_to_char("You choke and gasp for air as caustic vapors fill your lungs!\n\r", ch);
 
@@ -965,13 +965,13 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 			new_affect_join(ch, &cvaf2);
 
-			damage_new(raf->owner, ch, dam, raf->type, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the noxious fumes*$");
+			damage_new(Deref(raf->owner), ch, dam, raf->type, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the noxious fumes*$");
 
 			if (!ch->in_room || ch->ghost > 0)
 				return;
 		}
 
-		if (!is_safe(ch, raf->owner) && is_affected(ch, gsn_neutralize))
+		if (!is_safe(ch, Deref(raf->owner)) && is_affected(ch, gsn_neutralize))
 			send_to_char("The noxious fumes surround you, but you are unaffected.\n\r", ch);
 	}
 
@@ -1252,7 +1252,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 				af.location = APPLY_STR;
 				af.modifier = -5;
 				af.duration = trap->quality * 2;
-				af.owner = victim;
+				af.owner = victim->self;
 				SET_BIT(af.bitvector, AFF_POISON);
 				af.tick_fun = poison_tick;
 				affect_to_char(victim, &af);
@@ -1295,7 +1295,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 						af.aftype = AFT_MALADY;
 						af.type = gsn_sleep;
 						af.level = trap->quality * 6;
-						af.owner = vch;
+						af.owner = vch->self;
 						af.location = 0;
 						af.modifier = 0;
 						af.duration = trap->quality * 4;
@@ -1334,7 +1334,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 					af.aftype = AFT_MALADY;
 					af.type = gsn_mana_drain;
 					af.duration = trap->quality * 4;
-					af.owner = vch;
+					af.owner = vch->self;
 					af.modifier = 0;
 					af.location = 0;
 					af.pulse_fun = mana_drain_pulse;

@@ -1396,29 +1396,35 @@ void char_update(void)
 						break;
 				}
 				else if (paf->type == gsn_entwine
-					&& (paf->owner == nullptr || (paf->owner && ch->in_room != paf->owner->in_room)))
+					&& (Deref(paf->owner) == nullptr || (Deref(paf->owner) && ch->in_room != Deref(paf->owner)->in_room)))
 				{
 					affect_remove(ch, paf);
 				}
 				else
 				{
-					if (((paf->owner && paf->owner->Class()->GetIndex() == CLASS_PALADIN)
-							|| (!paf->owner && ch->Class()->GetIndex() == CLASS_PALADIN)
-							&& trusts(ch, paf->owner ? paf->owner : ch))
+					// Read once: this branch only rolls, messages and adjusts
+					// durations, so nothing in it can free the owner. The
+					// branches above that call tick_fun can, which is why this
+					// is not hoisted out of the chain.
+					CHAR_DATA *owner = Deref(paf->owner);
+
+					if (((owner && owner->Class()->GetIndex() == CLASS_PALADIN)
+							|| (!owner && ch->Class()->GetIndex() == CLASS_PALADIN)
+							&& trusts(ch, owner ? owner : ch))
 						&& paf->aftype == AFT_COMMUNE)
 					{
-						if (number_percent() < (get_skill(paf->owner ? paf->owner : ch, gsn_channeling) * .85)
+						if (number_percent() < (get_skill(owner ? owner : ch, gsn_channeling) * .85)
 							&& !(skill_table[paf->type].dispel & CAN_CLEANSE))
 						{
-							check_improve(paf->owner ? paf->owner : ch, gsn_channeling, true, 1);
+							check_improve(owner ? owner : ch, gsn_channeling, true, 1);
 
-							if (!paf->owner || ch == paf->owner)
+							if (!owner || ch == owner)
 							{
 								act("You feel invigorated as your $t supplication is renewed by your deity.", ch, skill_table[paf->type].name, 0, TO_CHAR);
 							}
 							else
 							{
-								act("You feel invigorated as $N renews your $t supplication.", ch, skill_table[paf->type].name, paf->owner, TO_CHAR);
+								act("You feel invigorated as $N renews your $t supplication.", ch, skill_table[paf->type].name, owner, TO_CHAR);
 							}
 
 							paf->duration = paf->init_duration;
@@ -1979,7 +1985,7 @@ void aggr_update(void)
 			{
 				vch_next = vch->next_in_room;
 
-				if (paf->owner->ghost > 0)
+				if (Deref(paf->owner)->ghost > 0)
 				{
 					affect_remove(wch, paf);
 					break;		// paf is gone; nothing further reads the mark
@@ -1994,7 +2000,7 @@ void aggr_update(void)
 				if (is_safe_new(wch, vch, false))
 					continue;
 
-				if (vch == paf->owner)
+				if (vch == Deref(paf->owner))
 				{
 					sprintf(buf, "%sCatching sight of the mark upon %s's brow, you are consumed with wrath!%s\n\r",
 						get_char_color(wch, "lightred"),
@@ -2507,7 +2513,7 @@ void room_affect_update(void)
 							if (is_npc(victim) && IS_SET(victim->act, ACT_SENTINEL))
 								continue;
 
-							if (!is_npc(victim) && is_safe_new(af->owner, victim, false))
+							if (!is_npc(victim) && is_safe_new(Deref(af->owner), victim, false))
 								continue;
 
 							if (victim->invis_level > LEVEL_HERO)
@@ -2564,7 +2570,7 @@ void room_affect_update(void)
 					{
 						v_next = vch->next_in_room;
 
-						if (!is_npc(vch) && is_safe_new(af->owner, vch, false))
+						if (!is_npc(vch) && is_safe_new(Deref(af->owner), vch, false))
 							continue;
 
 						send_to_char("Your lungs burn furiously, desperate for air!\n\r", vch);
@@ -2588,7 +2594,7 @@ void room_affect_update(void)
 				{
 					v_next = vch->next_in_room;
 
-					if (is_safe_new(af->owner, vch, false))
+					if (is_safe_new(Deref(af->owner), vch, false))
 						continue;
 
 					dam = dice(10, 15);
@@ -2599,7 +2605,7 @@ void room_affect_update(void)
 					}
 
 					send_to_char("Large chunks of rubble tumble down from the ceiling, crushing you!\n\r", vch);
-					damage_new(af->owner, vch, dam, TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling debris*");
+					damage_new(Deref(af->owner), vch, dam, TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling debris*");
 				}
 			}
 		}
@@ -2652,17 +2658,17 @@ void room_affect_update(void)
 				{
 					v_next = vch->next_in_room;
 
-					if (vch == af->owner)
+					if (vch == Deref(af->owner))
 						continue;
 
-					if (!is_npc(vch) && is_safe_new(af->owner, vch, false))
+					if (!is_npc(vch) && is_safe_new(Deref(af->owner), vch, false))
 						continue;
 
 					if (!is_npc(vch))
 					{
-						if (vch->in_room == af->owner->in_room)
+						if (vch->in_room == Deref(af->owner)->in_room)
 						{
-							sprintf(buf, "Help! I'm being drowned by %s's tidal wave!", pers(af->owner, vch));
+							sprintf(buf, "Help! I'm being drowned by %s's tidal wave!", pers(Deref(af->owner), vch));
 							do_myell(vch, buf, nullptr);
 						}
 						else
@@ -2672,7 +2678,7 @@ void room_affect_update(void)
 						}
 					}
 
-					damage_new(af->owner, vch, dice(af2->modifier, 10), gsn_tidalwave, DAM_DROWNING, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the tidal wave*");
+					damage_new(Deref(af->owner), vch, dice(af2->modifier, 10), gsn_tidalwave, DAM_DROWNING, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the tidal wave*");
 				}
 
 				if (room->sector_type != SECT_WATER)
@@ -2688,13 +2694,13 @@ void room_affect_update(void)
 					{
 						v_next = vch->next_in_room;
 
-						if (vch == af->owner)
+						if (vch == Deref(af->owner))
 							continue;
 
-						if (!is_npc(vch) && is_safe_new(af->owner, vch, false))
+						if (!is_npc(vch) && is_safe_new(Deref(af->owner), vch, false))
 							continue;
 
-						damage_new(af->owner, vch, dice(af2->modifier, 10), gsn_tidalwave, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the crashing wave*");
+						damage_new(Deref(af->owner), vch, dice(af2->modifier, 10), gsn_tidalwave, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the crashing wave*");
 						WAIT_STATE(vch, PULSE_VIOLENCE * 2);
 					}
 				}
@@ -2721,7 +2727,7 @@ void room_affect_update(void)
 					if (is_immortal(vch))
 						continue;
 
-					if (!is_safe(vch, af->owner) && !is_affected(vch, gsn_neutralize))
+					if (!is_safe(vch, Deref(af->owner)) && !is_affected(vch, gsn_neutralize))
 					{
 						if (!is_affected(vch, gsn_noxious_fumes))
 						{
@@ -2795,7 +2801,7 @@ void room_affect_update(void)
 
 						new_affect_join(vch, &cvaf2);
 
-						damage_new(af->owner, vch, dam, af->type, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the noxious fumes*$");
+						damage_new(Deref(af->owner), vch, dam, af->type, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the noxious fumes*$");
 					}
 				}
 			}
@@ -2809,6 +2815,11 @@ void room_affect_update(void)
 		if (is_affected_area(room->area, gsn_cyclone))
 		{
 			aaf = affect_find_area(room->area->affected, gsn_cyclone);
+
+			// An area affect outlives its caster -- nothing removes it when
+			// they go -- and the winds still move objects without one. Only the
+			// damage needs somebody to attribute it to.
+			CHAR_DATA *caster = Deref(aaf->owner);
 
 			for (obj = room->contents; obj != nullptr; obj = obj->next_content)
 			{
@@ -2834,16 +2845,20 @@ void room_affect_update(void)
 					continue;
 
 				act("The violent winds blow $p in!", to_room->people, obj, 0, TO_ALL);
-				victim = get_random_ch(aaf->owner, to_room);
+
+				if (caster == nullptr)
+					continue;
+
+				victim = get_random_ch(caster, to_room);
 
 				if (!victim)
 					continue;
 
-				if (victim == aaf->owner)
+				if (victim == caster)
 					continue;
 
 				dam = dice(obj->weight + 1, 8);
-				damage_new(aaf->owner, victim, dam, skill_lookup("cyclone"), DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the flying debris*");
+				damage_new(caster, victim, dam, skill_lookup("cyclone"), DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the flying debris*");
 			}
 			for (victim = room->people; victim != nullptr; victim = v_next)
 			{

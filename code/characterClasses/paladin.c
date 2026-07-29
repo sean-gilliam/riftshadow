@@ -511,7 +511,7 @@ void spell_arms_of_light(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	oaf.modifier = 0;
 	oaf.duration = level;
 	oaf.level = ch->level;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	affect_to_obj(weapon, &oaf);
 
 	act("A bright glow begins to emanate from $n's $p.", ch, weapon, 0, TO_ROOM);
@@ -572,7 +572,7 @@ void spell_arms_of_purity(int sn, int level, CHAR_DATA *ch, void *vo, int target
 	oaf.duration = level;
 	oaf.location = APPLY_NONE;
 	oaf.modifier = 0;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	affect_to_obj(weapon, &oaf);
 
 	act("Rippling waves of warm energy play up and down $n's $p.", ch, weapon, 0, TO_ROOM);
@@ -635,7 +635,7 @@ void spell_arms_of_wrath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	oaf.modifier = 0;
 	oaf.duration = level;
 	oaf.level = ch->level;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	affect_to_obj(weapon, &oaf);
 
 	act("$n's $p is set ablaze with white flames!", ch, weapon, 0, TO_ROOM);
@@ -697,7 +697,7 @@ void spell_arms_of_judgement(int sn, int level, CHAR_DATA *ch, void *vo, int tar
 	oaf.modifier = 0;
 	oaf.duration = level;
 	oaf.level = ch->level;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	affect_to_obj(weapon, &oaf);
 
 	act("Bright golden light radiates from $n's $p!", ch, weapon, 0, TO_ROOM);
@@ -1171,7 +1171,7 @@ void spell_empathy(int level, int sn, CHAR_DATA *ch, void *vo, int target)
 	act("$n touches $N on $S forehead forming a spiritual link.", ch, 0, vict, TO_ROOM);
 
 	init_affect(&af);
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = ch->level;
 	af.type = gsn_empathy;
 	af.where = TO_AFFECTS;
@@ -1186,8 +1186,8 @@ void spell_empathy(int level, int sn, CHAR_DATA *ch, void *vo, int target)
 void empathy_end(CHAR_DATA *ch, AFFECT_DATA *af)
 {
 	// ch=char with empathy, af->owner = paladin
-	if (af->owner)
-		act("You feel pained as your spiritual link with $n is severed!", af->owner, 0, ch, TO_VICT);
+	if (Deref(af->owner))
+		act("You feel pained as your spiritual link with $n is severed!", Deref(af->owner), 0, ch, TO_VICT);
 }
 
 void spell_tower_of_fortitude(int level, int sn, CHAR_DATA *ch, void *vo, int target)
@@ -1205,7 +1205,7 @@ void spell_tower_of_fortitude(int level, int sn, CHAR_DATA *ch, void *vo, int ta
 	act("$n centers $mself and readies for combat.", ch, 0, 0, TO_ROOM);
 
 	init_affect(&af);
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = ch->level;
 	af.type = gsn_tower_of_fortitude;
 	af.where = TO_AFFECTS;
@@ -1232,7 +1232,7 @@ void spell_indomitable_spirit(int level, int sn, CHAR_DATA *ch, void *vo, int ta
 	act("$n calls up on $s deity to raise his spirit.", ch, 0, 0, TO_ROOM);
 
 	init_affect(&af);
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = ch->level;
 	af.type = gsn_indomitable_spirit;
 	af.where = TO_AFFECTS;
