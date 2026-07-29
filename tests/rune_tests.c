@@ -320,3 +320,40 @@ SCENARIO("a recycled exit does not inherit the last one's rune", "[rune]")
 		}
 	}
 }
+
+//
+// The rune spell_stasis_wall hands to the queue.
+//
+// A drawn rune waits nine ticks before draw_rune finalises it. It used to live
+// in the temp-struct pool, which is a bump allocator over a fixed buffer that
+// wraps without regard for outstanding pointers -- so the queue entry named
+// memory any other pool caller could take back. It comes from new_rune now, and
+// the queue owns it until draw_rune runs.
+//
+
+SCENARIO("a drawn rune is returned to the recycler however the draw ends", "[rune]")
+{
+	GIVEN("a rune queued for drawing whose caster then leaves")
+	{
+		CHAR_DATA *caster = new_char();
+		RUNE_DATA *drawn = new_rune();
+
+		drawn->owner = caster->self;
+		drawn->drawn_in = 1;
+
+		free_char(caster);
+
+		WHEN("the draw comes due with nobody left to complete it")
+		{
+			draw_rune(drawn, nullptr);
+
+			THEN("the rune is back on the free list rather than stranded")
+			{
+				// The bail-out paths are the ones worth pinning: the queue held
+				// the only reference, so an early return that skips the free
+				// strands the struct for the rest of the run.
+				REQUIRE(new_rune() == drawn);
+			}
+		}
+	}
+}
