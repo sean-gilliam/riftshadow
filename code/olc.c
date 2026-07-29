@@ -289,10 +289,12 @@ char *olc_ed_vnum(CHAR_DATA *ch)
 
 	buf[0] = '\0';
 
-	switch (Deref(ch->desc)->editor)
+	DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+	switch (d->editor)
 	{
 		case ED_AREA:
-			pArea = (AREA_DATA *)Deref(ch->desc)->pEdit;
+			pArea = (AREA_DATA *)d->pEdit;
 			sprintf(buf, "%d", pArea ? pArea->vnum : 0);
 			break;
 		case ED_ROOM:
@@ -300,11 +302,11 @@ char *olc_ed_vnum(CHAR_DATA *ch)
 			sprintf(buf, "%d", pRoom ? pRoom->vnum : 0);
 			break;
 		case ED_OBJECT:
-			pObj = (OBJ_INDEX_DATA *)Deref(ch->desc)->pEdit;
+			pObj = (OBJ_INDEX_DATA *)d->pEdit;
 			sprintf(buf, "%d", pObj ? pObj->vnum : 0);
 			break;
 		case ED_MOBILE:
-			pMob = (MOB_INDEX_DATA *)Deref(ch->desc)->pEdit;
+			pMob = (MOB_INDEX_DATA *)d->pEdit;
 			sprintf(buf, "%d", pMob ? pMob->vnum : 0);
 			break;
 		default:
@@ -394,8 +396,10 @@ AREA_DATA *get_area_data(int vnum)
  ****************************************************************************/
 bool edit_done(CHAR_DATA *ch)
 {
-	Deref(ch->desc)->pEdit = nullptr;
-	Deref(ch->desc)->editor = 0;
+	DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+	d->pEdit = nullptr;
+	d->editor = 0;
 
 	send_to_char("Exiting Riftshadow OLC...\n\r", ch);
 	return false;
@@ -813,8 +817,10 @@ void do_aedit(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	Deref(ch->desc)->pEdit = (void *)pArea;
-	Deref(ch->desc)->editor = ED_AREA;
+	DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+	d->pEdit = (void *)pArea;
+	d->editor = ED_AREA;
 
 	aedit_show(ch, "");
 }
@@ -926,9 +932,11 @@ void do_oedit(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		Deref(ch->desc)->pEdit = (void *)pObj;
+		DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+		d->pEdit = (void *)pObj;
 		ch->pcdata->editing_item = value;
-		Deref(ch->desc)->editor = ED_OBJECT;
+		d->editor = ED_OBJECT;
 
 		oedit_show(ch, "");
 		return;
@@ -1001,8 +1009,10 @@ void do_medit(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		Deref(ch->desc)->pEdit = (void *)pMob;
-		Deref(ch->desc)->editor = ED_MOBILE;
+		DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+		d->pEdit = (void *)pMob;
+		d->editor = ED_MOBILE;
 
 		medit_show(ch, "");
 		return;

@@ -1144,27 +1144,29 @@ void do_asave(CHAR_DATA *ch, char *argument)
 		/* -------------------------------------- */
 		if (!str_cmp(arg1, "area"))
 		{
+			DESCRIPTOR_DATA *d = Deref(ch->desc);
+
 			/* Is character currently editing. */
-			if (Deref(ch->desc)->editor == 0)
+			if (d->editor == 0)
 			{
 				send_to_char("You are not editing an area therefore an area vnum is required.\n\r", ch);
 				return;
 			}
 
 			/* Find the area to save. */
-			switch (Deref(ch->desc)->editor)
+			switch (d->editor)
 			{
 				case ED_AREA:
-					pArea = (AREA_DATA *)Deref(ch->desc)->pEdit;
+					pArea = (AREA_DATA *)d->pEdit;
 					break;
 				case ED_ROOM:
 					pArea = ch->in_room->area;
 					break;
 				case ED_OBJECT:
-					pArea = ((OBJ_INDEX_DATA *)Deref(ch->desc)->pEdit)->area;
+					pArea = ((OBJ_INDEX_DATA *)d->pEdit)->area;
 					break;
 				case ED_MOBILE:
-					pArea = ((MOB_INDEX_DATA *)Deref(ch->desc)->pEdit)->area;
+					pArea = ((MOB_INDEX_DATA *)d->pEdit)->area;
 					break;
 				default:
 					pArea = ch->in_room->area;
