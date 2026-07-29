@@ -156,6 +156,7 @@ EXIT_DATA *new_exit(void)
 	pExit->key = 0;
 	pExit->keyword = nullptr;
 	pExit->description = nullptr;
+	pExit->rune = nullptr;
 
 	return pExit;
 }
@@ -255,7 +256,6 @@ ROOM_INDEX_DATA *new_room_index(void)
 
 	pRoom->move_progs= false;
 	pRoom->rune = nullptr;
-	pRoom->has_rune= false;
 	pRoom->light = 0;
 	pRoom->reset_first = nullptr;
 	pRoom->reset_last = nullptr;

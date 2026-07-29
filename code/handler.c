@@ -1715,7 +1715,7 @@ void char_to_room(CHAR_DATA *ch, ROOM_INDEX_DATA *pRoomIndex)
 		}
 	}
 
-	if ((!IS_ZERO_VECTOR(ch->in_room->affected_by) || ch->in_room->has_rune) && is_immortal(ch))
+	if ((!IS_ZERO_VECTOR(ch->in_room->affected_by) || ch->in_room->rune != nullptr) && is_immortal(ch))
 		do_raffects(ch, "");
 }
 

@@ -45,7 +45,6 @@ struct room_index_data
 	bool move_progs;
 	TRAP_DATA *trap;
 	RUNE_DATA *rune;
-	bool has_rune;
 	short light;
 	RESET_DATA *reset_first;			// OLC
 	RESET_DATA *reset_last; 			// OLC

@@ -34,7 +34,6 @@ struct obj_data
 	OBJ_INDEX_DATA *pIndexData;
 	ROOM_INDEX_DATA *in_room;
 	RUNE_DATA *rune;
-	bool has_rune;
 	char *talked;
 	char *owner;
 	char *name;

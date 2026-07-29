@@ -10,6 +10,7 @@
 #include "../code/enums.h"
 #include "../code/db.h"
 #include "../code/recycle.h"
+#include "../code/mem.h"
 
 //
 // RUNE_DATA, and the two lists every rune is on at once.
@@ -98,7 +99,6 @@ namespace
 			extract_rune(rune_list);
 
 		obj->rune = nullptr;
-		obj->has_rune = false;
 	}
 }
 
@@ -114,7 +114,6 @@ SCENARIO("a rune is reachable from both of the lists it is placed on", "[rune]")
 		{
 			REQUIRE(GlobalListLength() == 1);
 			REQUIRE(ChainTypes(obj) == std::vector<int>{11});
-			REQUIRE(obj->has_rune);
 		}
 
 		THEN("find_rune matches it by trigger")
@@ -169,15 +168,14 @@ SCENARIO("extracting the oldest rune does not hide the newer ones", "[rune]")
 
 		WHEN("the oldest expires")
 		{
-			// It is the tail, so its next_content is null -- and that is the
-			// branch that clears has_rune outright regardless of what else is
-			// still on the chain.
+			// It is the tail, so its next_content is null -- the case the old
+			// unlink treated as "this container has no runes left", whatever
+			// else was still on the chain.
 			extract_rune(oldest);
 
 			THEN("the newer rune is still there and still visible")
 			{
 				REQUIRE(ChainTypes(obj) == std::vector<int>{22});
-				REQUIRE(obj->has_rune);
 				REQUIRE(find_rune(obj, RUNE_TO_WEAPON, RUNE_TRIGGER_EXIT, nullptr) != nullptr);
 			}
 		}
@@ -233,7 +231,6 @@ SCENARIO("extracting the last rune leaves the container naming nothing", "[rune]
 				// pointing at an extracted rune is pointing at something
 				// new_rune can hand straight back out.
 				REQUIRE(obj->rune == nullptr);
-				REQUIRE(!obj->has_rune);
 				REQUIRE(GlobalListLength() == 0);
 			}
 		}
@@ -287,5 +284,39 @@ SCENARIO("a rune does not remember a caster who has left the world", "[rune]")
 
 		ClearRunes(obj);
 		free_obj(obj);
+	}
+}
+
+SCENARIO("a recycled exit does not inherit the last one's rune", "[rune]")
+{
+	GIVEN("an exit that carried a rune and has been freed")
+	{
+		EXIT_DATA *pexit = new_exit();
+
+		REQUIRE(pexit->rune == nullptr);
+
+		// Stand in for a rune having been placed on the door. The pointer is
+		// never followed here -- what matters is that new_exit clears it.
+		pexit->rune = (RUNE_DATA *)0xdeadbeef;
+
+		free_exit(pexit);
+
+		WHEN("the exit allocator hands the same struct back out")
+		{
+			EXIT_DATA *reused = new_exit();
+
+			THEN("it names no rune")
+			{
+				// new_exit resets every other field it hands back and used to
+				// skip this one, so a recycled exit inherited both the stale
+				// pointer and the stale flag that made it readable. The area
+				// loader had the same hole from the other direction: it built
+				// exits with an uninitialised rune pointer entirely.
+				REQUIRE(reused == pexit);
+				REQUIRE(reused->rune == nullptr);
+			}
+
+			free_exit(reused);
+		}
 	}
 }

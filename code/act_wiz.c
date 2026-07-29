@@ -7208,7 +7208,7 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	if (ch->in_room->has_rune)
+	if (ch->in_room->rune != nullptr)
 	{
 		for (rune = ch->in_room->rune; rune; rune = rune->next_content)
 		{
@@ -7227,7 +7227,7 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 
 	for (i = 0; i < 6; i++)
 	{
-		if (ch->in_room->exit[i] && ch->in_room->exit[i]->has_rune == true)
+		if (ch->in_room->exit[i] && ch->in_room->exit[i]->rune != nullptr)
 		{
 			rune = ch->in_room->exit[i]->rune;
 

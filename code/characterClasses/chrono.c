@@ -415,22 +415,6 @@ static RUNE_DATA **rune_container_head(RUNE_DATA *rune)
 	return nullptr;
 }
 
-static bool *rune_container_flag(RUNE_DATA *rune)
-{
-	switch (rune->target_type)
-	{
-		case RUNE_TO_WEAPON:
-		case RUNE_TO_ARMOR:
-			return &((OBJ_DATA *)rune->placed_on)->has_rune;
-		case RUNE_TO_PORTAL:
-			return &((EXIT_DATA *)rune->placed_on)->has_rune;
-		case RUNE_TO_ROOM:
-			return &((ROOM_INDEX_DATA *)rune->placed_on)->has_rune;
-	}
-
-	return nullptr;
-}
-
 void extract_rune(RUNE_DATA *rune)
 {
 	RUNE_DATA *rune_prev;
@@ -439,7 +423,6 @@ void extract_rune(RUNE_DATA *rune)
 	// the one keyed by what it was placed on, so a rune that stays linked here
 	// after free_rune has recycled it is a chain find_rune will walk into.
 	RUNE_DATA **head = rune_container_head(rune);
-	bool *flag = rune_container_flag(rune);
 
 	if (head != nullptr)
 	{
@@ -458,8 +441,6 @@ void extract_rune(RUNE_DATA *rune)
 				}
 			}
 		}
-
-		*flag = (*head != nullptr);
 	}
 
 	if (rune_list == rune)
@@ -497,30 +478,18 @@ void apply_rune(RUNE_DATA *rune)
 		case RUNE_TO_WEAPON:
 		case RUNE_TO_ARMOR:
 			obj = (OBJ_DATA *)rune_new->placed_on;
-
-			if (obj->has_rune)
-				rune_new->next_content = obj->rune;
-
+			rune_new->next_content = obj->rune;
 			obj->rune = rune_new;
-			obj->has_rune = true;
 			break;
 		case RUNE_TO_PORTAL:
 			pexit = (EXIT_DATA *)rune_new->placed_on;
-
-			if (pexit->has_rune)
-				rune_new->next_content = pexit->rune;
-
+			rune_new->next_content = pexit->rune;
 			pexit->rune = rune_new;
-			pexit->has_rune = true;
 			break;
 		case RUNE_TO_ROOM:
 			room = (ROOM_INDEX_DATA *)rune_new->placed_on;
-
-			if (room->has_rune)
-				rune_new->next_content = room->rune;
-
+			rune_new->next_content = room->rune;
 			room->rune = rune_new;
-			room->has_rune = true;
 			break;
 	}
 }

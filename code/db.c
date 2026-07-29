@@ -3944,7 +3944,10 @@ void load_rooms(FILE *fp)
 
 		fBootDb = true;
 
-		pRoomIndex = new ROOM_INDEX_DATA;
+		// Value-init, not default-init: the scalar members are read before
+		// anything assigns them -- `rune` in particular, which is now the only
+		// record of whether this room carries one.
+		pRoomIndex = new ROOM_INDEX_DATA();
 		pRoomIndex->reset_first = nullptr;
 		pRoomIndex->reset_last = nullptr;
 		pRoomIndex->owner = palloc_string("");
@@ -3973,7 +3976,6 @@ void load_rooms(FILE *fp)
 		pRoomIndex->rprogs = nullptr;
 		zero_vector(pRoomIndex->progtypes);
 		pRoomIndex->cabal = 0;
-		pRoomIndex->has_rune= false;
 
 		zero_vector(pRoomIndex->affected_by);
 		if (pRoomIndex->area->area_type == ARE_SHRINE)
@@ -4032,7 +4034,11 @@ void load_rooms(FILE *fp)
 					exit(1);
 				}
 
-				pexit = new EXIT_DATA;
+				// Value-init for the same reason as the room above. This one
+				// was the worse of the two: nothing zeroed the exit's rune
+				// fields at all, so every exit in the world booted with an
+				// indeterminate rune pointer behind an indeterminate flag.
+				pexit = new EXIT_DATA();
 				pexit->u1.vnum = fread_number(fp);
 				fread_flag_new(pexit->exit_info, fp);
 				pexit->key = fread_number(fp);

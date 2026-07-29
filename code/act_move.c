@@ -211,7 +211,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	auto to_room = pexit->u1.to_room;
 
 	/*
-		if(pexit->has_rune == true)
+		if (pexit->rune != nullptr)
 		{
 			while((rune = find_rune(pexit, RUNE_TO_PORTAL, RUNE_TRIGGER_EXIT, rune)))
 			{
@@ -995,7 +995,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		}
 	}
 
-	if (to_room->has_rune == true && to_room == ch->in_room)
+	if (to_room->rune != nullptr && to_room == ch->in_room)
 	{
 		auto rune = find_rune(to_room, RUNE_TO_ROOM, RUNE_TRIGGER_ENTRY, nullptr);
 		while (rune != nullptr)
