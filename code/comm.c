@@ -3221,19 +3221,19 @@ void act_area(const char *format, CHAR_DATA *ch, CHAR_DATA *victim)
 	/*colorconv(format, format, ch);*/
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
+		to = Deref(d->character);
+
 		if (d->connected == CON_PLAYING
-			&& Deref(d->character)
-			&& Deref(d->character)->in_room != nullptr
-			&& Deref(d->character)->in_room->area == ch->in_room->area
-			&& !IS_SET(Deref(d->character)->comm, COMM_QUIET))
+			&& to
+			&& to->in_room != nullptr
+			&& to->in_room->area == ch->in_room->area
+			&& !IS_SET(to->comm, COMM_QUIET))
 		{
-			if (IS_SET(Deref(d->character)->in_room->room_flags, ROOM_SILENCE))
+			if (IS_SET(to->in_room->room_flags, ROOM_SILENCE))
 				continue;
 
-			if (!is_awake(Deref(d->character)))
+			if (!is_awake(to))
 				continue;
-
-			to = Deref(d->character);
 
 			if ((!is_npc(to) && Deref(to->desc) == nullptr))
 				continue;

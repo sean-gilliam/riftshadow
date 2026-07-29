@@ -1042,16 +1042,18 @@ void mob_recho(CHAR_DATA *ch, char *argument)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING
-			&& Deref(d->character)->in_room == ch->in_room
-			&& is_awake(Deref(d->character))
-			&& Deref(d->character) != ch)
-		{
-			if (get_trust(Deref(d->character)) >= 55)
-				send_to_char("local mob> ", Deref(d->character));
+		CHAR_DATA *wch = Deref(d->character);
 
-			send_to_char(argument, Deref(d->character));
-			send_to_char("\n\r", Deref(d->character));
+		if (d->connected == CON_PLAYING
+			&& wch->in_room == ch->in_room
+			&& is_awake(wch)
+			&& wch != ch)
+		{
+			if (get_trust(wch) >= 55)
+				send_to_char("local mob> ", wch);
+
+			send_to_char(argument, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1098,18 +1100,20 @@ void outdoors_echo(AREA_DATA *area, char *echo)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING
-			&& Deref(d->character)->in_room != nullptr
+			&& wch->in_room != nullptr
 			&& area != nullptr
-			&& Deref(d->character)->in_room->area == area
-			&& Deref(d->character)->in_room->sector_type != SECT_INSIDE
-			&& Deref(d->character)->in_room->sector_type != SECT_UNDERWATER
-			&& is_awake(Deref(d->character))
-			&& !IS_SET(Deref(d->character)->in_room->room_flags, ROOM_INDOORS))
+			&& wch->in_room->area == area
+			&& wch->in_room->sector_type != SECT_INSIDE
+			&& wch->in_room->sector_type != SECT_UNDERWATER
+			&& is_awake(wch)
+			&& !IS_SET(wch->in_room->room_flags, ROOM_INDOORS))
 		{
-			colorconv(buffer, echo, Deref(d->character));
-			send_to_char(buffer, Deref(d->character));
-			send_to_char("\n\r", Deref(d->character));
+			colorconv(buffer, echo, wch);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }

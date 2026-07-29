@@ -194,20 +194,22 @@ void wiznet(char *string, CHAR_DATA *ch, OBJ_DATA *obj, long flag, long flag_ski
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->connected == CON_PLAYING
-			&& Deref(d->character)
-			&& is_immortal(Deref(d->character))
-			&& IS_SET(Deref(d->character)->wiznet, WIZ_ON)
-			&& (!flag || IS_SET(Deref(d->character)->wiznet, flag))
-			&& (!flag_skip || !IS_SET(Deref(d->character)->wiznet, flag_skip))
-			&& get_trust(Deref(d->character)) >= min_level
-			&& Deref(d->character) != ch)
-		{
-			if (IS_SET(Deref(d->character)->wiznet, WIZ_PREFIX))
-				send_to_char("--> ", Deref(d->character));
+		CHAR_DATA *wch = Deref(d->character);
 
-			sprintf(str, "%s%s%s", get_char_color(Deref(d->character), "wiznet"), string, END_COLOR(Deref(d->character)));
-			act_new(str, Deref(d->character), obj, ch, TO_CHAR, POS_DEAD);
+		if (d->connected == CON_PLAYING
+			&& wch
+			&& is_immortal(wch)
+			&& IS_SET(wch->wiznet, WIZ_ON)
+			&& (!flag || IS_SET(wch->wiznet, flag))
+			&& (!flag_skip || !IS_SET(wch->wiznet, flag_skip))
+			&& get_trust(wch) >= min_level
+			&& wch != ch)
+		{
+			if (IS_SET(wch->wiznet, WIZ_PREFIX))
+				send_to_char("--> ", wch);
+
+			sprintf(str, "%s%s%s", get_char_color(wch, "wiznet"), string, END_COLOR(wch));
+			act_new(str, wch, obj, ch, TO_CHAR, POS_DEAD);
 		}
 	}
 }
@@ -1163,18 +1165,20 @@ void do_echo(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING)
 		{
-			colorconv(buffer, argument, Deref(d->character));
+			colorconv(buffer, argument, wch);
 
-			if (get_trust(Deref(d->character)) >= get_trust(ch))
+			if (get_trust(wch) >= get_trust(ch))
 			{
-				send_to_char(ch->name, Deref(d->character));
-				send_to_char(" globals: ", Deref(d->character));
+				send_to_char(ch->name, wch);
+				send_to_char(" globals: ", wch);
 			}
 
-			send_to_char(buffer, Deref(d->character));
-			send_to_char("\n\r", Deref(d->character));
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1214,15 +1218,17 @@ void do_recho(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && Deref(d->character)->in_room == ch->in_room)
+		CHAR_DATA *wch = Deref(d->character);
+
+		if (d->connected == CON_PLAYING && wch->in_room == ch->in_room)
 		{
-			colorconv(buffer, argument, Deref(d->character));
+			colorconv(buffer, argument, wch);
 
-			if (get_trust(Deref(d->character)) >= get_trust(ch) && !is_npc(ch))
-				send_to_char("local> ", Deref(d->character));
+			if (get_trust(wch) >= get_trust(ch) && !is_npc(ch))
+				send_to_char("local> ", wch);
 
-			send_to_char(buffer, Deref(d->character));
-			send_to_char("\n\r", Deref(d->character));
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1240,18 +1246,20 @@ void do_zecho(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING
-			&& Deref(d->character)->in_room != nullptr
+			&& wch->in_room != nullptr
 			&& ch->in_room != nullptr
-			&& Deref(d->character)->in_room->area == ch->in_room->area)
+			&& wch->in_room->area == ch->in_room->area)
 		{
-			colorconv(buffer, argument, Deref(d->character));
+			colorconv(buffer, argument, wch);
 
-			if (get_trust(Deref(d->character)) >= get_trust(ch) && !is_npc(ch))
-				send_to_char("zone> ", Deref(d->character));
+			if (get_trust(wch) >= get_trust(ch) && !is_npc(ch))
+				send_to_char("zone> ", wch);
 
-			send_to_char(buffer, Deref(d->character));
-			send_to_char("\n\r", Deref(d->character));
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
