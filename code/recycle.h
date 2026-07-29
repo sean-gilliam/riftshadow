@@ -67,8 +67,6 @@ IPROG_DATA *new_iprog(void);
 RACE_DATA *new_race_data(void);
 void free_race_data(RACE_DATA *race_specs);
 /* pathfind recycling */
-PATHFIND_DATA *new_path_data(void);
-void free_path(PATHFIND_DATA *path);
 /* extra descr — value type owned by parents in std::list; see entity/extra_descr.h */
 /* affect — value type owned by parents in std::list; see entity/affect_data.h */
 /* apply — value type owned by parents in std::list; see entity/affect_data.h */

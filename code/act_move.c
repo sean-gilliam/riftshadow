@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <deque>
 #include "merc.h"
 #include "act_move.h"
 #include "entity/handles.h"
@@ -90,7 +91,6 @@ const short rev_dir[] =
 
 /* globals */
 
-PATHFIND_DATA *best_path;
 int iterations;
 
 void drowning_tick(CHAR_DATA *ch, AFFECT_DATA *af)
@@ -3800,43 +3800,15 @@ void smart_track(CHAR_DATA *ch, CHAR_DATA *mob)
 	if (Deref(mob->fighting))
 		return;
 
-	mob->path = nullptr;
-	best_path = nullptr;
-	iterations = 0;
+	auto dir = find_first_step(mob->in_room, ch->in_room);
 
-	auto path = new_path_data();
-	path->room = mob->in_room;
-	path->steps = 0;
-
-	mob->path = path;
-	mob->in_room->path = path;
-
-	find_path(mob->path, ch->in_room);
-
-	auto solve = best_path;
-	if (!best_path)
+	if (dir < 0)
 	{
 		/*
 		 * Typically this means they moved to a room not connected to the rest of the
 		 * area, i.e. you get there via a special prog that moves you
 		 */
-		/*
-		char buf[200];
-		bug ("Some weird tracking shit just happened with mob vnum %d.",mob->pIndexData->vnum);
-		sprintf(buf,"MOB %s tracking from ROOM %d to ROOM %d -- %d iterations.\n\r",
-			mob->name, mob->in_room->vnum,
-			ch->in_room->vnum,iterations);
-		RS.Logger.Warn(buf);
-		*/
 		return;
-	}
-
-	for (;;)
-	{
-		if (!solve->prev->prev)
-			break;
-
-		solve = solve->prev;
 	}
 
 	/* Uncomment for tracking info */
@@ -3848,17 +3820,11 @@ void smart_track(CHAR_DATA *ch, CHAR_DATA *mob)
 		iterations);
 	*/
 
-	move_char(mob, solve->dir_from, false, true);
-
-	free_path(mob->path);
-
-	best_path = nullptr;
-
-	for (auto room = room_list; room != nullptr; room = room->next_room)
-	{
-		if (room->path)
-			room->path = nullptr;
-	}
+	// The search is finished and torn down before this runs, which is the point
+	// of taking a direction back rather than a node: move_char can run progs,
+	// and a prog that starts another search used to overwrite the state this
+	// one still needed.
+	move_char(mob, dir, false, true);
 }
 
 void walk_to_room(CHAR_DATA *mob, ROOM_INDEX_DATA *goal)
@@ -3878,32 +3844,12 @@ void walk_to_room(CHAR_DATA *mob, ROOM_INDEX_DATA *goal)
 	if (Deref(mob->fighting))
 		return;
 
-	mob->path = nullptr;
-	best_path = nullptr;
-	iterations = 0;
+	auto dir = find_first_step(mob->in_room, goal);
 
-	auto path = new_path_data();
-	path->room = mob->in_room;
-	path->steps = 0;
-
-	mob->path = path;
-	mob->in_room->path = path;
-
-	find_path(mob->path, goal);
-
-	auto solve = best_path;
-	if (!best_path)
+	if (dir < 0)
 	{
 		RS.Logger.Warn("Some weird tracking shit just happened with mob vnum {}.", mob->pIndexData->vnum);
 		return;
-	}
-
-	for (;;)
-	{
-		if (!solve->prev->prev)
-			break;
-
-		solve = solve->prev;
 	}
 
 	/*
@@ -3914,98 +3860,182 @@ void walk_to_room(CHAR_DATA *mob, ROOM_INDEX_DATA *goal)
 		iterations);
 	*/
 
-	move_char(mob, solve->dir_from, false, true);
-
-	free_path(mob->path);
-
-	best_path = nullptr;
-
-	for (auto room = room_list; room != nullptr; room = room->next_room)
-	{
-		if (room->path)
-			room->path = nullptr;
-	}
+	move_char(mob, dir, false, true);
 }
 
-void find_path(PATHFIND_DATA *path, ROOM_INDEX_DATA *goal)
+namespace
 {
-	path->evaluated = true;
-	iterations++;
-
-	if (path->room == goal)
+	//
+	// One tracking search, and everything it allocates.
+	//
+	// The nodes used to be individually new'd, parked on the mob as mob->path,
+	// and released by a recursive walk of the tree -- but only on the way out
+	// where the search had found something, and only after move_char had
+	// already run. Two things outlived the search as a result:
+	//
+	//   * A search that found nothing leaked its whole tree and left every room
+	//     it had visited still naming a node in it. room->path is the visited
+	//     marker for ONE search, so the next one reads those as "already
+	//     reached in fewer steps, already evaluated" -- the exact test used to
+	//     decide a room is not worth expanding -- and prunes the only route it
+	//     has.
+	//   * best_path was a file-scope global, and move_char runs progs. A prog
+	//     that started another search overwrote it mid-use.
+	//
+	// Holding the nodes here ties both to the search's own lifetime. The
+	// destructor clears exactly the rooms this search marked, on every way out,
+	// and the callers take a direction back rather than a node so nothing
+	// survives into move_char at all.
+	//
+	class PathSearch
 	{
-		if (!best_path || best_path->steps > path->steps)
-			best_path = path;
-
-		return;
-	}
-
-	auto found = false;
-	for (auto i = 0; i < 6; i++)
-	{
-		if ((best_path && best_path->steps < 2)
-			|| (path->room->exit[i] 
-				&& path->room->exit[i]->u1.to_room
-				&& path->room->exit[i]->u1.to_room->area == goal->area
-				&& !(path->room->exit[i]->u1.to_room->path
-					&& path->room->exit[i]->u1.to_room->path->steps <= path->steps + 1
-					&& path->room->exit[i]->u1.to_room->path->evaluated)
-				&& !(path->room->exit[i]->u1.to_room->path
-					&& path->room->exit[i]->u1.to_room->path->steps < path->steps + 1
-					&& !path->room->exit[i]->u1.to_room->path->evaluated)))
+	public:
+		explicit PathSearch(ROOM_INDEX_DATA *start)
 		{
-			found = true;
-		}
-	}
-
-	if (!found)
-	{
-		for (auto i = 0; i < 6; i++)
-		{
-			path->dir_to[i] = nullptr;
+			root = Mark(start, nullptr, -1, 0);
 		}
 
-		return;
-	}
-
-	for (auto i = 0; i < 6; i++)
-	{
-		if (!path->room->exit[i]
-			|| !path->room->exit[i]->u1.to_room
-			|| path->room->exit[i]->u1.to_room->area != goal->area
-			|| (path->room->exit[i]->u1.to_room->path 
-				&& path->room->exit[i]->u1.to_room->path->steps <= path->steps + 1 
-				&& path->room->exit[i]->u1.to_room->path->evaluated)
-			|| (path->room->exit[i]->u1.to_room->path
-				&& path->room->exit[i]->u1.to_room->path->steps < path->steps + 1
-				&& !path->room->exit[i]->u1.to_room->path->evaluated))
+		~PathSearch()
 		{
-			continue;
+			for (auto room : marked)
+				room->path = nullptr;
 		}
 
-		auto next_path = new_path_data();
-		next_path->room = path->room->exit[i]->u1.to_room;
-		next_path->dir_from = i;
-		next_path->steps = path->steps + 1;
-		next_path->prev = path;
+		PathSearch(const PathSearch &) = delete;
+		PathSearch &operator=(const PathSearch &) = delete;
 
-		path->dir_to[i] = next_path;
-		path->room->exit[i]->u1.to_room->path = next_path;
-	}
-
-	for (auto i = 0; i < 6; i++)
-	{
-		if (!path->room->exit[i]
-			|| !path->dir_to[i]
-			|| !path->room->exit[i]->u1.to_room
-			|| path->room->exit[i]->u1.to_room->area != goal->area
-			|| path->room->exit[i]->u1.to_room->path->evaluated)
+		/// The shortest route found from the starting room to `goal`, or null
+		/// if the area graph has none.
+		PATHFIND_DATA *Run(ROOM_INDEX_DATA *goal)
 		{
-			continue;
+			Expand(root, goal);
+
+			return best;
 		}
 
-		find_path(path->dir_to[i], goal);
-	}
+	private:
+		PATHFIND_DATA *Mark(ROOM_INDEX_DATA *room, PATHFIND_DATA *prev, int dir_from, int steps)
+		{
+			// std::deque, not vector: Expand keeps node pointers -- in prev, in
+			// dir_to[] and in room->path -- across later insertions, so the
+			// nodes must not move.
+			nodes.emplace_back();
+
+			auto node = &nodes.back();
+
+			node->room = room;
+			node->evaluated = false;
+			node->dir_from = dir_from;
+			node->steps = steps;
+			node->prev = prev;
+
+			for (auto i = 0; i < MAX_EXIT; i++)
+				node->dir_to[i] = nullptr;
+
+			room->path = node;
+			marked.push_back(room);
+
+			return node;
+		}
+
+		void Expand(PATHFIND_DATA *path, ROOM_INDEX_DATA *goal)
+		{
+			path->evaluated = true;
+			iterations++;
+
+			if (path->room == goal)
+			{
+				if (!best || best->steps > path->steps)
+					best = path;
+
+				return;
+			}
+
+			auto found = false;
+			for (auto i = 0; i < MAX_EXIT; i++)
+			{
+				if ((best && best->steps < 2)
+					|| (path->room->exit[i]
+						&& path->room->exit[i]->u1.to_room
+						&& path->room->exit[i]->u1.to_room->area == goal->area
+						&& !(path->room->exit[i]->u1.to_room->path
+							&& path->room->exit[i]->u1.to_room->path->steps <= path->steps + 1
+							&& path->room->exit[i]->u1.to_room->path->evaluated)
+						&& !(path->room->exit[i]->u1.to_room->path
+							&& path->room->exit[i]->u1.to_room->path->steps < path->steps + 1
+							&& !path->room->exit[i]->u1.to_room->path->evaluated)))
+				{
+					found = true;
+				}
+			}
+
+			if (!found)
+			{
+				for (auto i = 0; i < MAX_EXIT; i++)
+				{
+					path->dir_to[i] = nullptr;
+				}
+
+				return;
+			}
+
+			for (auto i = 0; i < MAX_EXIT; i++)
+			{
+				if (!path->room->exit[i]
+					|| !path->room->exit[i]->u1.to_room
+					|| path->room->exit[i]->u1.to_room->area != goal->area
+					|| (path->room->exit[i]->u1.to_room->path
+						&& path->room->exit[i]->u1.to_room->path->steps <= path->steps + 1
+						&& path->room->exit[i]->u1.to_room->path->evaluated)
+					|| (path->room->exit[i]->u1.to_room->path
+						&& path->room->exit[i]->u1.to_room->path->steps < path->steps + 1
+						&& !path->room->exit[i]->u1.to_room->path->evaluated))
+				{
+					continue;
+				}
+
+				path->dir_to[i] = Mark(path->room->exit[i]->u1.to_room, path, i, path->steps + 1);
+			}
+
+			for (auto i = 0; i < MAX_EXIT; i++)
+			{
+				if (!path->room->exit[i]
+					|| !path->dir_to[i]
+					|| !path->room->exit[i]->u1.to_room
+					|| path->room->exit[i]->u1.to_room->area != goal->area
+					|| path->room->exit[i]->u1.to_room->path->evaluated)
+				{
+					continue;
+				}
+
+				Expand(path->dir_to[i], goal);
+			}
+		}
+
+		std::deque<PATHFIND_DATA>		nodes;
+		std::vector<ROOM_INDEX_DATA *>	marked;
+		PATHFIND_DATA *					root = nullptr;
+		PATHFIND_DATA *					best = nullptr;
+	};
+}
+
+int find_first_step(ROOM_INDEX_DATA *from, ROOM_INDEX_DATA *goal)
+{
+	iterations = 0;
+
+	PathSearch search(from);
+
+	auto solve = search.Run(goal);
+
+	// A null prev means the route is the starting room itself, so there is no
+	// step to take. The old loop read solve->prev->prev without checking.
+	if (solve == nullptr || solve->prev == nullptr)
+		return -1;
+
+	while (solve->prev->prev != nullptr)
+		solve = solve->prev;
+
+	return solve->dir_from;
 }
 
 void do_aura_of_sustenance(CHAR_DATA *ch, char *argument)

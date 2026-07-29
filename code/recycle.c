@@ -236,47 +236,6 @@ void free_race_data(RACE_DATA *race_specs)
 	}
 }
 
-PATHFIND_DATA *new_path_data(void)
-{
-	PATHFIND_DATA *path = new PATHFIND_DATA;
-
-	path->room = nullptr;
-	path->evaluated= false;
-	path->dir_from = -1;
-	path->steps = -1;
-	path->prev = nullptr;
-
-	for (int i = 0; i < 6; i++)
-	{
-		path->dir_to[i] = nullptr;
-	}
-
-	return path;
-}
-
-void free_path(PATHFIND_DATA *path)
-{
-	if (!path->dir_to[Directions::North]
-		&& !path->dir_to[Directions::East]
-		&& !path->dir_to[Directions::South]
-		&& !path->dir_to[Directions::West]
-		&& !path->dir_to[Directions::Up]
-		&& !path->dir_to[Directions::Down])
-	{
-		delete path;
-	}
-	else
-	{
-		for (int i = 0; i < 6; i++)
-		{
-			if (path->dir_to[i])
-				free_path(path->dir_to[i]);
-		}
-
-		delete path;
-	}
-}
-
 /* stuff for recycling extended descs -- UGLY */
 
 extra_descr_data::~extra_descr_data()

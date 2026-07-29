@@ -5,7 +5,6 @@
 
 extern char *const dir_name[];
 extern const short rev_dir[];
-extern PATHFIND_DATA *best_path;
 extern int iterations;
 
 // TODO: add to race.h
@@ -66,7 +65,11 @@ void do_animal_call (CHAR_DATA *ch,char *argument);
 void track_char (CHAR_DATA *ch, CHAR_DATA *mob);
 void smart_track (CHAR_DATA *ch, CHAR_DATA *mob);
 void walk_to_room (CHAR_DATA *mob, ROOM_INDEX_DATA *goal);
-void find_path (PATHFIND_DATA *path, ROOM_INDEX_DATA *goal);
+/// The direction a mob standing in `from` should move to make progress towards
+/// `goal`, or -1 if the area graph has no route. The search owns everything it
+/// allocates and leaves nothing behind it, so it is safe to call again -- and
+/// safe to move the mob afterwards.
+int find_first_step(ROOM_INDEX_DATA *from, ROOM_INDEX_DATA *goal);
 void do_aura_of_sustenance (CHAR_DATA *ch,char *argument);
 void do_vanish (CHAR_DATA *ch,char *argument);
 void do_door_bash (CHAR_DATA *ch,char *argument);

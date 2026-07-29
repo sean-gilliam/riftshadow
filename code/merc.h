@@ -1303,6 +1303,9 @@ struct trap_data
 // Solution to Horde trophy ugliness
 //
 
+// One node of a mob tracking search. The search owns every node it makes and
+// outlives none of them (see PathSearch in act_move.c); `prev`, `dir_to` and
+// room->path are all non-owning pointers between nodes of the same search.
 struct pathfind_data
 {
 	ROOM_INDEX_DATA *room;				// What room is this?

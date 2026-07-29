@@ -112,8 +112,6 @@ public:
 	AREA_DATA *zone;
 	std::unique_ptr<PC_DATA> pcdata;
 	std::unique_ptr<GEN_DATA> gen_data;
-	PATHFIND_DATA *path;	// For smart pathfinding/tracking.  Mob only.
-	PATHFIND_DATA *best;	// Stores best direction thus far.  Mob only.
 	char *name;
 	char *true_name;
 	long id;

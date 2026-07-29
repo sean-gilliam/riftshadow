@@ -24,7 +24,8 @@ struct room_index_data
 	AREA_DATA *area;
 	EXIT_DATA *exit[6];
 	TRACK_DATA tracks[20];
-	PATHFIND_DATA *path;				// For smart tracking
+	PATHFIND_DATA *path;				// Visited marker for the one tracking
+										// search currently running; non-owning
 	char *name;
 	char *alt_name;
 	char *description;
