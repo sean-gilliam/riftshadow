@@ -108,16 +108,17 @@ void do_pswitch(CHAR_DATA *ch, char *argument)
 	if (!CFileSystem::Copy(ploadSource, ploadDest))
 		RS.Logger.Warn("Failed to copy [{}] to [{}]", ploadSource, ploadDest);
 
-	Deref(d->character)->desc = nullptr;
-	Deref(d->character)->next = char_list;
-	char_list = Deref(d->character);
+	victim = Deref(d->character);
+
+	victim->desc = nullptr;
+	victim->next = char_list;
+	char_list = victim;
 	d->outsize = 2000;
 	d->outbuf = new char[d->outsize];
 	d->connected = CON_PLAYING;
-	reset_char(Deref(d->character));
+	reset_char(victim);
 
-	victim = Deref(d->character);
-	Deref(d->character)->pcdata->host = palloc_string("PLOAD");
+	victim->pcdata->host = palloc_string("PLOAD");
 }
 
 void do_gold(CHAR_DATA *ch, char *argument)
@@ -222,12 +223,14 @@ void clean_mud()
 				continue;
 			}
 
-			Deref(d->character)->desc = nullptr;
+			CHAR_DATA *victim = Deref(d->character);
 
-			if (Deref(d->character)->level >= 30)
-				perm_death_log(Deref(d->character), 4);
+			victim->desc = nullptr;
 
-			delete_char(Deref(d->character)->true_name, true);
+			if (victim->level >= 30)
+				perm_death_log(victim, 4);
+
+			delete_char(victim->true_name, true);
 		}
 
 		free_descriptor(d);
@@ -1064,14 +1067,16 @@ void area_echo(CHAR_DATA *ch, char *echo)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING
-			&& Deref(d->character)->in_room != nullptr
+			&& wch->in_room != nullptr
 			&& ch->in_room != nullptr
-			&& Deref(d->character)->in_room->area == ch->in_room->area)
+			&& wch->in_room->area == ch->in_room->area)
 		{
-			colorconv(buffer, echo, Deref(d->character));
-			send_to_char(buffer, Deref(d->character));
-			send_to_char("\n\r", Deref(d->character));
+			colorconv(buffer, echo, wch);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1082,14 +1087,16 @@ void rarea_echo(ROOM_INDEX_DATA *room, char *echo)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING
-			&& Deref(d->character)->in_room != nullptr
+			&& wch->in_room != nullptr
 			&& room != nullptr
-			&& Deref(d->character)->in_room->area == room->area)
+			&& wch->in_room->area == room->area)
 		{
-			colorconv(buffer, echo, Deref(d->character));
-			send_to_char(buffer, Deref(d->character));
-			send_to_char("\n\r", Deref(d->character));
+			colorconv(buffer, echo, wch);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }

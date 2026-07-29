@@ -1196,11 +1196,13 @@ void do_immecho(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && (Deref(d->character)->level > 51))
+		CHAR_DATA *wch = Deref(d->character);
+
+		if (d->connected == CON_PLAYING && (wch->level > 51))
 		{
-			colorconv(buffer, argument, Deref(d->character));
-			send_to_char(buffer, Deref(d->character));
-			send_to_char("\n\r", Deref(d->character));
+			colorconv(buffer, argument, wch);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1341,12 +1343,14 @@ void do_transfer(CHAR_DATA *ch, char *argument)
 	{
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
+			CHAR_DATA *wch = Deref(d->character);
+
 			if (d->connected == CON_PLAYING
-				&& Deref(d->character) != ch
-				&& Deref(d->character)->in_room != nullptr
-				&& can_see(ch, Deref(d->character)))
+				&& wch != ch
+				&& wch->in_room != nullptr
+				&& can_see(ch, wch))
 			{
-				auto buffer = fmt::format("{} {}", Deref(d->character)->name, arg2);
+				auto buffer = fmt::format("{} {}", wch->name, arg2);
 				do_transfer(ch, buffer.data());
 			}
 		}
@@ -3334,20 +3338,23 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
-			if (Deref(d->character) != nullptr
+			victim = Deref(d->character);
+
+			if (victim != nullptr
 				&& d->connected == CON_PLAYING
-				&& Deref(d->character)->in_room != nullptr
-				&& can_see(ch, Deref(d->character))
-				&& can_see_room(ch, Deref(d->character)->in_room))
+				&& victim->in_room != nullptr
+				&& can_see(ch, victim)
+				&& can_see_room(ch, victim->in_room))
 			{
-				victim = Deref(d->character);
+				CHAR_DATA *original = Deref(d->original);
+
 				count++;
 
-				if (Deref(d->original) != nullptr)
+				if (original != nullptr)
 				{
 					sprintf(buf, "%3d) %s (in the body of %s) is in %s [%d]\n\r",
 						count,
-						Deref(d->original)->true_name,
+						original->true_name,
 						victim->short_descr,
 						get_room_name(victim->in_room),
 						victim->in_room->vnum);
@@ -3447,7 +3454,9 @@ void reboot_now(CHAR_DATA *ch)
 	for (d = descriptor_list; d != nullptr; d = d_next)
 	{
 		d_next = d->next;
-		vch = Deref(d->original) ? Deref(d->original) : Deref(d->character);
+		CHAR_DATA *original = Deref(d->original);
+
+		vch = original ? original : Deref(d->character);
 
 		if (vch != nullptr && d->connected == 0)
 		{
@@ -5855,11 +5864,14 @@ void do_sockets(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (Deref(d->character) != nullptr
-			&& ((!Deref(d->original) && can_see(ch, Deref(d->character)))
-				|| (Deref(d->original) && can_see(ch, Deref(d->original))))
-			&& (!IS_SET(Deref(d->character)->comm, COMM_NOSOCKET) || get_trust(ch) == MAX_LEVEL)
-			&& (arg[0] == '\0' || is_name(arg, Deref(d->character)->true_name) || bDis))
+		CHAR_DATA *wch = Deref(d->character);
+		CHAR_DATA *original = Deref(d->original);
+
+		if (wch != nullptr
+			&& ((!original && can_see(ch, wch))
+				|| (original && can_see(ch, original)))
+			&& (!IS_SET(wch->comm, COMM_NOSOCKET) || get_trust(ch) == MAX_LEVEL)
+			&& (arg[0] == '\0' || is_name(arg, wch->true_name) || bDis))
 		{
 			count++;
 
@@ -5887,15 +5899,15 @@ void do_sockets(CHAR_DATA *ch, char *argument)
 				d->connected == (CON_READ_MOTD) ? "Getting motd" :
 				d->connected == (CON_CHOOSE_WEAPON) ? "Choosing weapon" :
 				d->connected == (CON_GET_CABAL) ? "Getting cabal" : "null",
-				(int)((current_time - Deref(d->character)->logon) / 60),
-				Deref(d->original)
-					? (Deref(d->original)->true_name)
-						? Deref(d->original)->true_name
-						: Deref(d->original)->name
-					: Deref(d->character)
-						? (Deref(d->character)->true_name)
-							? Deref(d->character)->true_name
-							: Deref(d->character)->name
+				(int)((current_time - wch->logon) / 60),
+				original
+					? (original->true_name)
+						? original->true_name
+						: original->name
+					: wch
+						? (wch->true_name)
+							? wch->true_name
+							: wch->name
 						: "(none)",
 				bDis && get_trust(ch) > 58 ? d->host : "unknown");
 		}
@@ -5946,7 +5958,9 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (Deref(d->character) != nullptr && can_see(ch, Deref(d->character)))
+		CHAR_DATA *wch = Deref(d->character);
+
+		if (wch != nullptr && can_see(ch, wch))
 		{
 			CHARLIST[i].des = d;
 			i++;
