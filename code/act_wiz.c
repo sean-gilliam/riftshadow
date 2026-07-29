@@ -3608,16 +3608,20 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 		send_to_char("Cancelling all snoops.\n\r", ch);
 		wiznet("$N stops being such a snoop.", ch, nullptr, WIZ_SNOOPS, WIZ_SECURE, get_trust(ch));
 
+		// A game rule, not lifetime: "snoop self" means "drop every snoop I am
+		// running", and nobody is leaving the world.
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
-			if (d->snoop_by == Deref(ch->desc))
+			if (Deref(d->snoop_by) == Deref(ch->desc))
 				d->snoop_by = nullptr;
 		}
 
 		return;
 	}
 
-	if (Deref(victim->desc)->snoop_by != nullptr)
+	DESCRIPTOR_DATA *watched = Deref(victim->desc);
+
+	if (Deref(watched->snoop_by) != nullptr)
 	{
 		send_to_char("Busy already.\n\r", ch);
 		return;
@@ -3644,19 +3648,26 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (Deref(ch->desc) != nullptr)
+	DESCRIPTOR_DATA *watcher = Deref(ch->desc);
+
+	if (watcher == nullptr)
 	{
-		for (d = Deref(ch->desc)->snoop_by; d != nullptr; d = d->snoop_by)
+		// Assigning the field used to be harmless when there was no connection
+		// to assign; taking a handle off one is not.
+		send_to_char("You have no connection to snoop with.\n\r", ch);
+		return;
+	}
+
+	for (d = Deref(watcher->snoop_by); d != nullptr; d = Deref(d->snoop_by))
+	{
+		if (Deref(d->character) == victim || Deref(d->original) == victim)
 		{
-			if (Deref(d->character) == victim || Deref(d->original) == victim)
-			{
-				send_to_char("No snoop loops.\n\r", ch);
-				return;
-			}
+			send_to_char("No snoop loops.\n\r", ch);
+			return;
 		}
 	}
 
-	Deref(victim->desc)->snoop_by = Deref(ch->desc);
+	watched->snoop_by = watcher->self;
 
 	sprintf(buf, "$N starts snooping on %s", (is_npc(ch) ? victim->short_descr : victim->name));
 	wiznet(buf, ch, nullptr, WIZ_SNOOPS, WIZ_SECURE, get_trust(ch));

@@ -750,20 +750,32 @@ void interpret(CHAR_DATA *ch, char *argument)
 
 	if ((!is_npc(ch) && IS_SET(ch->act, PLR_LOG)) || fLogAll || cmd_table[cmd].log == LOG_ALWAYS)
 	{
+		// A mob has no connection, and neither does a link-dead player. Both
+		// reach this: the condition above fires for any command flagged
+		// LOG_ALWAYS, and for every command at all while fLogAll is on.
 		DESCRIPTOR_DATA *connection = Deref(ch->desc);
-		CHAR_DATA *switchedFrom = Deref(connection->original);
-		auto buffer = fmt::format("Log {}: {}", switchedFrom ? switchedFrom->true_name : ch->true_name, logline);
+		CHAR_DATA *switchedFrom = connection != nullptr ? Deref(connection->original) : nullptr;
+		const char *actor = switchedFrom != nullptr ? switchedFrom->true_name : ch->true_name;
+
+		// And a mob has no true_name either -- create_mobile sets `name` and
+		// leaves this one null -- so the fallback is the second half of the
+		// same problem rather than defensiveness.
+		if (actor == nullptr)
+			actor = ch->name;
+
+		auto buffer = fmt::format("Log {}: {}", actor, logline);
 		wiznet(buffer.data(), ch, nullptr, WIZ_SECURE, 0, get_trust(ch));
 		RS.Logger.Info(buffer);
 	}
 
 	DESCRIPTOR_DATA *snooped = Deref(ch->desc);
+	DESCRIPTOR_DATA *snooper = snooped != nullptr ? Deref(snooped->snoop_by) : nullptr;
 
-	if (snooped != nullptr && snooped->snoop_by != nullptr)
+	if (snooper != nullptr)
 	{
-		write_to_buffer(snooped->snoop_by, "% ", 2);
-		write_to_buffer(snooped->snoop_by, logline, 0);
-		write_to_buffer(snooped->snoop_by, "\n\r", 2);
+		write_to_buffer(snooper, "% ", 2);
+		write_to_buffer(snooper, logline, 0);
+		write_to_buffer(snooper, "\n\r", 2);
 	}
 
 	/* Hold person */

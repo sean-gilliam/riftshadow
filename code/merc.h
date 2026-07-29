@@ -319,7 +319,10 @@ struct descriptor_data
 	// without holding a pointer into a recycled struct. Registered by
 	// new_descriptor and retired by free_descriptor.
 	Handle<DESCRIPTOR_DATA> self;
-	DESCRIPTOR_DATA *snoop_by;
+	// The connection watching this one, if any. Non-owning; it expires by
+	// itself when that connection closes, which is what close_socket's
+	// hand-written sweep over descriptor_list used to do.
+	Handle<DESCRIPTOR_DATA> snoop_by;
 	// The body this connection drives, and -- while an immortal is switched
 	// into a mob -- the immortal's own body parked behind it. Non-owning both
 	// ways: a character can be extracted while the connection lives on, so

@@ -2652,3 +2652,99 @@ SCENARIO("a slain player is still in the world, so their affects still name them
 		ClearTrackers();
 	}
 }
+
+//
+// d->snoop_by -- the connection watching this one.
+//
+// The last raw cross-reference in the descriptor pair, and the only one whose
+// scrub loop was correct: close_socket swept descriptor_list clearing every
+// d->snoop_by that named the connection going away, and free_descriptor is
+// reached from nowhere else that a snooped connection could be looking at.
+//
+// So there is no defect here to demonstrate, and saying so matters -- the
+// scenarios below document the mechanism that replaces the sweep rather than a
+// bug that it missed.
+//
+
+namespace
+{
+	DESCRIPTOR_DATA *SnoopedBy(DESCRIPTOR_DATA *d)
+	{
+		return Deref(d->snoop_by);
+	}
+
+	void Snoop(DESCRIPTOR_DATA *snooper, DESCRIPTOR_DATA *target)
+	{
+		target->snoop_by = snooper->self;
+	}
+}
+
+SCENARIO("a snoop does not outlive the connection running it", "[snoop]")
+{
+	GIVEN("one connection snooping another")
+	{
+		DESCRIPTOR_DATA *snooper = new_descriptor();
+		DESCRIPTOR_DATA *watched = new_descriptor();
+
+		Snoop(snooper, watched);
+
+		REQUIRE(SnoopedBy(watched) == snooper);
+
+		WHEN("the snooping connection is freed")
+		{
+			// close_socket is where the sweep lived, and it is far more world
+			// than this suite stands up -- process_output, wiznet, the
+			// character teardown. What the sweep was *for* is this: once the
+			// snooper is gone, nothing may still name it.
+			free_descriptor(snooper);
+
+			THEN("the watched connection names no snooper")
+			{
+				REQUIRE(SnoopedBy(watched) == nullptr);
+			}
+
+			THEN("it still names none once the address is reissued")
+			{
+				// This is the part the sweep could not have given: a reused
+				// descriptor address would have satisfied a raw pointer, and
+				// every reader of this field writes the snooped output
+				// straight into whatever it names.
+				DESCRIPTOR_DATA *newcomer = new_descriptor();
+
+				REQUIRE(newcomer == snooper);
+				REQUIRE(SnoopedBy(watched) != newcomer);
+
+				free_descriptor(newcomer);
+			}
+		}
+
+		free_descriptor(watched);
+	}
+}
+
+SCENARIO("a connection that stops snooping leaves its target alone", "[snoop]")
+{
+	GIVEN("one connection snooping another")
+	{
+		DESCRIPTOR_DATA *snooper = new_descriptor();
+		DESCRIPTOR_DATA *watched = new_descriptor();
+
+		Snoop(snooper, watched);
+
+		WHEN("the snoop is dropped rather than the connection closing")
+		{
+			// do_snoop's own clear, which stays: "snoop self" means "drop every
+			// snoop I am running", and nobody has left the world.
+			watched->snoop_by = nullptr;
+
+			THEN("the snooper is untouched")
+			{
+				REQUIRE(SnoopedBy(watched) == nullptr);
+				REQUIRE(Deref(snooper->self) == snooper);
+			}
+		}
+
+		free_descriptor(snooper);
+		free_descriptor(watched);
+	}
+}

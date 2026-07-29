@@ -576,19 +576,11 @@ void close_socket(DESCRIPTOR_DATA *dclose)
 	if (dclose->outtop > 0)
 		process_output(dclose, false);
 
-	if (dclose->snoop_by != nullptr)
-	{
-		write_to_buffer(dclose->snoop_by, "Your victim has left the game.\n\r", 0);
-	}
+	DESCRIPTOR_DATA *snooper = Deref(dclose->snoop_by);
 
+	if (snooper != nullptr)
 	{
-		DESCRIPTOR_DATA *d;
-
-		for (d = descriptor_list; d != nullptr; d = d->next)
-		{
-			if (d->snoop_by == dclose)
-				d->snoop_by = nullptr;
-		}
+		write_to_buffer(snooper, "Your victim has left the game.\n\r", 0);
 	}
 
 	if ((ch = Deref(dclose->character)) != nullptr)
@@ -872,13 +864,15 @@ bool process_output(DESCRIPTOR_DATA *d, bool fPrompt)
 	/*
 	 * Snoop-o-rama.
 	 */
-	if (d->snoop_by != nullptr)
+	DESCRIPTOR_DATA *snooper = Deref(d->snoop_by);
+
+	if (snooper != nullptr)
 	{
 		if (Deref(d->character) != nullptr)
-			write_to_buffer(d->snoop_by, Deref(d->character)->name, 0);
+			write_to_buffer(snooper, Deref(d->character)->name, 0);
 
-		write_to_buffer(d->snoop_by, "> ", 2);
-		write_to_buffer(d->snoop_by, d->outbuf, d->outtop);
+		write_to_buffer(snooper, "> ", 2);
+		write_to_buffer(snooper, d->outbuf, d->outtop);
 	}
 
 	/*
