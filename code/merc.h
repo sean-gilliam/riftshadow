@@ -296,7 +296,10 @@ struct rune_data
 {
 	RUNE_FUN *function;
 	void *placed_on;
-	CHAR_DATA *owner;
+	// The caster. Non-owning: a rune is placed on a door or a room precisely so
+	// it can outlive the moment it was cast in, and nothing has ever cleared
+	// this, so every reader has to cope with the caster being gone.
+	Handle<CHAR_DATA> owner;
 	int target_type;
 	int trigger_type;
 	int level;

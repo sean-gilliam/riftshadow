@@ -7212,9 +7212,13 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 	{
 		for (rune = ch->in_room->rune; rune; rune = rune->next_content)
 		{
+			// A rune outlives its caster by design and nothing clears the
+			// back-reference, so "gone" is an ordinary answer here.
+			CHAR_DATA *caster = Deref(rune->owner);
+
 			sprintf(buf, "Rune '%s' placed in room by %s, level %d, duration %d hours.\n\r",
 				skill_table[rune->type].name,
-				!is_npc(rune->owner) ? rune->owner->true_name : rune->owner->name,
+				caster == nullptr ? "someone gone" : (!is_npc(caster) ? caster->true_name : caster->name),
 				rune->level,
 				rune->duration);
 			send_to_char(buf, ch);
@@ -7227,10 +7231,12 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 		{
 			rune = ch->in_room->exit[i]->rune;
 
+			CHAR_DATA *caster = Deref(rune->owner);
+
 			sprintf(buf, "Rune '%s' placed on %s door by %s, level %d, duration %d hours.\n\r",
 				skill_table[rune->type].name,
 				direction_table[i].name,
-				!is_npc(rune->owner) ? rune->owner->true_name : rune->owner->name,
+				caster == nullptr ? "someone gone" : (!is_npc(caster) ? caster->true_name : caster->name),
 				rune->level, rune->duration);
 			send_to_char(buf, ch);
 

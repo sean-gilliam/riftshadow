@@ -27,15 +27,31 @@
 
 namespace
 {
+	// The one reader and the one writer of rune->owner, so the rest of this
+	// file compiles unchanged either side of the field's type flip.
+	CHAR_DATA *RuneOwner(const RUNE_DATA *rune)
+	{
+		return Deref(rune->owner);
+	}
+
+	void SetRuneOwner(RUNE_DATA &rune, CHAR_DATA *owner)
+	{
+		rune.owner = owner->self;
+	}
+
 	// apply_rune copies its argument into a fresh new_rune(), so the caller's
 	// struct is a template rather than the thing that ends up on the lists.
-	RUNE_DATA *PlaceRuneOnObj(OBJ_DATA *obj, int type, int trigger)
+	RUNE_DATA *PlaceRuneOnObj(OBJ_DATA *obj, int type, int trigger, CHAR_DATA *owner = nullptr)
 	{
 		RUNE_DATA temp;
 
 		temp.function = nullptr;
 		temp.placed_on = obj;
 		temp.owner = nullptr;
+
+		if (owner != nullptr)
+			SetRuneOwner(temp, owner);
+
 		temp.target_type = RUNE_TO_WEAPON;
 		temp.trigger_type = trigger;
 		temp.level = 30;
@@ -219,6 +235,53 @@ SCENARIO("extracting the last rune leaves the container naming nothing", "[rune]
 				REQUIRE(obj->rune == nullptr);
 				REQUIRE(!obj->has_rune);
 				REQUIRE(GlobalListLength() == 0);
+			}
+		}
+
+		ClearRunes(obj);
+		free_obj(obj);
+	}
+}
+
+//
+// rune->owner -- the caster. §0.6 found it late: it is a fifth `owner`, on a
+// type nobody counted as part of the entity graph, and it is the only one that
+// was scrubbed by literally nothing. Runes are placed on doors and rooms
+// precisely so they outlive the moment they were cast in, so a caster leaving
+// while their rune stands is the ordinary case rather than an edge one.
+//
+
+SCENARIO("a rune does not remember a caster who has left the world", "[rune]")
+{
+	GIVEN("a rune placed by a character")
+	{
+		OBJ_DATA *obj = new_obj();
+		CHAR_DATA *caster = new_char();
+		RUNE_DATA *rune = PlaceRuneOnObj(obj, 11, RUNE_TRIGGER_EXIT, caster);
+
+		REQUIRE(RuneOwner(rune) == caster);
+
+		WHEN("the caster is freed while the rune still stands")
+		{
+			free_char(caster);
+
+			THEN("the rune names nobody")
+			{
+				REQUIRE(RuneOwner(rune) == nullptr);
+			}
+
+			THEN("it still names nobody once the address is reissued")
+			{
+				// The damage this does is misattribution rather than a crash:
+				// the readers pass the owner to is_safe_new and damage_new, so
+				// a recycled address makes an unrelated character the author of
+				// a stasis wall they never cast.
+				CHAR_DATA *newcomer = new_char();
+
+				REQUIRE(newcomer == caster);
+				REQUIRE(RuneOwner(rune) != newcomer);
+
+				free_char(newcomer);
 			}
 		}
 

@@ -61,7 +61,7 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		rune->level = level;
 		rune->placed_on = pexit;
 		rune->target_type = RUNE_TO_PORTAL; // grep for this too
-		rune->owner = ch;
+		rune->owner = ch->self;
 		rune->trigger_type = RUNE_TRIGGER_EXIT; // grep for rune trigger types if you need to
 		rune->type = sn;
 		rune->duration = level / 10;
@@ -77,7 +77,7 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	rune->level = level;
 	rune->placed_on = (ROOM_INDEX_DATA *)ch->in_room;
 	rune->target_type = RUNE_TO_ROOM;
-	rune->owner = ch;
+	rune->owner = ch->self;
 	rune->trigger_type = RUNE_TRIGGER_ENTRY;
 	rune->type = sn;
 	rune->duration = level / 10;
@@ -91,16 +91,16 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		usually make sure the lag on the rune
 		is at least as long as the lag on the draw_rune queue
 	*/
-	RS.Queue.AddToQueue(9, "spell_stasis_wall", "draw_rune_queue", draw_rune_queue, rune, rune->owner); 
+	RS.Queue.AddToQueue(9, "spell_stasis_wall", "draw_rune_queue", draw_rune_queue, rune, Deref(rune->owner));
 }
 
 bool trigger_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 {
 	RUNE_DATA *rune = (RUNE_DATA *)vo;
-	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = rune->owner;
+	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = Deref(rune->owner);
 	int dir = (int)*(int *)vo3;
 
-	if (!rune->owner)
+	if (ch == nullptr)
 		return false;
 
 	if (is_safe_new(ch, victim, false))
@@ -115,11 +115,18 @@ bool trigger_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 bool activate_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 {
 	RUNE_DATA *rune = (RUNE_DATA *)vo, new_rune;
-	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = rune->owner;
+	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = Deref(rune->owner);
 	int dir = reverse_d((int)*(int *)vo3);
+
+	// The owner check has to come first: it used to sit below a line that
+	// already read ch->in_room, so a rune outliving its caster dereferenced
+	// null before ever reaching the guard written for exactly that case.
+	if (ch == nullptr || ch == victim || dir != rune->extra)
+		return false;
+
 	EXIT_DATA *pexit = ch->in_room->exit[dir];
 
-	if (!rune->owner || rune->owner == victim || dir != rune->extra || !pexit)
+	if (pexit == nullptr)
 		return false;
 
 	if (is_safe_new(ch, victim, false))
@@ -145,7 +152,14 @@ bool activate_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 void draw_rune(void *vo, void *vo2)
 {
 	RUNE_DATA *rune = (RUNE_DATA *)vo;
-	CHAR_DATA *ch = rune->owner;
+	CHAR_DATA *ch = Deref(rune->owner);
+
+	// Nine ticks pass between the queue entry being made and this running, and
+	// extract_char only cancels pending events for NPCs -- so the caster may
+	// simply be gone by now.
+	if (ch == nullptr)
+		return;
+
 	if (ch->in_room->vnum != rune->drawn_in)
 	{
 		send_to_char("A backlash of energy whips through you as your uncompleted rune overloads!\n\r", ch);
