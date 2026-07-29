@@ -246,8 +246,10 @@ void game_loop_unix(int control)
 				FD_CLR(d->descriptor, &in_set);
 				FD_CLR(d->descriptor, &out_set);
 
-				if (Deref(d->character) && Deref(d->character)->level > 1)
-					save_char_obj(Deref(d->character));
+				CHAR_DATA *player = Deref(d->character);
+
+				if (player && player->level > 1)
+					save_char_obj(player);
 
 				d->outtop = 0;
 				close_socket(d);
@@ -262,17 +264,22 @@ void game_loop_unix(int control)
 			d_next = d->next;
 			d->fcommand= false;
 
+			// Nothing between here and the interpret() below can free the
+			// character: read_from_descriptor only touches the socket, and the
+			// branch that does close the connection continues out of the loop.
+			CHAR_DATA *player = Deref(d->character);
+
 			if (FD_ISSET(d->descriptor, &in_set))
 			{
-				if (Deref(d->character) != nullptr)
-					Deref(d->character)->timer = 0;
+				if (player != nullptr)
+					player->timer = 0;
 
 				if (!read_from_descriptor(d))
 				{
 					FD_CLR(d->descriptor, &out_set);
 
-					if (Deref(d->character) != nullptr && Deref(d->character)->level > 1)
-						save_char_obj(Deref(d->character));
+					if (player != nullptr && player->level > 1)
+						save_char_obj(player);
 
 					d->outtop = 0;
 					close_socket(d);
@@ -280,15 +287,14 @@ void game_loop_unix(int control)
 				}
 			}
 
-			if (Deref(d->character) != nullptr && Deref(d->character)->wait > 0)
-				--Deref(d->character)->wait;
+			if (player != nullptr && player->wait > 0)
+				--player->wait;
 
-			if (Deref(d->character) != nullptr && Deref(d->character)->wait <= 0 && Deref(d->character)->pcdata->pending)
+			if (player != nullptr && player->wait <= 0 && player->pcdata->pending)
 			{
-				CHAR_DATA *player;
 				int i = 0;
 
-				interpret(Deref(d->character), Deref(d->character)->pcdata->queue[0]);
+				interpret(player, player->pcdata->queue[0]);
 
 				// The queued command can be "quit", which extracts the
 				// character out from under us -- so read the connection again
@@ -332,7 +338,12 @@ void game_loop_unix(int control)
 			if (d->incomm[0] != '\0')
 			{
 				d->fcommand = true;
-				stop_idling(Deref(d->character));
+				stop_idling(player);
+
+				// stop_idling moves the character back out of limbo and fires a
+				// room act, so read the connection again rather than carrying
+				// the value above across it.
+				player = Deref(d->character);
 
 				/* OLC */
 				if (d->showstr_point)
@@ -341,11 +352,11 @@ void game_loop_unix(int control)
 				}
 				else if (d->pString)
 				{
-					string_add(Deref(d->character), d->incomm);
+					string_add(player, d->incomm);
 				}
-				else if (d->connected == CON_PLAYING && Deref(d->character)->pcdata && Deref(d->character)->pcdata->entering_text)
+				else if (d->connected == CON_PLAYING && player->pcdata && player->pcdata->entering_text)
 				{
-					process_text(Deref(d->character), d->incomm);
+					process_text(player, d->incomm);
 				}
 				else
 				{
@@ -386,8 +397,12 @@ void game_loop_unix(int control)
 			{
 				if (!process_output(d, true))
 				{
-					if (Deref(d->character) != nullptr && Deref(d->character)->level > 1)
-						save_char_obj(Deref(d->character));
+					// Read after process_output, not before: its write path can
+					// overflow the output buffer and close the connection.
+					CHAR_DATA *player = Deref(d->character);
+
+					if (player != nullptr && player->level > 1)
+						save_char_obj(player);
 
 					d->outtop = 0;
 					close_socket(d);
