@@ -6,6 +6,8 @@
 #include "../code/entity/obj_data.h"
 #include "../code/entity/room_index_data.h"
 #include "../code/entity/area_data.h"
+#include "../code/entity/mob_index_data.h"
+#include "../code/macros.h"
 #include "../code/enums.h"
 #include "../code/mud.h"
 
@@ -98,6 +100,56 @@ SCENARIO("Testing a mob dropping an object", "[mprog_drop]")
 				REQUIRE(obj->in_room == room);
 				REQUIRE(room->contents == obj);
 				REQUIRE(mob->carrying == nullptr);
+			}
+		}
+	}
+}
+
+//
+// pulse_prog_demon -- the summoned demon's per-pulse behaviour.
+//
+// It gives up and returns to the Hells when its quarry is gone, and one of the
+// ways "gone" is spelled is `hunting` no longer resolving to anybody. The
+// give-up branch used to announce having taken the quarry's soul without
+// checking there was a quarry to read.
+//
+// Reachability, stated because it changes what this test is worth: nothing in
+// the tree spawns the mobs this prog is attached to (area/skills.are hangs it
+// on vnums 2935-2937, which no code creates and no area resets), so the crash
+// is latent rather than live. The guard is still wrong, and the call below is
+// the branch nothing else reaches.
+//
+
+SCENARIO("a demon whose quarry is gone gives up without reading it", "[mprog_demon]")
+{
+	GIVEN("a demon with a master and no quarry")
+	{
+		auto room = CreateTestRoom();
+		auto master = CreateTestChar((char *)"Summoner", room);
+		auto demon = CreateTestChar((char *)"Demon", room);
+
+		// Both NPCs: extract_char's die_follower walk reaches can_see, which
+		// reads pcdata on anything that is not one.
+		master->pIndexData = new mob_index_data();
+		SET_BIT(master->act, ACT_IS_NPC);
+
+		demon->pIndexData = new mob_index_data();
+		SET_BIT(demon->act, ACT_IS_NPC);
+		demon->master = master->self;
+
+		REQUIRE(Deref(demon->hunting) == nullptr);
+
+		WHEN("the pulse comes round")
+		{
+			pulse_prog_demon(demon);
+
+			THEN("it runs the give-up branch through instead of dereferencing the quarry it does not have")
+			{
+				// Reaching char_from_room is the observable end of that branch.
+				// The extract stops short of freeing here -- this demon was
+				// never linked into char_list, and free_char would try to
+				// release a string literal -- so the room is what to assert on.
+				REQUIRE(demon->in_room == nullptr);
 			}
 		}
 	}

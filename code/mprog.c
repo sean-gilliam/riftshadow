@@ -907,7 +907,10 @@ void pulse_prog_demon(CHAR_DATA *mob)
 
 	if (!victim || !elemental->in_room || !victim->in_room || victim->ghost > 0)
 	{
-		if (Deref(mob->master) && victim->ghost > 0)
+		// `victim` is one of the things that can be null here -- it is the
+		// first clause of the condition above -- so the message about having
+		// taken its soul has to check for it before reading one.
+		if (victim && Deref(mob->master) && victim->ghost > 0)
 		{
 			sprintf(buf, "%s I have taken the soul of %s. Your debt will one day be collected.", Deref(mob->master)->name, victim->name);
 			do_tell(mob, buf);
