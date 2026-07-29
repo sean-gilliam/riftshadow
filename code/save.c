@@ -147,8 +147,10 @@ void save_char_obj(CHAR_DATA *ch)
 			fwrite_obj(ch, ch->pcdata->old->carrying, fp, 0);
 
 		/* save the pets */
-		if (Deref(ch->pet) != nullptr && Deref(ch->pet)->in_room == ch->in_room)
-			fwrite_pet(Deref(ch->pet), fp);
+		CHAR_DATA *pet = Deref(ch->pet);
+
+		if (pet != nullptr && pet->in_room == ch->in_room)
+			fwrite_pet(pet, fp);
 
 		for (search = char_list; search != nullptr; search = search->next)
 		{

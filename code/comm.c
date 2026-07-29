@@ -843,7 +843,13 @@ bool process_output(DESCRIPTOR_DATA *d, bool fPrompt)
 			}
 		}
 
-		ch = Deref(d->original) ? Deref(d->original) : Deref(d->character);
+		CHAR_DATA *original = Deref(d->original);
+
+		// Re-read rather than reusing the local above: the write_to_buffer calls
+		// in the battle prompt can overflow the output buffer, and that closes
+		// the socket and frees the character.
+		ch = original ? original : Deref(d->character);
+
 		if (!IS_SET(ch->comm, COMM_COMPACT))
 			write_to_buffer(d, "\n\r", 2);
 		if (!is_npc(ch) && ch->pcdata->entering_text)
@@ -868,8 +874,10 @@ bool process_output(DESCRIPTOR_DATA *d, bool fPrompt)
 
 	if (snooper != nullptr)
 	{
-		if (Deref(d->character) != nullptr)
-			write_to_buffer(snooper, Deref(d->character)->name, 0);
+		CHAR_DATA *snooped = Deref(d->character);
+
+		if (snooped != nullptr)
+			write_to_buffer(snooper, snooped->name, 0);
 
 		write_to_buffer(snooper, "> ", 2);
 		write_to_buffer(snooper, d->outbuf, d->outtop);
@@ -1085,10 +1093,12 @@ void bust_a_prompt(CHAR_DATA *ch)
 
 					for (d = descriptor_list; d != nullptr; d = d->next)
 					{
+						CHAR_DATA *wch = Deref(d->character);
+
 						if (d->connected == CON_PLAYING
-							&& Deref(d->character)->in_room != nullptr
-							&& Deref(d->character)->in_room->area == ch->in_room->area
-							&& !is_immortal(Deref(d->character)))
+							&& wch->in_room != nullptr
+							&& wch->in_room->area == ch->in_room->area
+							&& !is_immortal(wch))
 						{
 							number_people++;
 						}
@@ -1109,10 +1119,12 @@ void bust_a_prompt(CHAR_DATA *ch)
 					number_people = 0;
 					for (d = descriptor_list; d != nullptr; d = d->next)
 					{
+						CHAR_DATA *wch = Deref(d->character);
+
 						if (d->connected == CON_PLAYING
-							&& Deref(d->character)->in_room != nullptr
-							&& Deref(d->character)->in_room->area == ch->in_room->area
-							&& can_see(ch, Deref(d->character)))
+							&& wch->in_room != nullptr
+							&& wch->in_room->area == ch->in_room->area
+							&& can_see(ch, wch))
 						{
 							number_people++;
 						}
@@ -1220,6 +1232,10 @@ bool output_buffer(DESCRIPTOR_DATA *d)
 	if (d == nullptr)
 		return false;
 
+	// Safe to hold across the whole rewrite: this function only transforms the
+	// buffer, it never writes to one, so nothing here can close the connection.
+	CHAR_DATA *ch = Deref(d->character);
+
 	memset(buf, '\0', MAX_STRING_LENGTH);
 	point = buf;
 	str = d->outbuf;
@@ -1322,7 +1338,7 @@ bool output_buffer(DESCRIPTOR_DATA *d)
 				act = true;
 				break;
 			case 'n':
-				if (Deref(d->character) && is_ansi(Deref(d->character)))
+				if (ch && is_ansi(ch))
 					sprintf(buf2, "%s", ANSI_NORMAL);
 				else
 					buf2[0] = '\0';
@@ -1338,7 +1354,7 @@ bool output_buffer(DESCRIPTOR_DATA *d)
 
 		if (act)
 		{
-			if (Deref(d->character) && is_ansi(Deref(d->character)))
+			if (ch && is_ansi(ch))
 			{
 				sprintf(buf2, "%s", color_value_string(color, bold, flash));
 				color_code = true;
@@ -1666,6 +1682,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			{
 				case 'y':
 				case 'Y':
+				{
 					for (d_old = descriptor_list; d_old != nullptr; d_old = d_next)
 					{
 						d_next = d_old->next;
@@ -1693,24 +1710,31 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 
 					write_to_buffer(d, "Reconnect attempt failed.\n\rName: ", 0);
 
-					if (Deref(d->character) != nullptr)
+					CHAR_DATA *failed = Deref(d->character);
+
+					if (failed != nullptr)
 					{
-						free_char(Deref(d->character));
+						free_char(failed);
 					}
 
 					d->connected = CON_GET_NAME;
 					break;
+				}
 				case 'n':
 				case 'N':
+				{
 					write_to_buffer(d, "Name: ", 0);
 
-					if (Deref(d->character) != nullptr)
+					CHAR_DATA *declined = Deref(d->character);
+
+					if (declined != nullptr)
 					{
-						free_char(Deref(d->character));
+						free_char(declined);
 					}
 
 					d->connected = CON_GET_NAME;
 					break;
+				}
 				default:
 					write_to_buffer(d, "Please type Y or N? ", 0);
 					break;

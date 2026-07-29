@@ -598,19 +598,22 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			}
 			break;
 		case POS_FIGHTING:
+		{
+			CHAR_DATA *opponent = Deref(victim->fighting);
+
 			strcat(buf, " is here, fighting ");
 
-			if (Deref(victim->fighting) == nullptr)
+			if (opponent == nullptr)
 			{
 				strcat(buf, "thin air??");
 			}
-			else if (Deref(victim->fighting) == ch)
+			else if (opponent == ch)
 			{
 				strcat(buf, "YOU!");
 			}
-			else if (victim->in_room == Deref(victim->fighting)->in_room)
+			else if (victim->in_room == opponent->in_room)
 			{
-				strcat(buf, pers(Deref(victim->fighting), ch));
+				strcat(buf, pers(opponent, ch));
 				strcat(buf, ".");
 			}
 			else
@@ -618,6 +621,7 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 				strcat(buf, "someone who left??");
 			}
 			break;
+		}
 	}
 
 	strcat(buf, "\n\r");

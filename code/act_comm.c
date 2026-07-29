@@ -1960,15 +1960,17 @@ void do_follow(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) != nullptr)
+	CHAR_DATA *master = Deref(ch->master);
+
+	if (is_affected_by(ch, AFF_CHARM) && master != nullptr)
 	{
-		act("But you'd rather follow $N!", ch, nullptr, Deref(ch->master), TO_CHAR);
+		act("But you'd rather follow $N!", ch, nullptr, master, TO_CHAR);
 		return;
 	}
 
 	if (victim == ch)
 	{
-		if (Deref(ch->master) == nullptr)
+		if (master == nullptr)
 		{
 			send_to_char("You already follow yourself.\n\r", ch);
 			return;
@@ -2252,7 +2254,8 @@ void do_group(CHAR_DATA *ch, char *argument)
 	{
 		std::string buffer;
 		char buf2[MAX_STRING_LENGTH];
-		auto leader = Deref(ch->leader) != nullptr ? Deref(ch->leader) : ch;
+		auto chLeader = Deref(ch->leader);
+		auto leader = chLeader != nullptr ? chLeader : ch;
 
 		buffer = fmt::format("{}'s group:\n\r", pers(leader, ch));
 		send_to_char(buffer.c_str(), ch);
@@ -2303,7 +2306,9 @@ void do_group(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (Deref(ch->master) != nullptr || (Deref(ch->leader) != nullptr && Deref(ch->leader) != ch))
+	auto leader = Deref(ch->leader);
+
+	if (Deref(ch->master) != nullptr || (leader != nullptr && leader != ch))
 	{
 		send_to_char("But you are following someone else!\n\r", ch);
 		return;
