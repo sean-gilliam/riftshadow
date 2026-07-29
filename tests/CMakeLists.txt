@@ -33,6 +33,7 @@ set(TEST_SRC_FILES act_obj_tests.c
 	player_tests.c
 	prof_tests.c
 	queue_tests.c
+	rune_tests.c
 	theft_tests.c
 	vote_tests.c
 	utility_tests.c

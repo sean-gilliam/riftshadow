@@ -380,49 +380,72 @@ RUNE_DATA *find_rune(void *vo, int target_type, int trigger_type, RUNE_DATA *run
 	return nullptr;
 }
 
-void extract_rune(RUNE_DATA *rune)
+/*
+ * The head of the per-container rune chain, as a pointer to the field itself so
+ * a caller can rewrite it. `placed_on` is a void * discriminated by
+ * target_type, and this is the only place that has to know that.
+ */
+static RUNE_DATA **rune_container_head(RUNE_DATA *rune)
 {
-	OBJ_DATA *obj;
-	EXIT_DATA *exit;
-	ROOM_INDEX_DATA *room;
-	RUNE_DATA *rune_prev;
-
 	switch (rune->target_type)
 	{
 		case RUNE_TO_WEAPON:
 		case RUNE_TO_ARMOR:
-			obj = (OBJ_DATA *)rune->placed_on;
-
-			if (obj->has_rune && rune->next_content)
-			{
-				obj->rune = rune->next_content;
-				break;
-			}
-
-			obj->has_rune = false;
-			break;
+			return &((OBJ_DATA *)rune->placed_on)->rune;
 		case RUNE_TO_PORTAL:
-			exit = (EXIT_DATA *)rune->placed_on;
-
-			if (exit->has_rune && rune->next_content)
-			{
-				exit->rune = rune->next_content;
-				break;
-			}
-
-			exit->has_rune = false;
-			break;
+			return &((EXIT_DATA *)rune->placed_on)->rune;
 		case RUNE_TO_ROOM:
-			room = (ROOM_INDEX_DATA *)rune->placed_on;
+			return &((ROOM_INDEX_DATA *)rune->placed_on)->rune;
+	}
 
-			if (room->has_rune && rune->next_content)
+	return nullptr;
+}
+
+static bool *rune_container_flag(RUNE_DATA *rune)
+{
+	switch (rune->target_type)
+	{
+		case RUNE_TO_WEAPON:
+		case RUNE_TO_ARMOR:
+			return &((OBJ_DATA *)rune->placed_on)->has_rune;
+		case RUNE_TO_PORTAL:
+			return &((EXIT_DATA *)rune->placed_on)->has_rune;
+		case RUNE_TO_ROOM:
+			return &((ROOM_INDEX_DATA *)rune->placed_on)->has_rune;
+	}
+
+	return nullptr;
+}
+
+void extract_rune(RUNE_DATA *rune)
+{
+	RUNE_DATA *rune_prev;
+
+	// Unlink from the container's chain. Every rune is on two lists and this is
+	// the one keyed by what it was placed on, so a rune that stays linked here
+	// after free_rune has recycled it is a chain find_rune will walk into.
+	RUNE_DATA **head = rune_container_head(rune);
+	bool *flag = rune_container_flag(rune);
+
+	if (head != nullptr)
+	{
+		if (*head == rune)
+		{
+			*head = rune->next_content;
+		}
+		else
+		{
+			for (rune_prev = *head; rune_prev != nullptr; rune_prev = rune_prev->next_content)
 			{
-				room->rune = rune->next_content;
-				break;
+				if (rune_prev->next_content == rune)
+				{
+					rune_prev->next_content = rune->next_content;
+					break;
+				}
 			}
+		}
 
-			room->has_rune = false;
-			break;
+		*flag = (*head != nullptr);
 	}
 
 	if (rune_list == rune)
