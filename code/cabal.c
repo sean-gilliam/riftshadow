@@ -34,6 +34,7 @@
 #include <iterator>
 #include <algorithm>
 #include "merc.h"
+#include "entity/handles.h"
 #include "cabal.h"
 #include "recycle.h"
 #include "tables.h"
@@ -631,7 +632,7 @@ void spell_scourge(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (is_same_group(vch, ch) || is_safe(ch, vch) || is_same_cabal(ch, vch))
 			continue;
 
-		if (!is_npc(ch) && !is_npc(vch) && (ch->fighting == nullptr || vch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(vch) && (Deref(ch->fighting) == nullptr || Deref(vch->fighting) == nullptr))
 		{
 			sprintf(buf, "Die, %s you scourging dog!", pers(ch, vch));
 			do_myell(vch, buf, ch);
@@ -716,7 +717,7 @@ void spell_hire_mercenary(int sn, int level, CHAR_DATA *ch, void *vo, int target
 		if (is_npc(merc)
 			&& merc->pIndexData->vnum >= MOB_VNUM_WARRIOR_MERCENARY
 			&& merc->pIndexData->vnum <= MOB_VNUM_SHAMAN_MERCENARY
-			&& merc->master == ch)
+			&& Deref(merc->master) == ch)
 		{
 			break;
 		}
@@ -785,7 +786,7 @@ void spell_hire_mercenary(int sn, int level, CHAR_DATA *ch, void *vo, int target
 	merc->damage[DICE_BONUS] = ch->level / 2;
 
 	if (merc_vnum != MOB_VNUM_SHAMAN_MERCENARY)
-		merc->leader = ch;
+		merc->leader = ch->self;
 
 	SET_BIT(merc->affected_by, AFF_CHARM);
 	do_gtell(merc, "Reporting for duty.");
@@ -1018,7 +1019,7 @@ void do_howl(CHAR_DATA *ch, char *argument)
 		ch->mana -= 30;
 	}
 
-	if (!ch->fighting)
+	if (!Deref(ch->fighting))
 	{
 		send_to_char("You must be fighting to howl!\n\r", ch);
 		return;
@@ -1048,7 +1049,7 @@ void do_howl(CHAR_DATA *ch, char *argument)
 			vch_next = vch->next_in_room;
 			if (vch != ch
 				&& !check_leadership_save(vch, gsn_howl)
-				&& vch->fighting == ch
+				&& Deref(vch->fighting) == ch
 				&& (!is_npc(vch) || (is_npc(vch) && !IS_SET(vch->act, ACT_SENTINEL))))
 			{
 				act("$n looks frightened and tries to run!", vch, 0, 0, TO_ROOM);
@@ -1191,7 +1192,7 @@ void spell_deny_magic(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.type = gsn_deny_magic;
 	af.level = level;
 	af.aftype = AFT_POWER;
-	af.owner = ch;
+	af.owner = ch->self;
 	new_affect_to_char(victim, &af);
 }
 
@@ -1268,7 +1269,7 @@ void spell_medicine(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		af.aftype = AFT_POWER;
 		af.type = gsn_medicine;
 		af.duration = 4;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = level;
 		new_affect_to_char(vch, &af);
 
@@ -1291,11 +1292,13 @@ void spell_horde_communion(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	CHAR_DATA *victim = (CHAR_DATA *)vo;
 	AFFECT_DATA af;
 
-	if (is_npc(ch) && (!ch->desc || !ch->desc->original))
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (is_npc(ch) && (!connection || !Deref(connection->original)))
 		return;
 
 	if (is_npc(ch))
-		ch = ch->desc->original;
+		ch = Deref(connection->original);
 
 	if (is_affected(victim, gsn_horde_communion))
 	{
@@ -1364,7 +1367,7 @@ void spell_horde_communion(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	af.location = 0;
 	af.modifier = 0;
 	af.duration = -1;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.tick_fun = communion_tick;
 	new_affect_to_char(victim, &af);
@@ -1575,7 +1578,7 @@ void spell_shroud_of_light(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You are not able to shroud yourself while you fight.\n\r", ch);
 		return;
@@ -1598,7 +1601,7 @@ void spell_shroud_of_light(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 
 void spell_crimson_martyr(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
-	CHAR_DATA *victim = ch->fighting, *vch, *vch_next;
+	CHAR_DATA *victim = Deref(ch->fighting), *vch, *vch_next;
 	AFFECT_DATA af;
 
 	for (vch = ch->in_room->people; vch; vch = vch->next_in_room)
@@ -1668,13 +1671,13 @@ void spell_crimson_martyr(int sn, int level, CHAR_DATA *ch, void *vo, int target
 
 void retribution_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 {
-	if (af->modifier == 0 || !af->owner || is_safe(af->owner, ch))
+	if (af->modifier == 0 || !Deref(af->owner) || is_safe(Deref(af->owner), ch))
 		return;
 
 	float dam = af->modifier / (af->duration == 0 ? 1 : af->duration);
 
 	send_to_char("Pain courses through your body as zealous retribution is extracted upon you!\n\r", ch);
-	damage_new(af->owner, ch, (int)dam, gsn_retribution, DAM_HOLY, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the retribution of the Phalanx*");
+	damage_new(Deref(af->owner), ch, (int)dam, gsn_retribution, DAM_HOLY, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the retribution of the Phalanx*");
 	af->modifier -= (int)dam;
 }
 
@@ -1703,7 +1706,7 @@ void spell_retribution(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.level = level;
 	af.type = sn;
 	af.tick_fun = retribution_tick;
-	af.owner = ch;
+	af.owner = ch->self;
 	affect_to_char(victim, &af);
 
 	act("You unleash the vengeance of the Phalanx upon $N!", ch, 0, victim, TO_CHAR);

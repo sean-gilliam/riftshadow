@@ -5,6 +5,7 @@
 #include <time.h>
 #include <math.h>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "thief.h"
 #include "../comm.h"
 #include "../devextra.h"
@@ -60,7 +61,7 @@ void do_backstab(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr || victim->fighting)
+	if (Deref(ch->fighting) != nullptr || Deref(victim->fighting))
 	{
 		send_to_char("You're facing the wrong end.\n\r", ch);
 		return;
@@ -109,7 +110,7 @@ void do_backstab(CHAR_DATA *ch, char *argument)
 	{
 		check_improve(ch, gsn_backstab, true, 1);
 
-		if (!is_npc(ch) && !is_npc(victim) && victim->fighting == nullptr)
+		if (!is_npc(ch) && !is_npc(victim) && Deref(victim->fighting) == nullptr)
 		{
 			switch (number_range(0, 1))
 			{
@@ -130,7 +131,7 @@ void do_backstab(CHAR_DATA *ch, char *argument)
 	{
 		check_improve(ch, gsn_backstab, false, 1);
 
-		if (!is_npc(ch) && !is_npc(victim) && victim->fighting == nullptr)
+		if (!is_npc(ch) && !is_npc(victim) && Deref(victim->fighting) == nullptr)
 		{
 			switch (number_range(0, 1))
 			{
@@ -209,7 +210,7 @@ void do_circle_stab(CHAR_DATA *ch, char *argument)
 
 	if (arg[0] == '\0')
 	{
-		victim = ch->fighting;
+		victim = Deref(ch->fighting);
 
 		if (victim == nullptr)
 		{
@@ -223,7 +224,7 @@ void do_circle_stab(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting == nullptr)
+	if (Deref(ch->fighting) == nullptr)
 	{
 		send_to_char("You can't circle someone like that.\n\r", ch);
 		return;
@@ -233,7 +234,7 @@ void do_circle_stab(CHAR_DATA *ch, char *argument)
 	{
 		v_next = v_check->next_in_room;
 
-		if (v_check->fighting == ch)
+		if (Deref(v_check->fighting) == ch)
 		{
 			send_to_char("Not while you're defending yourself!\n\r", ch);
 			return;
@@ -402,7 +403,7 @@ void do_blackjack(CHAR_DATA *ch, char *argument)
 	init_affect(&af);
 	af.where = TO_AFFECTS;
 	af.level = ch->level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.location = 0;
 	af.type = gsn_blackjack;
 	af.modifier = 0;
@@ -635,7 +636,7 @@ void do_plant(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	if (victim->fighting != nullptr)
+	if (Deref(victim->fighting) != nullptr)
 	{
 		send_to_char("Can't plant while that person is fighting.\n\r", ch);
 		return;
@@ -952,7 +953,7 @@ void do_drag(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You can't drag anyone while you are fighting!\n\r", ch);
 		return;
@@ -995,7 +996,7 @@ void do_drag(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+	if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 	{
 		sprintf(store, "Help! %s is dragging me around!", pers(ch, victim));
 		do_myell(victim, store, ch);
@@ -1091,7 +1092,7 @@ void do_tripwire(CHAR_DATA *ch, char *argument)
 		raf.aftype = AFT_SKILL;
 		raf.level = ch->level;
 		raf.duration = 5;
-		raf.owner = ch;
+		raf.owner = ch->self;
 		raf.modifier = door;
 		new_affect_to_room(ch->in_room, &raf);
 
@@ -1235,7 +1236,7 @@ void do_slash(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	if (victim->fighting != nullptr)
+	if (Deref(victim->fighting) != nullptr)
 	{
 		send_to_char("You can't do that while they are fighting.\n\r", ch);
 		return;
@@ -1386,7 +1387,7 @@ void do_stash(CHAR_DATA *ch, char *argument)
 		oaf.aftype = AFT_SKILL;
 		oaf.level = ch->level;
 		oaf.duration = -1;
-		oaf.owner = ch;
+		oaf.owner = ch->self;
 		affect_to_obj(obj, &oaf);
 
 		check_improve(ch, gsn_stash, true, 1);
@@ -1468,7 +1469,7 @@ void do_disguise(CHAR_DATA *ch, char *argument)
 	oaf.aftype = AFT_SKILL;
 	oaf.level = ch->level;
 	oaf.duration = -1;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	affect_to_obj(corpse, &oaf);
 
 	if (number_percent() < skill)
@@ -1494,7 +1495,7 @@ void do_disguise(CHAR_DATA *ch, char *argument)
 		init_affect(&af);
 		af.where = TO_AFFECTS;
 		af.type = gsn_disguise;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = ch->level;
 		af.aftype = AFT_INVIS;
 		af.duration = ch->level;
@@ -1521,7 +1522,7 @@ void disguise_end(CHAR_DATA *ch, AFFECT_DATA *af)
 
 void disguise_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 {
-	if (ch->fighting && number_percent() < 25)
+	if (Deref(ch->fighting) && number_percent() < 25)
 	{
 		act("Your shoddy disguise comes apart, the tatters falling away and revealing you!", ch, 0, 0, TO_CHAR);
 		act("$n's garb falls to tatters around $m...  revealing $t beneath the disguise!", ch, ch->pcdata->old->name, 0, TO_ROOM);
@@ -1602,7 +1603,7 @@ void do_search(CHAR_DATA *ch, char *argument)
 				if (ch->Class()->GetIndex() == CLASS_THIEF)
 					chance += (ch->level / 2);
 
-				if (oaf.owner != ch && (number_percent() < chance))
+				if (Deref(oaf.owner) != ch && (number_percent() < chance))
 				{
 					affect_strip_obj(obj, gsn_stash);
 					act("You stumble across $p which seemed to be hidden from your eye.", ch, obj, 0, TO_CHAR);
@@ -1705,7 +1706,7 @@ void do_counterfeit(CHAR_DATA *ch, char *argument)
 	oaf.aftype = AFT_SKILL;
 	oaf.level = ch->level;
 	oaf.duration = ch->level;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	oaf.end_fun = counterfeit_end;
 	affect_to_obj(copy, &oaf);
 
@@ -1715,10 +1716,10 @@ void do_counterfeit(CHAR_DATA *ch, char *argument)
 void counterfeit_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 {
 
-	if (obj->carried_by)
+	if (CHAR_DATA *carrier = Deref(obj->carried_by))
 	{
 		act("You suddenly realize that $p is counterfeit, and really $T!",
-			obj->carried_by,
+			carrier,
 			obj,
 			obj->pIndexData->short_descr,
 			TO_CHAR);
@@ -1727,7 +1728,7 @@ void counterfeit_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	if (obj->in_room && obj->in_room->people)
 	{
 		act("You suddenly realize that $p is counterfeit, and really $T!",
-			obj->carried_by,
+			Deref(obj->carried_by),
 			obj,
 			obj->pIndexData->short_descr,
 			TO_ALL);
@@ -1799,7 +1800,7 @@ bool check_stealth(CHAR_DATA *ch, CHAR_DATA *mob)
 	if (!is_affected_by(ch, AFF_SNEAK))
 		return false;
 
-	if (mob->last_fought == ch)
+	if (Deref(mob->last_fought) == ch)
 		return false;
 
 	skill = get_skill(ch, gsn_stealth);
@@ -2313,7 +2314,7 @@ void do_knife(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("No way! You're still fighting!\n\r", ch);
 		return;
@@ -2384,7 +2385,7 @@ void do_knife(CHAR_DATA *ch, char *argument)
 			af.modifier = 0;
 			af.aftype = AFT_INVIS;
 			af.tick_fun = bleeding_tick;
-			af.owner = ch;
+			af.owner = ch->self;
 			new_affect_to_char(victim, &af);
 		}
 	}
@@ -2473,7 +2474,7 @@ void do_bluff(CHAR_DATA *ch, char *argument)
 		}
 
 		af.aftype = AFT_SKILL;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.mod_name = MOD_APPEARANCE;
 		new_affect_to_char(ch, &af);
 

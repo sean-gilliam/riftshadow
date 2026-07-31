@@ -38,6 +38,7 @@
 #include <string.h>
 #include <algorithm>
 #include "merc.h"
+#include "entity/handles.h"
 #include "moremagic.h"
 #include "weather_enums.h"
 #include "recycle.h"
@@ -102,7 +103,7 @@ void spell_enlarge(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	send_to_char("Your entire body and gear rapidly grow in size, but you feel somewhat more frail afterward.\n\r", victim);
 	act("$n suddenly swells in all directions, expanding to half again $s normal size!", victim, 0, 0, TO_ROOM);
 
-	if (!is_npc(victim) && !trusts(ch, victim) && (!ch->fighting || !victim->fighting))
+	if (!is_npc(victim) && !trusts(ch, victim) && (!Deref(ch->fighting) || !Deref(victim->fighting)))
 	{
 		sprintf(buf, "Die, %s, you sorcerous dog!", pers(ch, victim));
 		do_myell(victim, buf, ch);
@@ -621,7 +622,7 @@ void spell_group_teleport(int sn, int level, CHAR_DATA *ch, void *vo, int target
 		{
 			g_next = group->next_in_room;
 
-			if (!is_same_group(group, ch) || (group->fighting != nullptr) || group == ch)
+			if (!is_same_group(group, ch) || (Deref(group->fighting) != nullptr) || group == ch)
 				continue;
 
 			if (group == ch)

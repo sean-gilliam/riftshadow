@@ -37,6 +37,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "act_ente.h"
 #include "handler.h"
 #include "magic.h"
@@ -79,7 +80,7 @@ ROOM_INDEX_DATA *get_random_room(CHAR_DATA *ch)
 /* RT Enter portals */
 void do_enter(CHAR_DATA *ch, char *argument)
 {
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 		return;
 
 	/* nifty portal stuff */
@@ -203,10 +204,10 @@ void do_enter(CHAR_DATA *ch, char *argument)
 		if (portal == nullptr || portal->value[0] == 0)
 			continue;
 
-		if (fch->master == ch && is_affected_by(fch, AFF_CHARM) && fch->position < POS_STANDING)
+		if (Deref(fch->master) == ch && is_affected_by(fch, AFF_CHARM) && fch->position < POS_STANDING)
 			do_stand(fch, "");
 
-		if (fch->master == ch && fch->position == POS_STANDING)
+		if (Deref(fch->master) == ch && fch->position == POS_STANDING)
 		{
 			if (IS_SET(ch->in_room->room_flags, ROOM_LAW) && (is_npc(fch) && IS_SET(fch->act, ACT_AGGRESSIVE)))
 			{

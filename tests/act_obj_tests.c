@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include "../code/entity/handles.h"
 #include "../code/act_obj.h"
 #include "../code/merc.h"
 #include "../code/handler.h"
@@ -44,6 +45,7 @@ void TestHelperSetPlayerStats(char_data *player, short value)
 char_data* TestHelperCreateNPC()
 {
 	auto npc = new char_data();
+	npc->self = charHandles.Add(npc);	// as new_char would
 	SET_BIT(npc->act, ACT_IS_NPC);
 	npc->pIndexData = new mob_index_data();
 	return npc;
@@ -69,8 +71,10 @@ void TestHelperLoadCClass()
 char_data* TestHelperCreatePlayer(char *name, obj_data *item = nullptr)
 {
 	auto player = new char_data();
+	player->self = charHandles.Add(player);	// as new_char would
 	player->name = name;
 	auto dnew = new descriptor_data();
+	dnew->self = descriptorHandles.Add(dnew);	// as new_descriptor would
 	player->pcdata = std::make_unique<pc_data>();
 	TestHelperLoadCClass();
 	player->SetClass(5);
@@ -83,7 +87,7 @@ char_data* TestHelperCreatePlayer(char *name, obj_data *item = nullptr)
 	dnew->editor = 0;	  /* OLC */
 	dnew->outbuf = new char[dnew->outsize];
 	dnew->outtop = 0;	
-	player->desc = dnew;
+	player->desc = dnew->self;
 
 	if(item != nullptr)
 		obj_to_char(item, player);
@@ -112,6 +116,7 @@ room_index_data* TestHelperCreateRoom()
 obj_data* TestHelperCreateItem(char *itemName = "broken_lamp", int cost = 0)
 {
 	auto item = new obj_data();
+	item->self = objectHandles.Add(item);	// as new_obj would
 	item->name = itemName;
 	item->cost = cost;
 	item->wear_loc = -1;
@@ -218,7 +223,7 @@ SCENARIO("testing selling to merchants", "[do_sell]")
 
 			do_sell(player1, arg);
 			auto expected = "Sell what?";
-			auto actual = player1->desc->outbuf;
+			auto actual = Deref(player1->desc)->outbuf;
 			THEN("do_sell should return after notifying the player and rejecting the command.")
 			{
 				REQUIRE(strstr(actual,expected) != nullptr);
@@ -233,7 +238,7 @@ SCENARIO("testing selling to merchants", "[do_sell]")
 			TestHelperAddPlayerToRoom(player, room);
 			do_sell(player, arg);
 			auto expected = "Sell to whom? Yourself?";
-			auto actual = player->desc->outbuf;
+			auto actual = Deref(player->desc)->outbuf;
 
 			THEN("do_sell should return after notifying the player and rejecting the command.")
 			{
@@ -252,7 +257,7 @@ SCENARIO("testing selling to merchants", "[do_sell]")
 			
 			do_sell(player, arg);
 			auto expected = "You cannot sell what you do not have.";
-			auto actual = player->desc->outbuf;
+			auto actual = Deref(player->desc)->outbuf;
 
 			THEN("do_sell should return after notifying the player and rejecting the command.")
 			{
@@ -290,7 +295,7 @@ SCENARIO("testing selling to merchants", "[do_sell]")
 			TestHelperAddPlayerToRoom(keeper, room);
 			
 			do_sell(player, item->name);
-			auto actual = player->desc->outbuf;
+			auto actual = Deref(player->desc)->outbuf;
 			auto expected = "You would never trade for coin when coin can be taken!";
 			THEN("it should not be sold to the shopkeeper")
 			{
@@ -312,7 +317,7 @@ SCENARIO("testing selling to merchants", "[do_sell]")
 			
 			do_sell(player, item->name);
 			auto expected = "The shopkeeper haggles with you about the price - you seem poorly equipped for this.";
-			auto actual = player->desc->outbuf;
+			auto actual = Deref(player->desc)->outbuf;
 
 			THEN("it should be sold to the shopkeeper at an unskilled multiplier")
 			{
@@ -336,7 +341,7 @@ SCENARIO("testing selling to merchants", "[do_sell]")
 			
 			do_sell(player, item->name);
 			auto expected = "The shopkeeper reluctantly concedes to your final price.";
-			auto actual = player->desc->outbuf;
+			auto actual = Deref(player->desc)->outbuf;
 
 			THEN("it should be sold to the shopkeeper at a skilled multiplier")
 			{

@@ -65,10 +65,10 @@ typedef	bool OLC_FUN (CHAR_DATA *ch, char *argument);
 
 
 /* Return pointers to what is being edited. */
-#define EDIT_MOB(ch, mob)		(mob = (MOB_INDEX_DATA *)ch->desc->pEdit)
-#define EDIT_OBJ(ch, obj)		(obj = (OBJ_INDEX_DATA *)ch->desc->pEdit)
+#define EDIT_MOB(ch, mob)		(mob = (MOB_INDEX_DATA *)Deref(ch->desc)->pEdit)
+#define EDIT_OBJ(ch, obj)		(obj = (OBJ_INDEX_DATA *)Deref(ch->desc)->pEdit)
 #define EDIT_ROOM(ch, room)		(room = ch->in_room)
-#define EDIT_AREA(ch, area)		(area = (AREA_DATA *)ch->desc->pEdit)
+#define EDIT_AREA(ch, area)		(area = (AREA_DATA *)Deref(ch->desc)->pEdit)
 
 
 /*

@@ -38,6 +38,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "interp.h"
 #include "ban.h"
 #include "handler.h"
@@ -749,16 +750,32 @@ void interpret(CHAR_DATA *ch, char *argument)
 
 	if ((!is_npc(ch) && IS_SET(ch->act, PLR_LOG)) || fLogAll || cmd_table[cmd].log == LOG_ALWAYS)
 	{
-		auto buffer = fmt::format("Log {}: {}", ch->desc->original ? ch->desc->original->true_name : ch->true_name, logline);
+		// A mob has no connection, and neither does a link-dead player. Both
+		// reach this: the condition above fires for any command flagged
+		// LOG_ALWAYS, and for every command at all while fLogAll is on.
+		DESCRIPTOR_DATA *connection = Deref(ch->desc);
+		CHAR_DATA *switchedFrom = connection != nullptr ? Deref(connection->original) : nullptr;
+		const char *actor = switchedFrom != nullptr ? switchedFrom->true_name : ch->true_name;
+
+		// And a mob has no true_name either -- create_mobile sets `name` and
+		// leaves this one null -- so the fallback is the second half of the
+		// same problem rather than defensiveness.
+		if (actor == nullptr)
+			actor = ch->name;
+
+		auto buffer = fmt::format("Log {}: {}", actor, logline);
 		wiznet(buffer.data(), ch, nullptr, WIZ_SECURE, 0, get_trust(ch));
 		RS.Logger.Info(buffer);
 	}
 
-	if (ch->desc != nullptr && ch->desc->snoop_by != nullptr)
+	DESCRIPTOR_DATA *snooped = Deref(ch->desc);
+	DESCRIPTOR_DATA *snooper = snooped != nullptr ? Deref(snooped->snoop_by) : nullptr;
+
+	if (snooper != nullptr)
 	{
-		write_to_buffer(ch->desc->snoop_by, "% ", 2);
-		write_to_buffer(ch->desc->snoop_by, logline, 0);
-		write_to_buffer(ch->desc->snoop_by, "\n\r", 2);
+		write_to_buffer(snooper, "% ", 2);
+		write_to_buffer(snooper, logline, 0);
+		write_to_buffer(snooper, "\n\r", 2);
 	}
 
 	/* Hold person */
@@ -1003,7 +1020,7 @@ void interpret(CHAR_DATA *ch, char *argument)
 			case TAR_CHAR_OFFENSIVE:
 				if (argument[0] == '\0')
 				{
-					if ((victim = ch->fighting) == nullptr)
+					if ((victim = Deref(ch->fighting)) == nullptr)
 					{
 						send_to_char("Do that to who?\n\r", ch);
 						return;
@@ -1112,8 +1129,8 @@ void interpret(CHAR_DATA *ch, char *argument)
 		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE
 			&& victim
 			&& victim != ch
-			&& !victim->fighting
-			&& victim->master != ch)
+			&& !Deref(victim->fighting)
+			&& Deref(victim->master) != ch)
 		{
 			multi_hit(victim, ch, TYPE_UNDEFINED);
 		}

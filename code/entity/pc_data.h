@@ -9,6 +9,7 @@
 #include "../enums.h"		// SECT_MAX
 #include "../prof.h"		// CProficiencies is embedded by value
 #include "trophy_data.h"	// TROPHY_DATA held by value in pcdata->trophy
+#include "../stdlibs/handle.h"	// trusting is a handle, not a pointer
 
 //
 // Data which only PC's have.
@@ -18,7 +19,6 @@ struct pc_data
 {
 	PC_DATA *next;
 	BUFFER *buffer;
-	bool valid;
 	bool newbie;
 	char *pwd;
 	char *bamfin;
@@ -83,7 +83,11 @@ struct pc_data
 	char *entered_text;
 	DO_FUN *end_fun;
 	long trust[MAX_BITVECTOR];
-	CHAR_DATA *trusting;
+	// The player this one has authorised to take questionable actions against
+	// them. Non-owning, and the other player can leave the world independently,
+	// so it is a handle rather than a pointer. do_trust's own clear stays: that
+	// is a player withdrawing trust, not a lifetime event.
+	Handle<CHAR_DATA> trusting;
 	short energy_state;
 	char *host;
 	short quests[MAX_QUESTS];

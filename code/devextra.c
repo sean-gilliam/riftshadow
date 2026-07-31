@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <iterator>
 #include "merc.h"
+#include "entity/handles.h"
 #include "devextra.h"
 #include "rift.h"
 #include "stdlibs/cfilesystem.h"
@@ -107,16 +108,17 @@ void do_pswitch(CHAR_DATA *ch, char *argument)
 	if (!CFileSystem::Copy(ploadSource, ploadDest))
 		RS.Logger.Warn("Failed to copy [{}] to [{}]", ploadSource, ploadDest);
 
-	d->character->desc = nullptr;
-	d->character->next = char_list;
-	char_list = d->character;
+	victim = Deref(d->character);
+
+	victim->desc = nullptr;
+	victim->next = char_list;
+	char_list = victim;
 	d->outsize = 2000;
 	d->outbuf = new char[d->outsize];
 	d->connected = CON_PLAYING;
-	reset_char(d->character);
+	reset_char(victim);
 
-	victim = d->character;
-	d->character->pcdata->host = palloc_string("PLOAD");
+	victim->pcdata->host = palloc_string("PLOAD");
 }
 
 void do_gold(CHAR_DATA *ch, char *argument)
@@ -217,16 +219,18 @@ void clean_mud()
 
 			if (!load_char_obj(d, tbuf))
 			{
-				free_char(d->character);
+				free_char(Deref(d->character));
 				continue;
 			}
 
-			d->character->desc = nullptr;
+			CHAR_DATA *victim = Deref(d->character);
 
-			if (d->character->level >= 30)
-				perm_death_log(d->character, 4);
+			victim->desc = nullptr;
 
-			delete_char(d->character->true_name, true);
+			if (victim->level >= 30)
+				perm_death_log(victim, 4);
+
+			delete_char(victim->true_name, true);
 		}
 
 		free_descriptor(d);
@@ -249,7 +253,7 @@ void clean_mud()
 				RS.Logger.Info("Deleting player...");
 			}
 
-			free_char(d->character);
+			free_char(Deref(d->character));
 		}
 
 		free_descriptor(d);
@@ -1011,7 +1015,7 @@ bool trusts(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	if (is_npc(victim))
 	{
-		if (is_affected_by(victim, AFF_CHARM) && victim->master == ch)
+		if (is_affected_by(victim, AFF_CHARM) && Deref(victim->master) == ch)
 			return true;
 		else
 			return false;
@@ -1026,7 +1030,7 @@ bool trusts(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (IS_SET(victim->pcdata->trust, TRUST_GROUP) && is_same_group(ch, victim))
 		return true;
 
-	if (victim->pcdata->trusting == ch)
+	if (Deref(victim->pcdata->trusting) == ch)
 		return true;
 
 	return false;
@@ -1041,16 +1045,18 @@ void mob_recho(CHAR_DATA *ch, char *argument)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING
-			&& d->character->in_room == ch->in_room
-			&& is_awake(d->character)
-			&& d->character != ch)
-		{
-			if (get_trust(d->character) >= 55)
-				send_to_char("local mob> ", d->character);
+		CHAR_DATA *wch = Deref(d->character);
 
-			send_to_char(argument, d->character);
-			send_to_char("\n\r", d->character);
+		if (d->connected == CON_PLAYING
+			&& wch->in_room == ch->in_room
+			&& is_awake(wch)
+			&& wch != ch)
+		{
+			if (get_trust(wch) >= 55)
+				send_to_char("local mob> ", wch);
+
+			send_to_char(argument, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1061,14 +1067,16 @@ void area_echo(CHAR_DATA *ch, char *echo)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
+			&& wch->in_room != nullptr
 			&& ch->in_room != nullptr
-			&& d->character->in_room->area == ch->in_room->area)
+			&& wch->in_room->area == ch->in_room->area)
 		{
-			colorconv(buffer, echo, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, echo, wch);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1079,14 +1087,16 @@ void rarea_echo(ROOM_INDEX_DATA *room, char *echo)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
+			&& wch->in_room != nullptr
 			&& room != nullptr
-			&& d->character->in_room->area == room->area)
+			&& wch->in_room->area == room->area)
 		{
-			colorconv(buffer, echo, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, echo, wch);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1097,18 +1107,20 @@ void outdoors_echo(AREA_DATA *area, char *echo)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
+			&& wch->in_room != nullptr
 			&& area != nullptr
-			&& d->character->in_room->area == area
-			&& d->character->in_room->sector_type != SECT_INSIDE
-			&& d->character->in_room->sector_type != SECT_UNDERWATER
-			&& is_awake(d->character)
-			&& !IS_SET(d->character->in_room->room_flags, ROOM_INDOORS))
+			&& wch->in_room->area == area
+			&& wch->in_room->sector_type != SECT_INSIDE
+			&& wch->in_room->sector_type != SECT_UNDERWATER
+			&& is_awake(wch)
+			&& !IS_SET(wch->in_room->room_flags, ROOM_INDOORS))
 		{
-			colorconv(buffer, echo, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, echo, wch);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1124,7 +1136,7 @@ bool check_volley(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	skill = get_skill(victim, gsn_volley);
 
-	if (!skill || victim->fighting || !is_awake(victim) || victim == ch)
+	if (!skill || Deref(victim->fighting) || !is_awake(victim) || victim == ch)
 		return false;
 
 	if (get_trust(victim) == MAX_LEVEL)
@@ -1147,8 +1159,10 @@ char *get_char_color(CHAR_DATA *ch, char *event)
 	if (IS_SET(ch->comm, COMM_LOTS_O_COLOR))
 		return color_table[number_range(0, MAX_COLORS - 1)].color_ascii;
 
-	if (ch->desc != nullptr && ch->desc->original != nullptr)
-		ch = ch->desc->original;
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
+		ch = Deref(connection->original);
 
 	if (is_npc(ch))
 		return "";
@@ -1213,9 +1227,11 @@ char *END_COLOR(CHAR_DATA *ch)
 	if (IS_SET(ch->comm, COMM_LOTS_O_COLOR))
 		return color_table[number_range(0, MAX_COLORS - 1)].color_ascii;
 
-	if (ch->desc != nullptr && ch->desc->original != nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
 	{
-		if (IS_SET(ch->desc->original->comm, COMM_ANSI))
+		if (IS_SET(Deref(connection->original)->comm, COMM_ANSI))
 			return "\x01B[0m";
 		else
 			return "";
@@ -1255,7 +1271,7 @@ void WAIT_STATE(CHAR_DATA *ch, int npulse)
 	{
 		raf = affect_find_room(ch->in_room->affected, gsn_gravity_well);
 
-		if (ch == raf->owner)
+		if (ch == Deref(raf->owner))
 			wait += PULSE_VIOLENCE;
 	}
 
@@ -2113,7 +2129,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 	AFFECT_DATA af, *paf;
 	int target;
 
-	if (is_npc(ch) && ch->desc == nullptr)
+	if (is_npc(ch) && Deref(ch->desc) == nullptr)
 		return;
 
 	target_name = one_argument(argument, arg1);
@@ -2246,7 +2262,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		case TAR_CHAR_OFFENSIVE:
 			if (arg2[0] == '\0')
 			{
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 
 				if (victim == nullptr)
 				{
@@ -2265,7 +2281,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 				}
 			}
 
-			if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+			if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 			{
 				send_to_char("You can't do that on your own master.\n\r", ch);
 				return;
@@ -2332,7 +2348,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		case TAR_OBJ_CHAR_OFF:
 			if (arg2[0] == '\0')
 			{
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 
 				if (victim == nullptr)
 				{
@@ -2352,7 +2368,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 
 			if (target == TARGET_CHAR) /* check the sanity of the attack */
 			{
-				if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+				if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 				{
 					send_to_char("You can't do that on your own follower.\n\r", ch);
 					return;
@@ -2442,7 +2458,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 
 		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE)
 		{
-			if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+			if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 			{
 				switch (number_range(0, 2))
 				{
@@ -2515,7 +2531,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 	if ((skill_table[sn].target == TAR_CHAR_OFFENSIVE
 			|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF
 			&& target == TARGET_CHAR))
-		&& victim != ch && victim->master != ch)
+		&& victim != ch && Deref(victim->master) != ch)
 	{
 		CHAR_DATA *vch;
 		CHAR_DATA *vch_next;
@@ -2524,7 +2540,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		for (vch = ch->in_room->people; vch; vch = vch_next)
 		{
 			vch_next = vch->next_in_room;
-			if (victim == vch && victim->fighting == nullptr)
+			if (victim == vch && Deref(victim->fighting) == nullptr)
 			{
 				multi_hit(victim, ch, TYPE_UNDEFINED);
 				break;
@@ -2546,7 +2562,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 	int sn;
 	int target;
 
-	if (is_npc(ch) && ch->desc == nullptr)
+	if (is_npc(ch) && Deref(ch->desc) == nullptr)
 		return;
 
 	target_name = one_argument(argument, arg1);
@@ -2606,7 +2622,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 		case TAR_CHAR_OFFENSIVE:
 			if (arg2[0] == '\0')
 			{
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 
 				if (victim == nullptr)
 				{
@@ -2625,7 +2641,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 				}
 			}
 
-			if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+			if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 			{
 				send_to_char("You can't do that on your own master.\n\r", ch);
 				return;
@@ -2682,7 +2698,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 		case TAR_OBJ_CHAR_OFF:
 			if (arg2[0] == '\0')
 			{
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 
 				if (victim == nullptr)
 				{
@@ -2702,7 +2718,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 
 			if (target == TARGET_CHAR) /* check the sanity of the attack */
 			{
-				if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+				if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 				{
 					send_to_char("You can't do that on your own follower.\n\r", ch);
 					return;
@@ -2789,7 +2805,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 
 		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE)
 		{
-			if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+			if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 			{
 				switch (number_range(0, 2))
 				{
@@ -2823,7 +2839,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 	if ((skill_table[sn].target == TAR_CHAR_OFFENSIVE
 			|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF && target == TARGET_CHAR))
 		&& victim != ch
-		&& victim->master != ch)
+		&& Deref(victim->master) != ch)
 	{
 		CHAR_DATA *vch;
 		CHAR_DATA *vch_next;
@@ -2833,7 +2849,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 		{
 			vch_next = vch->next_in_room;
 
-			if (victim == vch && victim->fighting == nullptr)
+			if (victim == vch && Deref(victim->fighting) == nullptr)
 			{
 				multi_hit(victim, ch, TYPE_UNDEFINED);
 				break;
@@ -2885,7 +2901,7 @@ void do_snare(CHAR_DATA *ch, char *argument)
 	af.duration = 24;
 	af.location = APPLY_NONE;
 	af.modifier = 0;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.end_fun = nullptr;
 	af.tick_fun = nullptr;
 	new_affect_to_room(ch->in_room, &af);

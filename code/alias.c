@@ -53,7 +53,7 @@ void substitute_alias(DESCRIPTOR_DATA *d, char *argument)
 	char *point;
 	int alias;
 
-	ch = d->original ? d->original : d->character;
+	ch = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 
 	if (is_npc(ch)
 		|| ch->pcdata->alias[0] == nullptr
@@ -61,7 +61,7 @@ void substitute_alias(DESCRIPTOR_DATA *d, char *argument)
 		|| !str_prefix("una", argument)
 		|| !str_prefix("prefix", argument))
 	{
-		interpret(d->character, argument);
+		interpret(Deref(d->character), argument);
 		return;
 	}
 
@@ -94,7 +94,7 @@ void substitute_alias(DESCRIPTOR_DATA *d, char *argument)
 		}
 	}
 
-	interpret(d->character, buf);
+	interpret(Deref(d->character), buf);
 }
 
 void do_alia(CHAR_DATA *ch, char *argument)
@@ -110,10 +110,12 @@ void do_alias(CHAR_DATA *ch, char *argument)
 	int pos;
 	smash_tilde(argument);
 
-	if (ch->desc == nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
 		rch = ch;
 	else
-		rch = ch->desc->original ? ch->desc->original : ch;
+		rch = Deref(connection->original) ? Deref(connection->original) : ch;
 
 	if (is_npc(rch))
 		return;
@@ -210,10 +212,12 @@ void do_unalias(CHAR_DATA *ch, char *argument)
 	int pos;
 	bool found = false;
 
-	if (ch->desc == nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
 		rch = ch;
 	else
-		rch = ch->desc->original ? ch->desc->original : ch;
+		rch = Deref(connection->original) ? Deref(connection->original) : ch;
 
 	if (is_npc(rch))
 		return;

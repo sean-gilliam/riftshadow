@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "aprog.h"
 #include "weather_enums.h"
 #include "comm.h"
@@ -167,7 +168,7 @@ void tick_prog_academy_reset(AREA_DATA *area)
 
 	for (ch = char_list; ch; ch = ch->next)
 	{
-		if (!is_npc(ch) && ch->in_room->area == area && ch->level > 10 && !ch->fighting && !is_immortal(ch))
+		if (!is_npc(ch) && ch->in_room->area == area && ch->level > 10 && !Deref(ch->fighting) && !is_immortal(ch))
 		{
 			char buf[MSL];
 
@@ -372,7 +373,7 @@ void pulse_prog_ruins_shark(AREA_DATA *area)
 
 		if (shark->pIndexData->vnum == 20111)
 		{
-			if (!shark->fighting && !shark->last_fought && number_percent() > 50 && shark->in_room)
+			if (!Deref(shark->fighting) && !Deref(shark->last_fought) && number_percent() > 50 && shark->in_room)
 				extract_char(shark, true);
 			else
 				count++;
@@ -385,18 +386,18 @@ void pulse_prog_ruins_shark(AREA_DATA *area)
 	for (d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
-			&& d->character->in_room->area == area
+			&& Deref(d->character)->in_room != nullptr
+			&& Deref(d->character)->in_room->area == area
 			&& number_percent() > 90)
 		{
-			ch = d->character;
+			ch = Deref(d->character);
 
-			if ((d->character->hit * 2) > d->character->max_hit)
+			if ((Deref(d->character)->hit * 2) > Deref(d->character)->max_hit)
 				continue;
 
-			if (d->character->in_room->vnum < 20100
-				|| (d->character->in_room->vnum > 20150 && d->character->in_room->vnum < 20181)
-				|| d->character->in_room->vnum > 20219)
+			if (Deref(d->character)->in_room->vnum < 20100
+				|| (Deref(d->character)->in_room->vnum > 20150 && Deref(d->character)->in_room->vnum < 20181)
+				|| Deref(d->character)->in_room->vnum > 20219)
 			{
 				continue;
 			}

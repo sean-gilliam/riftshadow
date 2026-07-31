@@ -39,6 +39,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "act_obj.h"
+#include "entity/handles.h"
 #include "rift.h"
 #include "handler.h"
 #include "magic.h"
@@ -88,7 +89,7 @@ bool check_arms(CHAR_DATA *ch, OBJ_DATA *obj)
 					|| paf.type == gsn_arms_of_wrath
 					|| paf.type == gsn_arms_of_purity
 					|| paf.type == gsn_arms_of_judgement)
-				&& paf.owner != ch)
+				&& Deref(paf.owner) != ch)
 			{
 				act("$p shocks you, falling from your numb hands.", ch, obj, 0, TO_CHAR);
 				act("$n drops $p.", ch, obj, 0, TO_ROOM);
@@ -109,7 +110,7 @@ bool can_loot(CHAR_DATA *ch, OBJ_DATA *obj)
 	{
 		RS.Logger.Info("{} looting {}.",
 			is_npc(ch)
-				? ((ch->master == nullptr) ? "Unknown mob" : ch->master->name)
+				? ((Deref(ch->master) == nullptr) ? "Unknown mob" : Deref(ch->master)->name)
 				: ch->name,
 			obj->short_descr);
 		ch->pause = 5;
@@ -183,7 +184,10 @@ void get_obj(CHAR_DATA *ch, OBJ_DATA *obj, OBJ_DATA *container, bool pcheck)
 		return;
 	}
 
-	if ((!obj->in_obj || obj->in_obj->carried_by != ch)
+	// Distinct from the `container` parameter above: that is where the object is
+	// being taken from, this is where the object currently reports itself to be.
+	OBJ_DATA *heldIn = Deref(obj->in_obj);
+	if ((!heldIn || heldIn->carried_by != ch->self)
 		&& (get_carry_weight(ch) + get_obj_weight(obj) > can_carry_w(ch)))
 	{
 		act("$p: you can't carry that much weight.", ch, obj, 0, TO_CHAR);
@@ -200,7 +204,7 @@ void get_obj(CHAR_DATA *ch, OBJ_DATA *obj, OBJ_DATA *container, bool pcheck)
 	{
 		for (gch = obj->in_room->people; gch != nullptr; gch = gch->next_in_room)
 		{
-			if (gch->on == obj)
+			if (gch->on == obj->self)
 			{
 				act("$N appears to be using $p.", ch, obj, gch, TO_CHAR);
 				return;
@@ -1588,7 +1592,7 @@ void do_pour(CHAR_DATA *ch, char *argument)
 			oaf.location = 0;
 			oaf.modifier = 0;
 			oaf.duration = 4;
-			oaf.owner = ch;
+			oaf.owner = ch->self;
 			oaf.end_fun = puddle_evaporate;
 			oaf.tick_fun = 0;
 			affect_to_obj(puddle, &oaf);
@@ -1673,7 +1677,7 @@ void do_drink(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You're too busy fighting to drink anything.\n\r", ch);
 		return;
@@ -1755,7 +1759,7 @@ void do_drink(CHAR_DATA *ch, char *argument)
 
 			SET_BIT(af.bitvector, AFF_POISON);
 
-			af.owner = ch;
+			af.owner = ch->self;
 			af.tick_fun = poison_tick;
 			affect_join(ch, &af);
 		}
@@ -1785,7 +1789,7 @@ void do_eat(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You're too busy fighting to worry about food.\n\r", ch);
 		return;
@@ -1844,7 +1848,7 @@ void do_eat(CHAR_DATA *ch, char *argument)
 					af.location = APPLY_STR;
 					af.modifier = -5;
 					SET_BIT(af.bitvector, AFF_POISON);
-					af.owner = ch;
+					af.owner = ch->self;
 					af.tick_fun = poison_tick;
 					affect_join(ch, &af);
 				}
@@ -2221,7 +2225,7 @@ void wear_obj(CHAR_DATA *ch, OBJ_DATA *obj, bool fReplace)
 			return;
 		}
 
-		if (obj->item_type == ITEM_POTION && ch->fighting != nullptr)
+		if (obj->item_type == ITEM_POTION && Deref(ch->fighting) != nullptr)
 		{
 			send_to_char("You can't handle a potion in the heat of combat!\n\r", ch);
 			return;
@@ -2814,7 +2818,7 @@ void do_sacrifice(CHAR_DATA *ch, char *argument)
 	{
 		for (gch = obj->in_room->people; gch != nullptr; gch = gch->next_in_room)
 		{
-			if (gch->on == obj)
+			if (gch->on == obj->self)
 			{
 				act("$N appears to be using $p.", ch, obj, gch, TO_CHAR);
 				return;
@@ -2939,7 +2943,7 @@ void do_quaff(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You're too busy fighting to quaff.\n\r", ch);
 		return;
@@ -3004,7 +3008,7 @@ void do_recite(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You're too busy fighting to recite.\n\r", ch);
 		return;
@@ -3168,7 +3172,7 @@ void do_zap(CHAR_DATA *ch, char *argument)
 
 	one_argument(argument, arg);
 
-	if (arg[0] == '\0' && ch->fighting == nullptr)
+	if (arg[0] == '\0' && Deref(ch->fighting) == nullptr)
 	{
 		send_to_char("Zap whom or what?\n\r", ch);
 		return;
@@ -3192,9 +3196,9 @@ void do_zap(CHAR_DATA *ch, char *argument)
 
 	if (arg[0] == '\0')
 	{
-		if (ch->fighting != nullptr)
+		if (Deref(ch->fighting) != nullptr)
 		{
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 		else
 		{
@@ -3300,7 +3304,7 @@ void do_steal(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	if (victim->fighting != nullptr)
+	if (Deref(victim->fighting) != nullptr)
 	{
 		send_to_char("You can't get close enough in the fray!\n\r", ch);
 		return;
@@ -3613,7 +3617,7 @@ void obj_to_keeper(OBJ_DATA *obj, CHAR_DATA *ch)
 		t_obj->next_content = obj;
 	}
 
-	obj->carried_by = ch;
+	obj->carried_by = ch->self;
 	obj->in_room = nullptr;
 	obj->in_obj = nullptr;
 	ch->carry_number += get_obj_number(obj);
@@ -3716,7 +3720,7 @@ void do_buy(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (ch->pet != nullptr)
+		if (Deref(ch->pet) != nullptr)
 		{
 			send_to_char("You already own a pet.\n\r", ch);
 			return;
@@ -3787,8 +3791,8 @@ void do_buy(CHAR_DATA *ch, char *argument)
 		char_to_room(pet, ch->in_room);
 		add_follower(pet, ch);
 
-		pet->leader = ch;
-		ch->pet = pet;
+		pet->leader = ch->self;
+		ch->pet = pet->self;
 
 		send_to_char("Enjoy your pet.\n\r", ch);
 		act("$n bought $N as a pet.", ch, nullptr, pet, TO_ROOM);
@@ -3849,7 +3853,7 @@ void do_buy(CHAR_DATA *ch, char *argument)
 			if (count < number)
 			{
 				act("$n tells you 'I don't have that many in stock.", keeper, nullptr, ch, TO_VICT);
-				ch->reply = keeper;
+				ch->reply = keeper->self;
 				return;
 			}
 		}
@@ -3861,14 +3865,14 @@ void do_buy(CHAR_DATA *ch, char *argument)
 			else
 				act("$n tells you 'You can't afford to buy $p'.", keeper, obj, ch, TO_VICT);
 
-			ch->reply = keeper;
+			ch->reply = keeper->self;
 			return;
 		}
 
 		if (obj->level > ch->level)
 		{
 			act("$n tells you 'You can't use $p yet'.", keeper, obj, ch, TO_VICT);
-			ch->reply = keeper;
+			ch->reply = keeper->self;
 			return;
 		}
 
@@ -4191,7 +4195,7 @@ void do_value(CHAR_DATA *ch, char *argument)
 	if (obj == nullptr)
 	{
 		act("$n tells you 'You don't have that item'.", keeper, nullptr, ch, TO_VICT);
-		ch->reply = keeper;
+		ch->reply = keeper->self;
 		return;
 	}
 
@@ -4218,7 +4222,7 @@ void do_value(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "$n tells you 'I'll give you %d gold coins for $p.'", cost / 100);
 	act(buf, keeper, obj, ch, TO_VICT);
 
-	ch->reply = keeper;
+	ch->reply = keeper->self;
 }
 
 void do_request(CHAR_DATA *ch, char *argument)
@@ -4517,10 +4521,12 @@ bool cabal_down_new(CHAR_DATA *ch, int cabal, bool show)
 			break;
 	}
 
-	if (!obj || !obj->carried_by || !is_npc(obj->carried_by))
+	CHAR_DATA *carrier = obj != nullptr ? Deref(obj->carried_by) : nullptr;
+
+	if (!obj || !carrier || !is_npc(carrier))
 		return false;
 
-	if (obj->carried_by->cabal && obj->carried_by->cabal != cabal)
+	if (carrier->cabal && carrier->cabal != cabal)
 		is_down = true;
 
 	if (is_down)
@@ -4935,10 +4941,12 @@ void save_cabal_items(void)
 		{
 			if (obj->pIndexData->vnum == vnum)
 			{
+				CHAR_DATA *carrier = Deref(obj->carried_by);
+
 				fprintf(fp, "%i %i\n",
 					i,
-					(obj->carried_by && is_npc(obj->carried_by) && is_cabal_guard(obj->carried_by))
-						? obj->carried_by->pIndexData->vnum
+					(carrier && is_npc(carrier) && is_cabal_guard(carrier))
+						? carrier->pIndexData->vnum
 						: 0);
 			}
 		}
@@ -4983,7 +4991,7 @@ void do_roll(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You really have more important things to worry about right now!\n\r", ch);
 		return;
@@ -5042,7 +5050,7 @@ void do_flip(CHAR_DATA *ch, char *argument)
 	char buf[MSL];
 	OBJ_DATA *coin;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("You really have more important things to worry about right now!\n\r", ch);
 		return;

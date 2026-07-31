@@ -31,6 +31,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "mprog.h"
 #include "characterClasses/ap.h"
 #include "note.h"
@@ -524,7 +525,7 @@ void pulse_prog_arangird_patrol(CHAR_DATA *mob)
 	OBJ_DATA *robes;
 	int dir_next = -1;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (!mob->in_room)
@@ -630,7 +631,7 @@ void greet_prog_ruins_spirit(CHAR_DATA *mob, CHAR_DATA *ch)
 {
 	char buf[MSL];
 
-	if (mob->fighting || is_immortal(ch))
+	if (Deref(mob->fighting) || is_immortal(ch))
 		return;
 
 	if (check_stealth(ch, mob))
@@ -823,7 +824,7 @@ void pulse_prog_formian_queen(CHAR_DATA *mob)
 	if (!mob->in_room)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (is_affected(mob, gsn_timer))
@@ -901,14 +902,17 @@ void greet_prog_outer_guardian(CHAR_DATA *mob, CHAR_DATA *ch)
 void pulse_prog_demon(CHAR_DATA *mob)
 {
 	CHAR_DATA *elemental = mob;
-	CHAR_DATA *victim = elemental->hunting;
+	CHAR_DATA *victim = Deref(elemental->hunting);
 	char buf[250];
 
 	if (!victim || !elemental->in_room || !victim->in_room || victim->ghost > 0)
 	{
-		if (mob->master && victim->ghost > 0)
+		// `victim` is one of the things that can be null here -- it is the
+		// first clause of the condition above -- so the message about having
+		// taken its soul has to check for it before reading one.
+		if (victim && Deref(mob->master) && victim->ghost > 0)
 		{
-			sprintf(buf, "%s I have taken the soul of %s. Your debt will one day be collected.", mob->master->name, victim->name);
+			sprintf(buf, "%s I have taken the soul of %s. Your debt will one day be collected.", Deref(mob->master)->name, victim->name);
 			do_tell(mob, buf);
 		}
 
@@ -920,7 +924,7 @@ void pulse_prog_demon(CHAR_DATA *mob)
 	if (number_percent() > 50)
 		return;
 
-	if (elemental->fighting)
+	if (Deref(elemental->fighting))
 		return;
 
 	if (mob->position != POS_STANDING)
@@ -952,7 +956,7 @@ bool aggress_prog_arangird_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 		act("An invisible barrier flares around $n, protecting $m from harm.", mob, 0, attacker, TO_VICT);
 		act("An invisible barrier flares around $n as $N approaches.", mob, 0, attacker, TO_NOTVICT);
 
-		if (attacker->fighting == mob)
+		if (Deref(attacker->fighting) == mob)
 			stop_fighting(attacker, mob);
 
 		return true;
@@ -1026,7 +1030,7 @@ void pulse_prog_ilopheth_piranha(CHAR_DATA *mob)
 	if ((room = mob->in_room) == nullptr)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (mob->position <= POS_RESTING)
@@ -1081,7 +1085,7 @@ void pulse_prog_ilopheth_piranha(CHAR_DATA *mob)
 			if (adjmob->pIndexData->vnum != 9011)
 				continue;
 
-			if (adjmob->fighting)
+			if (Deref(adjmob->fighting))
 				continue;
 
 			if (number_percent() > 50)
@@ -1103,7 +1107,7 @@ void pulse_prog_ilopheth_weatherbeaten(CHAR_DATA *mob)
 	if (!mob->in_room || mob->pIndexData->vnum != 9010)
 		return;
 
-	if (mob->fighting || mob->position < POS_RESTING)
+	if (Deref(mob->fighting) || mob->position < POS_RESTING)
 		return;
 
 	if (sun == SolarPosition::Sunset && mob->in_room->vnum == 9121)
@@ -1124,7 +1128,7 @@ void pulse_prog_alstea_ehrlouge(CHAR_DATA *mob)
 {
 	ROOM_INDEX_DATA *study = get_room_index(105);
 
-	if (mob->fighting || mob->position > POS_RESTING)
+	if (Deref(mob->fighting) || mob->position > POS_RESTING)
 		return;
 
 	if (mob->in_room->vnum != 105)
@@ -1305,11 +1309,11 @@ void pulse_prog_tahlu_mist_ward(CHAR_DATA *mob)
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
-			&& d->character->in_room->area == mob->in_room->area
-			&& is_evil(d->character))
+			&& Deref(d->character)->in_room != nullptr
+			&& Deref(d->character)->in_room->area == mob->in_room->area
+			&& is_evil(Deref(d->character)))
 		{
-			ch = d->character;
+			ch = Deref(d->character);
 			mist = create_mobile(get_mob_index(1616));
 
 			char_to_room(mist, ch->in_room);
@@ -1356,7 +1360,7 @@ bool death_prog_glass(CHAR_DATA *mob, CHAR_DATA *killer)
 {
 
 	CHAR_DATA *ch, *vch, *vch_next;
-	ch = mob->leader;
+	ch = Deref(mob->leader);
 
 	if (ch == nullptr)
 		return false;
@@ -1480,8 +1484,8 @@ void pulse_prog_shopkeeper(CHAR_DATA *mob)
 
 		act("$t tosses $n out of $s shop.", vch, mob->short_descr, 0, TO_ROOM);
 
-		if (mob->fighting)
-			stop_fighting(mob, mob->fighting);
+		if (Deref(mob->fighting))
+			stop_fighting(mob, Deref(mob->fighting));
 
 		do_look(vch, "auto");
 	}
@@ -1508,7 +1512,7 @@ bool move_prog_theatre_guard(CHAR_DATA *ch, CHAR_DATA *mob, ROOM_INDEX_DATA *fro
 void greet_prog_necro_skull(CHAR_DATA *mob, CHAR_DATA *ch)
 {
 	char buf[MSL];
-	CHAR_DATA *master = mob->leader;
+	CHAR_DATA *master = Deref(mob->leader);
 
 	if (ch == master)
 		return;
@@ -1536,7 +1540,7 @@ bool death_prog_necro_skull(CHAR_DATA *mob, CHAR_DATA *killer)
 
 void pulse_prog_necro_skull(CHAR_DATA *mob)
 {
-	if (mob->leader == nullptr)
+	if (Deref(mob->leader) == nullptr)
 	{
 		act("$n crumbles into a pile of dust.", mob, 0, 0, TO_ROOM);
 		extract_char(mob, true);
@@ -1551,11 +1555,11 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 	if (!af)
 		return;
 
-	if (mob->pIndexData->vnum == MOB_VNUM_BARBAS && attacker != af->owner && af->owner)
+	if (mob->pIndexData->vnum == MOB_VNUM_BARBAS && attacker != Deref(af->owner) && Deref(af->owner))
 	{
 		do_say(mob, "Bah, ya bloody fool, you'll pay for this!");
 
-		sprintf(buf, "%s I'll be back for ye another time, weakling.", af->owner->name);
+		sprintf(buf, "%s I'll be back for ye another time, weakling.", Deref(af->owner)->name);
 		do_tell(mob, buf);
 
 		act("$n vanishes in a crimson flash!", mob, 0, 0, TO_ROOM);
@@ -1566,31 +1570,31 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 		char_to_room(mob, get_room_index(3));
 
 		RS.Queue.AddToQueue(1, "attack_prog_lesser_demon", "delay_extract", delay_extract, mob);
-		af->owner->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_NONE;
+		Deref(af->owner)->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_NONE;
 		return;
 	}
 
 	if (mob->pIndexData->vnum == MOB_VNUM_BARBAS)
 		return;
 
-	if (attacker == af->owner)
+	if (attacker == Deref(af->owner))
 	{
 		switch (mob->pIndexData->vnum)
 		{
 			case MOB_VNUM_BARBAS:
-				af->owner->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_FAILED;
 				break;
 			case MOB_VNUM_FURCAS:
-				af->owner->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_FAILED;
 				break;
 			case MOB_VNUM_MALAPHAR:
-				af->owner->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_FAILED;
 				break;
 			case MOB_VNUM_AAMON:
-				af->owner->pcdata->lesserdata[LESSER_AAMON] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_AAMON] = FAVOR_FAILED;
 				break;
 			case MOB_VNUM_IPOS:
-				af->owner->pcdata->lesserdata[LESSER_IPOS] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_IPOS] = FAVOR_FAILED;
 				break;
 			default:
 				return;
@@ -1609,24 +1613,24 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 		return;
 	}
 
-	if (attacker != af->owner)
+	if (attacker != Deref(af->owner))
 	{
 		switch (mob->pIndexData->vnum)
 		{
 			case MOB_VNUM_BARBAS:
-				af->owner->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_BARBAS] = FAVOR_NONE;
 				break;
 			case MOB_VNUM_FURCAS:
-				af->owner->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_NONE;
 				break;
 			case MOB_VNUM_MALAPHAR:
-				af->owner->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_NONE;
 				break;
 			case MOB_VNUM_AAMON:
-				af->owner->pcdata->lesserdata[LESSER_AAMON] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_AAMON] = FAVOR_NONE;
 				break;
 			case MOB_VNUM_IPOS:
-				af->owner->pcdata->lesserdata[LESSER_IPOS] = FAVOR_NONE;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_IPOS] = FAVOR_NONE;
 				break;
 			default:
 				return;
@@ -1635,7 +1639,7 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 		sprintf(buf, "%s, you fool, you'll pay for this!", attacker->name);
 		do_say(mob, buf);
 
-		sprintf(buf, "%s I'll be back for ye another time, weakling.", af->owner->name);
+		sprintf(buf, "%s I'll be back for ye another time, weakling.", Deref(af->owner)->name);
 		do_tell(mob, buf);
 
 		act("$n vanishes in a crimson flash!", mob, 0, 0, TO_ROOM);
@@ -1654,14 +1658,14 @@ void attack_prog_lesser_demon(CHAR_DATA *mob, CHAR_DATA *attacker)
 
 void beat_prog_barbas(CHAR_DATA *mob)
 {
-	CHAR_DATA *ch = mob->last_fought;
+	CHAR_DATA *ch = Deref(mob->last_fought);
 	ROOM_INDEX_DATA *old_room = mob->in_room;
 	char buf[MSL];
 
 	if (!ch)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (ch->ghost > 0)
@@ -1711,7 +1715,7 @@ bool death_prog_barbas(CHAR_DATA *mob, CHAR_DATA *killer)
 
 	act("Emitting a ghastly grunt, Barbas falls to the ground in a heap and disappears.", mob, 0, 0, TO_ROOM);
 
-	if (killer != af->owner)
+	if (killer != Deref(af->owner))
 		return false;
 
 	send_to_char("You feel a gluttonous lust enter your body as you stand victorious!\n\r", killer);
@@ -1732,7 +1736,7 @@ void speech_prog_aamon(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	if (!af)
 		return;
 
-	if (ch != af->owner)
+	if (ch != Deref(af->owner))
 		return;
 
 	lowspeech = talloc_string(lowstring(speech));
@@ -1844,7 +1848,7 @@ void greet_prog_furcas(CHAR_DATA *mob, CHAR_DATA *ch)
 	if (!af)
 		return;
 
-	if (ch != af->owner)
+	if (ch != Deref(af->owner))
 		return;
 
 	act("Eyes wide with amazement and fear, $n leaps backward away from you!", mob, 0, ch, TO_VICT);
@@ -1869,10 +1873,10 @@ void speech_prog_ipos(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	if (!af)
 		return;
 
-	if (!af->owner)
+	if (!Deref(af->owner))
 		return;
 
-	if (ch != af->owner)
+	if (ch != Deref(af->owner))
 		return;
 
 	if (af->modifier > 4)
@@ -1937,10 +1941,10 @@ void speech_prog_oze(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	AFFECT_DATA *af = affect_find(mob->affected, gsn_greater_demon);
 	char buf[MSL];
 
-	if (!af || !af->owner)
+	if (!af || !Deref(af->owner))
 		return;
 
-	if (ch != af->owner)
+	if (ch != Deref(af->owner))
 		return;
 
 	if (!str_prefix("yes", speech))
@@ -1987,10 +1991,10 @@ void speech_prog_gamygyn(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	char buf[MSL];
 	std::string buffer;
 
-	if (!paf || !paf->owner)
+	if (!paf || !Deref(paf->owner))
 		return;
 
-	if (ch != paf->owner)
+	if (ch != Deref(paf->owner))
 		return;
 
 	if (!str_prefix("yes", speech))
@@ -2010,7 +2014,7 @@ void speech_prog_gamygyn(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_gamygyn_soul;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = 60;
 		af.duration = 1000;
 		af.modifier = 0;
@@ -2041,10 +2045,10 @@ void speech_prog_orobas(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	char buf[MSL];
 	std::string buffer;
 
-	if (!paf || !paf->owner)
+	if (!paf || !Deref(paf->owner))
 		return;
 
-	if (ch != paf->owner)
+	if (ch != Deref(paf->owner))
 		return;
 
 	if (!str_prefix("yes", speech))
@@ -2070,7 +2074,7 @@ void speech_prog_orobas(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_orobas_soul;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = 60;
 		af.duration = 1000;
 		af.modifier = 0;
@@ -2100,10 +2104,10 @@ void speech_prog_geryon(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	AFFECT_DATA *paf = affect_find(mob->affected, gsn_greater_demon);
 	char buf[MSL];
 
-	if (!paf || !paf->owner)
+	if (!paf || !Deref(paf->owner))
 		return;
 
-	if (ch != paf->owner)
+	if (ch != Deref(paf->owner))
 		return;
 
 	if (!str_prefix("eye", speech))
@@ -2156,10 +2160,10 @@ void speech_prog_cimeries(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 {
 	AFFECT_DATA *paf = affect_find(mob->affected, gsn_greater_demon);
 
-	if (!paf || !paf->owner)
+	if (!paf || !Deref(paf->owner))
 		return;
 
-	if (ch != paf->owner)
+	if (ch != Deref(paf->owner))
 		return;
 
 	if (!str_prefix("ear", speech))
@@ -2238,7 +2242,7 @@ void pulse_prog_imp(CHAR_DATA *mob)
 	for (victim = mob->in_room->people; victim; victim = victim->next_in_room)
 	{
 		if (number_percent() < 98
-			|| (mob->master && (victim == mob->master || is_safe_new(mob->master, victim, false)))
+			|| (Deref(mob->master) && (victim == Deref(mob->master) || is_safe_new(Deref(mob->master), victim, false)))
 			|| mob == victim)
 		{
 			continue;
@@ -2269,8 +2273,8 @@ void fight_prog_geulgon(CHAR_DATA *mob, CHAR_DATA *victim)
 {
 	CHAR_DATA *vch;
 	CHAR_DATA *vch_next;
-	CHAR_DATA *ch = mob->master;
-	if (mob->fighting == nullptr)
+	CHAR_DATA *ch = Deref(mob->master);
+	if (Deref(mob->fighting) == nullptr)
 		return;
 
 	if (!victim)
@@ -2300,7 +2304,7 @@ void fight_prog_geulgon(CHAR_DATA *mob, CHAR_DATA *victim)
 				if (ch->cabal > 0 && ch->cabal == vch->cabal)
 					continue;
 
-				if (is_safe(ch, vch) && vch->fighting != nullptr && vch->fighting != ch)
+				if (is_safe(ch, vch) && Deref(vch->fighting) != nullptr && Deref(vch->fighting) != ch)
 					continue;
 
 				spell_iceball(skill_lookup("iceball"), mob->level, mob, vch, TAR_IGNORE);
@@ -2313,7 +2317,7 @@ void fight_prog_geulgon(CHAR_DATA *mob, CHAR_DATA *victim)
 void give_prog_minotaur(CHAR_DATA *mob, CHAR_DATA *ch, OBJ_DATA *obj)
 {
 
-	if (ch != mob->master)
+	if (ch != Deref(mob->master))
 	{
 		act("$N snarls angrily at $n's offering, taking $p and breaking it over his knee!", ch, obj, mob, TO_ROOM);
 		act("$n snarls angrily at your offering, taking $p and breaking it over his knee!", mob, obj, ch, TO_VICT);
@@ -2419,7 +2423,7 @@ void fight_prog_gking(CHAR_DATA *mob, CHAR_DATA *victim)
 
 void pulse_prog_nocturnal_mob(CHAR_DATA *mob)
 {
-	if ((sun == SolarPosition::Sunrise || sun == SolarPosition::Daylight) && number_percent() < 30 && mob->fighting == nullptr)
+	if ((sun == SolarPosition::Sunrise || sun == SolarPosition::Daylight) && number_percent() < 30 && Deref(mob->fighting) == nullptr)
 	{
 		extract_char(mob, true);
 	}
@@ -2427,7 +2431,7 @@ void pulse_prog_nocturnal_mob(CHAR_DATA *mob)
 
 void pulse_prog_diurnal_mob(CHAR_DATA *mob)
 {
-	if (sun == SolarPosition::Dark && number_percent() < 30 && mob->fighting == nullptr)
+	if (sun == SolarPosition::Dark && number_percent() < 30 && Deref(mob->fighting) == nullptr)
 	{
 		extract_char(mob, true);
 	}
@@ -2500,7 +2504,7 @@ void pulse_prog_wizard_summon(CHAR_DATA *mob)
 			paf = nullptr;
 			for (auto &paf_elem : mob->affected)
 			{
-				if (paf_elem.type == gsn_bash && paf_elem.owner == vch)
+				if (paf_elem.type == gsn_bash && Deref(paf_elem.owner) == vch)
 				{
 					found = true;
 					paf = &paf_elem;
@@ -2535,7 +2539,7 @@ void pulse_prog_wizard_summon(CHAR_DATA *mob)
 			af.where = TO_AFFECTS;
 			af.modifier = 10;
 			af.duration = -1;
-			af.owner = vch;
+			af.owner = vch->self;
 			af.type = gsn_bash;
 			affect_to_char(mob, &af);
 		}
@@ -2600,7 +2604,7 @@ void speech_prog_notescribe(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 
 void beat_prog_law_track(CHAR_DATA *mob)
 {
-	CHAR_DATA *ch = mob->last_fought;
+	CHAR_DATA *ch = Deref(mob->last_fought);
 	char buf[MSL];
 	int min = 0, max = 0;
 
@@ -2652,12 +2656,13 @@ void beat_prog_law_track(CHAR_DATA *mob)
 
 	if (ch == nullptr)
 	{
-		mob->last_fought = check_sector(min, max);
+		CHAR_DATA *found = check_sector(min, max);
 
-		if (mob->last_fought != nullptr)
+		if (found != nullptr)
 		{
+			mob->last_fought = found->self;
 			set_aggressor_hunt(mob);
-			ch = mob->last_fought;
+			ch = found;
 		}
 		else
 		{
@@ -2677,7 +2682,7 @@ void beat_prog_law_track(CHAR_DATA *mob)
 		return;
 	}
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
 	if (ch->ghost > 0)
@@ -2705,7 +2710,7 @@ void beat_prog_law_track(CHAR_DATA *mob)
 			sprintf(buf, "%s, now you die!", ch->name);
 
 		do_yell(mob, buf);
-		multi_hit(mob, mob->last_fought, TYPE_UNDEFINED);
+		multi_hit(mob, Deref(mob->last_fought), TYPE_UNDEFINED);
 		return;
 	}
 
@@ -2762,13 +2767,14 @@ CHAR_DATA *check_sector(int min, int max)
 void set_aggressor_hunt(CHAR_DATA *mob)
 {
 	char store[MSL];
+	CHAR_DATA *quarry = Deref(mob->last_fought);
 
-	if (!can_see(mob, mob->last_fought) || mob->last_fought->ghost > 0 || is_affected(mob, gsn_gag))
+	if (!can_see(mob, quarry) || quarry->ghost > 0 || is_affected(mob, gsn_gag))
 		return;
 
-	if (mob->in_room != mob->last_fought->in_room)
+	if (mob->in_room != quarry->in_room)
 	{
-		sprintf(store, "Halt, %s, you murderous scum!  You will bleed from there to the gates!", mob->last_fought->name);
+		sprintf(store, "Halt, %s, you murderous scum!  You will bleed from there to the gates!", quarry->name);
 		do_yell(mob, store);
 	}
 
@@ -3226,10 +3232,10 @@ void pulse_prog_area_echo_ward(CHAR_DATA *mob)
 	for (d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected != CON_PLAYING
-			|| !d->character->in_room
-			|| d->character->in_room->area != mob->in_room->area
-			|| d->character->in_room->vnum < mob->armor[0]
-			|| d->character->in_room->vnum > mob->armor[1])
+			|| !Deref(d->character)->in_room
+			|| Deref(d->character)->in_room->area != mob->in_room->area
+			|| Deref(d->character)->in_room->vnum < mob->armor[0]
+			|| Deref(d->character)->in_room->vnum > mob->armor[1])
 		{
 			continue;
 		}
@@ -3247,7 +3253,7 @@ void pulse_prog_area_echo_ward(CHAR_DATA *mob)
 
 void pulse_prog_shade(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	int sn;
 	char *spell = nullptr;
 	if (!victim || number_percent() > 13)
@@ -3274,7 +3280,7 @@ void pulse_prog_shade(CHAR_DATA *mob)
 
 void pulse_prog_banshee(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	int sn, dam;
 	char *spell = nullptr;
 
@@ -3312,7 +3318,7 @@ void pulse_prog_banshee(CHAR_DATA *mob)
 
 void pulse_prog_phantasm(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	int sn = 0;
 	char *spell = nullptr;
 
@@ -3355,7 +3361,7 @@ void pulse_prog_phantasm(CHAR_DATA *mob)
 
 void pulse_prog_ravghoul(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	AFFECT_DATA af;
 
 	if (victim == nullptr || victim->in_room != mob->in_room || number_percent() > 10)
@@ -3416,7 +3422,7 @@ void pulse_prog_ravghoul(CHAR_DATA *mob)
 
 void pulse_prog_behemoth(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 
 	if (victim == nullptr || victim->in_room != mob->in_room || number_percent() > 15)
 		return;
@@ -3438,7 +3444,7 @@ void pulse_prog_behemoth(CHAR_DATA *mob)
 
 void pulse_prog_glass(CHAR_DATA *mob)
 {
-	CHAR_DATA *victim = mob->fighting;
+	CHAR_DATA *victim = Deref(mob->fighting);
 	AFFECT_DATA af, caf;
 
 	if (victim
@@ -3493,7 +3499,7 @@ void pulse_prog_night_creeps(CHAR_DATA *mob)
 
 	if ((sun == SolarPosition::Sunrise || sun == SolarPosition::Daylight) && !is_affected_by(mob, AFF_NOSHOW))
 	{
-		if (mob->fighting)
+		if (Deref(mob->fighting))
 			stop_fighting(mob, true);
 
 		act("As the first rays of the sun emerge, $n scuttles away with sickening speed.", mob, 0, 0, TO_ROOM);
@@ -3518,35 +3524,43 @@ void pulse_prog_night_creeps(CHAR_DATA *mob)
 
 		return;
 	}
-	else if (mob->fighting && mob->pIndexData->vnum == 3001)
+	else if (Deref(mob->fighting) && mob->pIndexData->vnum == 3001)
 	{
 		AFFECT_DATA af;
+		CHAR_DATA *target;
 
 		if (number_percent() < 91)
 			return;
 
-		act("With a vicious clacking noise, $n sinks its razor-sharp pincers into $N!", mob, 0, mob->fighting, TO_NOTVICT);
-		act("With a vicious clacking noise, $n sinks its razor-sharp pincers into you!", mob, 0, mob->fighting, TO_VICT);
-		damage_new(mob, mob->fighting, dice(mob->fighting->level / 3, 3), TYPE_UNDEFINED, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "pincering claws$");
+		target = Deref(mob->fighting);
+
+		act("With a vicious clacking noise, $n sinks its razor-sharp pincers into $N!", mob, 0, target, TO_NOTVICT);
+		act("With a vicious clacking noise, $n sinks its razor-sharp pincers into you!", mob, 0, target, TO_VICT);
+		damage_new(mob, target, dice(target->level / 3, 3), TYPE_UNDEFINED, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "pincering claws$");
+
+		// Re-read rather than reusing the local above: a lethal damage_new
+		// ends the fight, so the target from before the hit may no longer be
+		// the one this mob is fighting -- or there may be none at all.
+		target = Deref(mob->fighting);
 
 		init_affect(&af);
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_MALADY;
-		af.level = (short)(mob->fighting->level / 2.5);
-		af.duration = mob->fighting->level / 10;
+		af.level = (short)(target->level / 2.5);
+		af.duration = target->level / 10;
 
 		if (number_range(1, 2) == 1)
 			af.location = APPLY_STR;
 		else
 			af.location = APPLY_DEX;
 
-		af.modifier = 0 - mob->fighting->level / 11;
+		af.modifier = 0 - target->level / 11;
 		af.type = af.location == APPLY_STR ? gsn_abite : gsn_lbite;
 
-		if (!is_affected(mob->fighting, gsn_lbite) && !is_affected(mob->fighting, gsn_abite))
+		if (!is_affected(target, gsn_lbite) && !is_affected(target, gsn_abite))
 			af.tick_fun = bleeding_tick;
 
-		affect_to_char(mob->fighting, &af);
+		affect_to_char(target, &af);
 	}
 }
 
@@ -3556,7 +3570,7 @@ void sucker_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 
 	for (owner = char_list; owner; owner = owner->next)
 	{
-		if (is_npc(owner) && owner->pIndexData->vnum == 3002 && owner->hunting == ch)
+		if (is_npc(owner) && owner->pIndexData->vnum == 3002 && Deref(owner->hunting) == ch)
 			break;
 	}
 
@@ -3583,17 +3597,17 @@ void greet_prog_face_sucker(CHAR_DATA *mob, CHAR_DATA *ch)
 	char buf[MSL];
 	AFFECT_DATA af;
 
-	if (mob->fighting
+	if (Deref(mob->fighting)
 		|| is_npc(ch)
 		|| mob == ch
-		|| mob->hunting == ch
+		|| Deref(mob->hunting) == ch
 		|| !can_see(mob, ch)
 		|| is_safe_new(mob, ch, false))
 	{
 		return;
 	}
 
-	mob->hunting = ch;
+	mob->hunting = ch->self;
 
 	sprintf(buf, "%sSuddenly, something pale and slimy falls from the ceiling, landing on your face!%s", get_char_color(ch, "red"), END_COLOR(ch));
 	act(buf, mob, 0, ch, TO_VICT);
@@ -3607,7 +3621,7 @@ void greet_prog_face_sucker(CHAR_DATA *mob, CHAR_DATA *ch)
 	af.type = gsn_blindness;
 	af.location = APPLY_HITROLL;
 	af.modifier = -10;
-	af.owner = mob;
+	af.owner = mob->self;
 	af.duration = 6;
 	af.pulse_fun = sucker_pulse;
 

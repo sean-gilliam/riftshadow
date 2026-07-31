@@ -6,6 +6,7 @@
 #include <time.h>
 #include <algorithm>
 #include "merc.h"
+#include "entity/handles.h"
 #include "save.h"
 #include "newmem.h"
 #include "recycle.h"
@@ -98,8 +99,10 @@ void save_char_obj(CHAR_DATA *ch)
 	if (is_npc(ch) || mPort == 4000) // do not save, sir!!!
 		return;
 
-	if (ch->desc != nullptr && ch->desc->original != nullptr)
-		ch = ch->desc->original;
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
+		ch = Deref(connection->original);
 
 	if (!check_parse_name(ch->true_name))
 		wiznet("ALERT!! $N/$F name corrupt!!", ch, nullptr, 0, 0, 0);
@@ -144,13 +147,15 @@ void save_char_obj(CHAR_DATA *ch)
 			fwrite_obj(ch, ch->pcdata->old->carrying, fp, 0);
 
 		/* save the pets */
-		if (ch->pet != nullptr && ch->pet->in_room == ch->in_room)
-			fwrite_pet(ch->pet, fp);
+		CHAR_DATA *pet = Deref(ch->pet);
+
+		if (pet != nullptr && pet->in_room == ch->in_room)
+			fwrite_pet(pet, fp);
 
 		for (search = char_list; search != nullptr; search = search->next)
 		{
 			if (is_npc(search)
-				&& search->master == ch
+				&& Deref(search->master) == ch
 				&& (IS_SET(search->act, ACT_UNDEAD)
 					|| (!strcmp(ch->Class()->name, "necromancer") && !IS_SET(search->act, ACT_PET)))
 				/*  && search->in_room->vnum==ch->in_room->vnum */
@@ -216,7 +221,7 @@ void fread_charmie(CHAR_DATA *ch, FILE *fp)
 	char_to_room(charmed, get_room_index(roomvnum));
 	add_follower(charmed, ch);
 
-	charmed->leader = ch;
+	charmed->leader = ch->self;
 
 	init_affect(&af);
 	af.where = TO_AFFECTS;
@@ -583,6 +588,8 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 
 		paf.aftype = isAftSpell(paf.aftype);
 
+		CHAR_DATA *owner = Deref(paf.owner);
+
 		fprintf(fp, "Affc '%s' %3d %3d %3d %3d %3d %s %3d %s '%s'\n",
 			skill_table[paf.type].name,
 			paf.where,
@@ -592,7 +599,7 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 			paf.location,
 			print_flags(paf.bitvector),
 			paf.aftype,
-			paf.owner ? paf.owner->name : "none", paf.name ? paf.name : "none");
+			owner ? owner->name : "none", paf.name ? paf.name : "none");
 	}
 
 	if (!ch->pcdata->trophy.empty()
@@ -861,6 +868,8 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 
 		paf.aftype = isAftSpell(paf.aftype);
 
+		CHAR_DATA *owner = Deref(paf.owner);
+
 		fprintf(fp, "Affc '%s' %3d %3d %3d %3d %3d %s %d %s\n",
 			skill_table[paf.type].name,
 			paf.where,
@@ -870,7 +879,7 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 			paf.location,
 			print_flags(paf.bitvector),
 			paf.aftype,
-			paf.owner ? paf.owner->name : "none");
+			owner ? owner->name : "none");
 	}
 
 	// Save only applies the object has beyond its prototype. The list was a
@@ -921,13 +930,11 @@ bool load_char_obj(DESCRIPTOR_DATA *d, char *name)
 	int pos;
 	int i;
 
-	CHAR_DATA *charg = new CHAR_DATA;
-
 	ch = new_char();
 	ch->pcdata = new_pcdata();
 
-	d->character = ch;
-	ch->desc = d;
+	d->character = ch->self;
+	ch->desc = d->self;
 	ch->pcdata->entering_text = false;
 	ch->name = palloc_string(name);
 	ch->id = get_pc_id();
@@ -1262,13 +1269,13 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf.owner = wch;
+							paf.owner = wch->self;
 							break;
 						}
 					}
 
 					if (!str_cmp(ch->name, owner))
-						paf.owner = ch;
+						paf.owner = ch->self;
 
 					afname = fread_word(fp);
 
@@ -1912,13 +1919,13 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 					owner = fread_word(fp);
 
 					if (strcmp(owner, "none")) // safe default
-						paf.owner = ch;
+						paf.owner = ch->self;
 
 					for (wch = char_list; wch; wch = wch->next)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf.owner = wch;
+							paf.owner = wch->self;
 							break;
 						}
 					}
@@ -1971,9 +1978,9 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 			case 'E':
 				if (!str_cmp(word, "End"))
 				{
-					pet->leader = ch;
-					pet->master = ch;
-					ch->pet = pet;
+					pet->leader = ch->self;
+					pet->master = ch->self;
+					ch->pet = pet->self;
 					/* adjust hp mana move up  -- here for speed's sake */
 					percent = (current_time - lastlogoff) * 25 / (2 * 60 * 60);
 
@@ -2133,13 +2140,13 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 					{
 						if (!str_cmp(wch->name, owner))
 						{
-							paf.owner = wch;
+							paf.owner = wch->self;
 							break;
 						}
 					}
 
 					if (!str_cmp(ch->name, owner))
-						paf.owner = ch;
+						paf.owner = ch->self;
 
 					obj->affected.push_front(paf);
 					fMatch = true;

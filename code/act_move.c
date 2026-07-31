@@ -36,8 +36,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <deque>
 #include "merc.h"
 #include "act_move.h"
+#include "entity/handles.h"
 #include "handler.h"
 #include "magic.h"
 #include "recycle.h"
@@ -89,7 +91,6 @@ const short rev_dir[] =
 
 /* globals */
 
-PATHFIND_DATA *best_path;
 int iterations;
 
 void drowning_tick(CHAR_DATA *ch, AFFECT_DATA *af)
@@ -178,13 +179,16 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		if (raf != nullptr)
 		{
-			if (raf->owner == ch)
+			if (Deref(raf->owner) == ch)
 			{
 				act("The smoke parts for you allowing you passage.", ch, 0, 0, TO_CHAR);
 			}
-			else if (raf->owner == ch->master && automatic)
+			else
 			{
-				act("You follow $N through the smoke.", ch, 0, ch->master, TO_CHAR);
+				CHAR_DATA *master = Deref(ch->master);
+
+				if (Deref(raf->owner) == master && automatic)
+					act("You follow $N through the smoke.", ch, 0, master, TO_CHAR);
 			}
 		}
 		else
@@ -210,7 +214,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	auto to_room = pexit->u1.to_room;
 
 	/*
-		if(pexit->has_rune == true)
+		if (pexit->rune != nullptr)
 		{
 			while((rune = find_rune(pexit, RUNE_TO_PORTAL, RUNE_TRIGGER_EXIT, rune)))
 			{
@@ -265,9 +269,11 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		return;
 	}
 
+	CHAR_DATA *master = Deref(ch->master);
+
 	if (is_affected_by(ch, AFF_CHARM)
-		&& ch->master != nullptr
-		&& in_room == ch->master->in_room)
+		&& master != nullptr
+		&& in_room == master->in_room)
 	{
 		send_to_char("What?  And leave your beloved master?\n\r", ch);
 		return;
@@ -586,7 +592,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		add_tracks(in_room, ch, door);
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 		stop_fighting(ch, true);
 
 	char_from_room(ch);
@@ -596,7 +602,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	{
 		for (auto d = descriptor_list; d; d = d->next)
 		{
-			auto victim = d->character;
+			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr
 				&& !is_npc(victim)
@@ -664,8 +670,11 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		auto owner = ch;
 		imaf = affect_find(ch->affected, gsn_impale);
-		if (imaf && imaf->owner)
-			owner = imaf->owner;
+
+		CHAR_DATA *impaler = imaf ? Deref(imaf->owner) : nullptr;
+
+		if (impaler)
+			owner = impaler;
 
 		damage_new(owner, ch, dice(3, 3), TYPE_UNDEFINED, DAM_NONE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "Your gaping wound*");
 
@@ -698,7 +707,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_affected_by(ch, AFF_FLYING))
 			return;
 
-		if (raf->owner == ch)
+		if (Deref(raf->owner) == ch)
 		{
 			act("You gracefully step over your tripwire.", ch, 0, 0, TO_CHAR);
 		}
@@ -707,7 +716,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 			twchance = (get_skill(ch, gsn_tripwire) / 5);
 			twchance += (get_curr_stat(ch, STAT_DEX) + get_curr_stat(ch, STAT_INT) - 30) * 2;
 
-			if (!is_safe(raf->owner, ch) && (number_percent() > twchance))
+			if (!is_safe(Deref(raf->owner), ch) && (number_percent() > twchance))
 			{
 				act("You trip over a wire and fall flat on your face!", ch, 0, 0, TO_CHAR);
 				act("$n trips over a wire and falls flat on $s face!", ch, 0, 0, TO_ROOM);
@@ -727,7 +736,9 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		{
 			if (raf.type == gsn_riptide && raf.location == APPLY_ROOM_NONE && raf.modifier == 1)
 			{
-				if (is_safe_new(raf.owner, ch, false) || raf.owner == ch)
+				CHAR_DATA *rafOwner = Deref(raf.owner);
+
+				if (is_safe_new(rafOwner, ch, false) || rafOwner == ch)
 					break;
 
 				ROOM_INDEX_DATA *riptideroom = nullptr;
@@ -737,7 +748,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 					{
 						for (auto &raf_two : room->affected)
 						{
-							if (raf_two.type == gsn_riptide && raf_two.owner == raf.owner &&
+							if (raf_two.type == gsn_riptide && Deref(raf_two.owner) == Deref(raf.owner) &&
 								raf_two.location == APPLY_ROOM_NONE && raf_two.modifier == 2)
 								riptideroom = room;
 						}
@@ -774,10 +785,12 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_affected_by(ch, AFF_FLYING))
 			break;
 
-		if (is_same_cabal(ch, raf->owner) || is_same_group(ch, raf->owner))
+		CHAR_DATA *rafOwner = Deref(raf->owner);
+
+		if (is_same_cabal(ch, rafOwner) || is_same_group(ch, rafOwner))
 			break;
 
-		if (is_safe(ch, raf->owner))
+		if (is_safe(ch, rafOwner))
 			break;
 
 		if (number_percent() <= (5 * (get_curr_stat(ch, STAT_DEX) - 15)))
@@ -792,7 +805,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		WAIT_STATE(ch, (ch->carry_weight / 150) * PULSE_VIOLENCE);
 
-		damage_new(raf->owner, ch, 5 + ch->carry_weight / 6, TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the fall*");
+		damage_new(Deref(raf->owner), ch, 5 + ch->carry_weight / 6, TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the fall*");
 
 		stop_fighting(ch, true);
 
@@ -807,7 +820,9 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		auto raf = affect_find_room(to_room->affected, gsn_quicksand);
 
-		if (is_safe_new(raf->owner, ch, false) || is_same_group(raf->owner, ch) || is_same_cabal(raf->owner, ch))
+		CHAR_DATA *rafOwner = Deref(raf->owner);
+
+		if (is_safe_new(rafOwner, ch, false) || is_same_group(rafOwner, ch) || is_same_cabal(rafOwner, ch))
 			break;
 
 		if (is_affected(ch, gsn_ultradiffusion))
@@ -828,7 +843,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		qs.where = TO_AFFECTS;
 		qs.aftype = AFT_INVIS;
 		qs.type = gsn_quicksand_sinking;
-		qs.owner = ch;
+		qs.owner = ch->self;
 		qs.level = raf->level;
 		qs.duration = -1;
 		qs.modifier = 1;
@@ -844,7 +859,9 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 	{
 		auto raf = affect_find_room(to_room->affected, gsn_stalactites);
 
-		if (is_safe_new(raf->owner, ch, false) || is_same_group(raf->owner, ch) || is_same_cabal(raf->owner, ch))
+		CHAR_DATA *rafOwner = Deref(raf->owner);
+
+		if (is_safe_new(rafOwner, ch, false) || is_same_group(rafOwner, ch) || is_same_cabal(rafOwner, ch))
 			break;
 
 		if (is_affected(ch, gsn_ultradiffusion))
@@ -857,13 +874,13 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 		if (number_percent() > (10 * get_curr_stat(ch, STAT_DEX) - 175))
 		{
-			damage_new(raf->owner, ch, dice(raf->level, 3), gsn_stalactites, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling stalactite*");
+			damage_new(Deref(raf->owner), ch, dice(raf->level, 3), gsn_stalactites, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling stalactite*");
 		}
 		else
 		{
 			act("The mass of ice shatters on the ground as you leap out of the way!", ch, 0, 0, TO_CHAR);
 			act("The mass of ice shatters on the ground as $n leaps out of the way!", ch, 0, 0, TO_ROOM);
-			damage_new(raf->owner, ch, 0, gsn_stalactites, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling stalactite*");
+			damage_new(Deref(raf->owner), ch, 0, gsn_stalactites, DAM_PIERCE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling stalactite*");
 		}
 
 		if (!is_npc(ch))
@@ -885,7 +902,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_immortal(ch))
 			return;
 
-		if (!is_safe(raf->owner, ch) && !is_affected(ch, gsn_neutralize))
+		if (!is_safe(Deref(raf->owner), ch) && !is_affected(ch, gsn_neutralize))
 		{
 			send_to_char("You choke and gasp for air as caustic vapors fill your lungs!\n\r", ch);
 
@@ -964,13 +981,13 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 			new_affect_join(ch, &cvaf2);
 
-			damage_new(raf->owner, ch, dam, raf->type, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the noxious fumes*$");
+			damage_new(Deref(raf->owner), ch, dam, raf->type, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the noxious fumes*$");
 
 			if (!ch->in_room || ch->ghost > 0)
 				return;
 		}
 
-		if (!is_safe(ch, raf->owner) && is_affected(ch, gsn_neutralize))
+		if (!is_safe(ch, Deref(raf->owner)) && is_affected(ch, gsn_neutralize))
 			send_to_char("The noxious fumes surround you, but you are unaffected.\n\r", ch);
 	}
 
@@ -994,7 +1011,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		}
 	}
 
-	if (to_room->has_rune == true && to_room == ch->in_room)
+	if (to_room->rune != nullptr && to_room == ch->in_room)
 	{
 		auto rune = find_rune(to_room, RUNE_TO_ROOM, RUNE_TRIGGER_ENTRY, nullptr);
 		while (rune != nullptr)
@@ -1027,11 +1044,13 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 				CALL_IEVENT(obj, TRAP_IGREET, ch, obj);
 		}
 
-		if (is_npc(fch) && fch->last_fought == ch && number_percent() > 60)
+		CHAR_DATA *lastFought = Deref(fch->last_fought);
+
+		if (is_npc(fch) && lastFought == ch && number_percent() > 60)
 		{
 			track_attack(fch, ch);
 		}
-		else if (is_npc(fch) && fch->last_fought == ch)
+		else if (is_npc(fch) && lastFought == ch)
 		{
 			RS.Queue.AddToQueue((number_percent() > 25) ? 1 : 2, "move_char", "track_attack", track_attack, fch, ch);
 		}
@@ -1059,10 +1078,10 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		{
 			fch_next = fch->next_in_room;
 
-			if (fch->master == ch && is_affected_by(fch, AFF_CHARM) && fch->position < POS_STANDING)
+			if (Deref(fch->master) == ch && is_affected_by(fch, AFF_CHARM) && fch->position < POS_STANDING)
 				do_stand(fch, "");
 
-			if (fch->master == ch && fch->position == POS_STANDING && can_see_room(fch, to_room))
+			if (Deref(fch->master) == ch && fch->position == POS_STANDING && can_see_room(fch, to_room))
 			{
 				if (IS_SET(ch->in_room->room_flags, ROOM_LAW) && (is_npc(fch) && IS_SET(fch->act, ACT_AGGRESSIVE)))
 				{
@@ -1251,7 +1270,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 				af.location = APPLY_STR;
 				af.modifier = -5;
 				af.duration = trap->quality * 2;
-				af.owner = victim;
+				af.owner = victim->self;
 				SET_BIT(af.bitvector, AFF_POISON);
 				af.tick_fun = poison_tick;
 				affect_to_char(victim, &af);
@@ -1294,7 +1313,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 						af.aftype = AFT_MALADY;
 						af.type = gsn_sleep;
 						af.level = trap->quality * 6;
-						af.owner = vch;
+						af.owner = vch->self;
 						af.location = 0;
 						af.modifier = 0;
 						af.duration = trap->quality * 4;
@@ -1333,7 +1352,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 					af.aftype = AFT_MALADY;
 					af.type = gsn_mana_drain;
 					af.duration = trap->quality * 4;
-					af.owner = vch;
+					af.owner = vch->self;
 					af.modifier = 0;
 					af.location = 0;
 					af.pulse_fun = mana_drain_pulse;
@@ -2125,13 +2144,13 @@ void do_stand(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (ch->on != obj && count_users(obj) >= obj->value[0])
+		if (ch->on != obj->self && count_users(obj) >= obj->value[0])
 		{
 			act_new("There's no room to stand on $p.", ch, obj, nullptr, TO_CHAR, POS_DEAD);
 			return;
 		}
 
-		ch->on = obj;
+		ch->on = obj->self;
 	}
 
 	switch (ch->position)
@@ -2236,7 +2255,7 @@ void do_rest(CHAR_DATA *ch, char *argument)
 	}
 	else
 	{
-		obj = ch->on;
+		obj = Deref(ch->on);
 	}
 
 	if (obj != nullptr)
@@ -2251,13 +2270,13 @@ void do_rest(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (obj != nullptr && ch->on != obj && count_users(obj) >= obj->value[0])
+		if (obj != nullptr && ch->on != obj->self && count_users(obj) >= obj->value[0])
 		{
 			act_new("There's no more room on $p.", ch, obj, nullptr, TO_CHAR, POS_DEAD);
 			return;
 		}
 
-		ch->on = obj;
+		ch->on = obj->self;
 	}
 
 	switch (ch->position)
@@ -2396,7 +2415,7 @@ void do_sit(CHAR_DATA *ch, char *argument)
 	}
 	else
 	{
-		obj = ch->on;
+		obj = Deref(ch->on);
 	}
 
 	if (obj != nullptr)
@@ -2409,13 +2428,13 @@ void do_sit(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (obj != nullptr && ch->on != obj && count_users(obj) >= obj->value[0])
+		if (obj != nullptr && ch->on != obj->self && count_users(obj) >= obj->value[0])
 		{
 			act_new("There's no more room on $p.", ch, obj, nullptr, TO_CHAR, POS_DEAD);
 			return;
 		}
 
-		ch->on = obj;
+		ch->on = obj->self;
 	}
 
 	switch (ch->position)
@@ -2521,7 +2540,7 @@ void do_sleep(CHAR_DATA *ch, char *argument)
 		case POS_RESTING:
 		case POS_SITTING:
 		case POS_STANDING:
-			if (argument[0] == '\0' && ch->on == nullptr)
+			if (argument[0] == '\0' && Deref(ch->on) == nullptr)
 			{
 				send_to_char("You go to sleep.\n\r", ch);
 				act("$n goes to sleep.", ch, nullptr, nullptr, TO_ROOM);
@@ -2531,7 +2550,7 @@ void do_sleep(CHAR_DATA *ch, char *argument)
 			else /* find an object and sleep on it */
 			{
 				if (argument[0] == '\0')
-					obj = ch->on;
+					obj = Deref(ch->on);
 				else
 					obj = get_obj_list(ch, argument, ch->in_room->contents);
 
@@ -2550,13 +2569,13 @@ void do_sleep(CHAR_DATA *ch, char *argument)
 					return;
 				}
 
-				if (ch->on != obj && count_users(obj) >= obj->value[0])
+				if (ch->on != obj->self && count_users(obj) >= obj->value[0])
 				{
 					act_new("There is no room on $p for you.", ch, obj, nullptr, TO_CHAR, POS_DEAD);
 					return;
 				}
 
-				ch->on = obj;
+				ch->on = obj->self;
 				if (IS_SET_OLD(obj->value[2], SLEEP_AT))
 				{
 					act("You go to sleep at $p.", ch, obj, nullptr, TO_CHAR);
@@ -3234,7 +3253,7 @@ void do_recall(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	auto victim = ch->fighting;
+	auto victim = Deref(ch->fighting);
 	if (victim != nullptr)
 	{
 		char buf[MAX_STRING_LENGTH];
@@ -3270,8 +3289,8 @@ void do_recall(CHAR_DATA *ch, char *argument)
 
 	do_look(ch, "auto");
 
-	if (ch->pet != nullptr)
-		do_recall(ch->pet, "");
+	if (Deref(ch->pet) != nullptr)
+		do_recall(Deref(ch->pet), "");
 }
 
 void do_train(CHAR_DATA *ch, char *argument)
@@ -3449,7 +3468,7 @@ void do_bear_call(CHAR_DATA *ch, char *argument)
 	auto found = false;
 	for (auto check = char_list; check != nullptr; check = check->next)
 	{
-		if (check->master == ch && check->pIndexData->vnum == MOB_VNUM_BEAR)
+		if (Deref(check->master) == ch && check->pIndexData->vnum == MOB_VNUM_BEAR)
 			found = true;
 	}
 
@@ -3496,7 +3515,7 @@ void do_bear_call(CHAR_DATA *ch, char *argument)
 		char_to_room(animal, ch->in_room);
 		add_follower(animal, ch);
 
-		animal->leader = ch;
+		animal->leader = ch->self;
 
 		SET_BIT(animal->affected_by, AFF_CHARM);
 
@@ -3593,7 +3612,7 @@ void do_animal_call(CHAR_DATA *ch, char *argument)
 	{
 		if (is_npc(mob)
 			&& is_affected_by(mob, AFF_CHARM)
-			&& (mob->master == ch)
+			&& (Deref(mob->master) == ch)
 			&& ((mob->pIndexData->vnum == MOB_VNUM_FALCON)
 				|| (mob->pIndexData->vnum == MOB_VNUM_WOLF)
 				|| (mob->pIndexData->vnum == MOB_VNUM_BEAR)
@@ -3720,10 +3739,10 @@ void do_animal_call(CHAR_DATA *ch, char *argument)
 	SET_BIT(animal1->affected_by, AFF_CHARM);
 	SET_BIT(animal2->affected_by, AFF_CHARM);
 
-	animal1->leader = ch;
-	animal2->leader = ch;
-	animal1->master = ch;
-	animal2->master = ch;
+	animal1->leader = ch->self;
+	animal2->leader = ch->self;
+	animal1->master = ch->self;
+	animal2->master = ch->self;
 	animal1->cabal = ch->cabal;
 	animal2->cabal = ch->cabal;
 
@@ -3796,46 +3815,18 @@ void smart_track(CHAR_DATA *ch, CHAR_DATA *mob)
 	if (ch->in_room->area != mob->in_room->area)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
-	mob->path = nullptr;
-	best_path = nullptr;
-	iterations = 0;
+	auto dir = find_first_step(mob->in_room, ch->in_room);
 
-	auto path = new_path_data();
-	path->room = mob->in_room;
-	path->steps = 0;
-
-	mob->path = path;
-	mob->in_room->path = path;
-
-	find_path(mob->path, ch->in_room);
-
-	auto solve = best_path;
-	if (!best_path)
+	if (dir < 0)
 	{
 		/*
 		 * Typically this means they moved to a room not connected to the rest of the
 		 * area, i.e. you get there via a special prog that moves you
 		 */
-		/*
-		char buf[200];
-		bug ("Some weird tracking shit just happened with mob vnum %d.",mob->pIndexData->vnum);
-		sprintf(buf,"MOB %s tracking from ROOM %d to ROOM %d -- %d iterations.\n\r",
-			mob->name, mob->in_room->vnum,
-			ch->in_room->vnum,iterations);
-		RS.Logger.Warn(buf);
-		*/
 		return;
-	}
-
-	for (;;)
-	{
-		if (!solve->prev->prev)
-			break;
-
-		solve = solve->prev;
 	}
 
 	/* Uncomment for tracking info */
@@ -3847,17 +3838,11 @@ void smart_track(CHAR_DATA *ch, CHAR_DATA *mob)
 		iterations);
 	*/
 
-	move_char(mob, solve->dir_from, false, true);
-
-	free_path(mob->path);
-
-	best_path = nullptr;
-
-	for (auto room = room_list; room != nullptr; room = room->next_room)
-	{
-		if (room->path)
-			room->path = nullptr;
-	}
+	// The search is finished and torn down before this runs, which is the point
+	// of taking a direction back rather than a node: move_char can run progs,
+	// and a prog that starts another search used to overwrite the state this
+	// one still needed.
+	move_char(mob, dir, false, true);
 }
 
 void walk_to_room(CHAR_DATA *mob, ROOM_INDEX_DATA *goal)
@@ -3874,35 +3859,15 @@ void walk_to_room(CHAR_DATA *mob, ROOM_INDEX_DATA *goal)
 	if (mob->in_room->area != goal->area)
 		return;
 
-	if (mob->fighting)
+	if (Deref(mob->fighting))
 		return;
 
-	mob->path = nullptr;
-	best_path = nullptr;
-	iterations = 0;
+	auto dir = find_first_step(mob->in_room, goal);
 
-	auto path = new_path_data();
-	path->room = mob->in_room;
-	path->steps = 0;
-
-	mob->path = path;
-	mob->in_room->path = path;
-
-	find_path(mob->path, goal);
-
-	auto solve = best_path;
-	if (!best_path)
+	if (dir < 0)
 	{
 		RS.Logger.Warn("Some weird tracking shit just happened with mob vnum {}.", mob->pIndexData->vnum);
 		return;
-	}
-
-	for (;;)
-	{
-		if (!solve->prev->prev)
-			break;
-
-		solve = solve->prev;
 	}
 
 	/*
@@ -3913,98 +3878,182 @@ void walk_to_room(CHAR_DATA *mob, ROOM_INDEX_DATA *goal)
 		iterations);
 	*/
 
-	move_char(mob, solve->dir_from, false, true);
-
-	free_path(mob->path);
-
-	best_path = nullptr;
-
-	for (auto room = room_list; room != nullptr; room = room->next_room)
-	{
-		if (room->path)
-			room->path = nullptr;
-	}
+	move_char(mob, dir, false, true);
 }
 
-void find_path(PATHFIND_DATA *path, ROOM_INDEX_DATA *goal)
+namespace
 {
-	path->evaluated = true;
-	iterations++;
-
-	if (path->room == goal)
+	//
+	// One tracking search, and everything it allocates.
+	//
+	// The nodes used to be individually new'd, parked on the mob as mob->path,
+	// and released by a recursive walk of the tree -- but only on the way out
+	// where the search had found something, and only after move_char had
+	// already run. Two things outlived the search as a result:
+	//
+	//   * A search that found nothing leaked its whole tree and left every room
+	//     it had visited still naming a node in it. room->path is the visited
+	//     marker for ONE search, so the next one reads those as "already
+	//     reached in fewer steps, already evaluated" -- the exact test used to
+	//     decide a room is not worth expanding -- and prunes the only route it
+	//     has.
+	//   * best_path was a file-scope global, and move_char runs progs. A prog
+	//     that started another search overwrote it mid-use.
+	//
+	// Holding the nodes here ties both to the search's own lifetime. The
+	// destructor clears exactly the rooms this search marked, on every way out,
+	// and the callers take a direction back rather than a node so nothing
+	// survives into move_char at all.
+	//
+	class PathSearch
 	{
-		if (!best_path || best_path->steps > path->steps)
-			best_path = path;
-
-		return;
-	}
-
-	auto found = false;
-	for (auto i = 0; i < 6; i++)
-	{
-		if ((best_path && best_path->steps < 2)
-			|| (path->room->exit[i] 
-				&& path->room->exit[i]->u1.to_room
-				&& path->room->exit[i]->u1.to_room->area == goal->area
-				&& !(path->room->exit[i]->u1.to_room->path
-					&& path->room->exit[i]->u1.to_room->path->steps <= path->steps + 1
-					&& path->room->exit[i]->u1.to_room->path->evaluated)
-				&& !(path->room->exit[i]->u1.to_room->path
-					&& path->room->exit[i]->u1.to_room->path->steps < path->steps + 1
-					&& !path->room->exit[i]->u1.to_room->path->evaluated)))
+	public:
+		explicit PathSearch(ROOM_INDEX_DATA *start)
 		{
-			found = true;
-		}
-	}
-
-	if (!found)
-	{
-		for (auto i = 0; i < 6; i++)
-		{
-			path->dir_to[i] = nullptr;
+			root = Mark(start, nullptr, -1, 0);
 		}
 
-		return;
-	}
-
-	for (auto i = 0; i < 6; i++)
-	{
-		if (!path->room->exit[i]
-			|| !path->room->exit[i]->u1.to_room
-			|| path->room->exit[i]->u1.to_room->area != goal->area
-			|| (path->room->exit[i]->u1.to_room->path 
-				&& path->room->exit[i]->u1.to_room->path->steps <= path->steps + 1 
-				&& path->room->exit[i]->u1.to_room->path->evaluated)
-			|| (path->room->exit[i]->u1.to_room->path
-				&& path->room->exit[i]->u1.to_room->path->steps < path->steps + 1
-				&& !path->room->exit[i]->u1.to_room->path->evaluated))
+		~PathSearch()
 		{
-			continue;
+			for (auto room : marked)
+				room->path = nullptr;
 		}
 
-		auto next_path = new_path_data();
-		next_path->room = path->room->exit[i]->u1.to_room;
-		next_path->dir_from = i;
-		next_path->steps = path->steps + 1;
-		next_path->prev = path;
+		PathSearch(const PathSearch &) = delete;
+		PathSearch &operator=(const PathSearch &) = delete;
 
-		path->dir_to[i] = next_path;
-		path->room->exit[i]->u1.to_room->path = next_path;
-	}
-
-	for (auto i = 0; i < 6; i++)
-	{
-		if (!path->room->exit[i]
-			|| !path->dir_to[i]
-			|| !path->room->exit[i]->u1.to_room
-			|| path->room->exit[i]->u1.to_room->area != goal->area
-			|| path->room->exit[i]->u1.to_room->path->evaluated)
+		/// The shortest route found from the starting room to `goal`, or null
+		/// if the area graph has none.
+		PATHFIND_DATA *Run(ROOM_INDEX_DATA *goal)
 		{
-			continue;
+			Expand(root, goal);
+
+			return best;
 		}
 
-		find_path(path->dir_to[i], goal);
-	}
+	private:
+		PATHFIND_DATA *Mark(ROOM_INDEX_DATA *room, PATHFIND_DATA *prev, int dir_from, int steps)
+		{
+			// std::deque, not vector: Expand keeps node pointers -- in prev, in
+			// dir_to[] and in room->path -- across later insertions, so the
+			// nodes must not move.
+			nodes.emplace_back();
+
+			auto node = &nodes.back();
+
+			node->room = room;
+			node->evaluated = false;
+			node->dir_from = dir_from;
+			node->steps = steps;
+			node->prev = prev;
+
+			for (auto i = 0; i < MAX_EXIT; i++)
+				node->dir_to[i] = nullptr;
+
+			room->path = node;
+			marked.push_back(room);
+
+			return node;
+		}
+
+		void Expand(PATHFIND_DATA *path, ROOM_INDEX_DATA *goal)
+		{
+			path->evaluated = true;
+			iterations++;
+
+			if (path->room == goal)
+			{
+				if (!best || best->steps > path->steps)
+					best = path;
+
+				return;
+			}
+
+			auto found = false;
+			for (auto i = 0; i < MAX_EXIT; i++)
+			{
+				if ((best && best->steps < 2)
+					|| (path->room->exit[i]
+						&& path->room->exit[i]->u1.to_room
+						&& path->room->exit[i]->u1.to_room->area == goal->area
+						&& !(path->room->exit[i]->u1.to_room->path
+							&& path->room->exit[i]->u1.to_room->path->steps <= path->steps + 1
+							&& path->room->exit[i]->u1.to_room->path->evaluated)
+						&& !(path->room->exit[i]->u1.to_room->path
+							&& path->room->exit[i]->u1.to_room->path->steps < path->steps + 1
+							&& !path->room->exit[i]->u1.to_room->path->evaluated)))
+				{
+					found = true;
+				}
+			}
+
+			if (!found)
+			{
+				for (auto i = 0; i < MAX_EXIT; i++)
+				{
+					path->dir_to[i] = nullptr;
+				}
+
+				return;
+			}
+
+			for (auto i = 0; i < MAX_EXIT; i++)
+			{
+				if (!path->room->exit[i]
+					|| !path->room->exit[i]->u1.to_room
+					|| path->room->exit[i]->u1.to_room->area != goal->area
+					|| (path->room->exit[i]->u1.to_room->path
+						&& path->room->exit[i]->u1.to_room->path->steps <= path->steps + 1
+						&& path->room->exit[i]->u1.to_room->path->evaluated)
+					|| (path->room->exit[i]->u1.to_room->path
+						&& path->room->exit[i]->u1.to_room->path->steps < path->steps + 1
+						&& !path->room->exit[i]->u1.to_room->path->evaluated))
+				{
+					continue;
+				}
+
+				path->dir_to[i] = Mark(path->room->exit[i]->u1.to_room, path, i, path->steps + 1);
+			}
+
+			for (auto i = 0; i < MAX_EXIT; i++)
+			{
+				if (!path->room->exit[i]
+					|| !path->dir_to[i]
+					|| !path->room->exit[i]->u1.to_room
+					|| path->room->exit[i]->u1.to_room->area != goal->area
+					|| path->room->exit[i]->u1.to_room->path->evaluated)
+				{
+					continue;
+				}
+
+				Expand(path->dir_to[i], goal);
+			}
+		}
+
+		std::deque<PATHFIND_DATA>		nodes;
+		std::vector<ROOM_INDEX_DATA *>	marked;
+		PATHFIND_DATA *					root = nullptr;
+		PATHFIND_DATA *					best = nullptr;
+	};
+}
+
+int find_first_step(ROOM_INDEX_DATA *from, ROOM_INDEX_DATA *goal)
+{
+	iterations = 0;
+
+	PathSearch search(from);
+
+	auto solve = search.Run(goal);
+
+	// A null prev means the route is the starting room itself, so there is no
+	// step to take. The old loop read solve->prev->prev without checking.
+	if (solve == nullptr || solve->prev == nullptr)
+		return -1;
+
+	while (solve->prev->prev != nullptr)
+		solve = solve->prev;
+
+	return solve->dir_from;
 }
 
 void do_aura_of_sustenance(CHAR_DATA *ch, char *argument)

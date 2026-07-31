@@ -109,6 +109,9 @@ int remove();
 
 #include "entity/fwd.h"
 #include "entity/limits.h"
+// descriptor_data below carries Handle members, so the template has to be
+// visible here and not just to whoever includes this header.
+#include "entity/handles.h"
 
 //
 // String and memory management parameters.
@@ -293,7 +296,10 @@ struct rune_data
 {
 	RUNE_FUN *function;
 	void *placed_on;
-	CHAR_DATA *owner;
+	// The caster. Non-owning: a rune is placed on a door or a room precisely so
+	// it can outlive the moment it was cast in, and nothing has ever cleared
+	// this, so every reader has to cope with the caster being gone.
+	Handle<CHAR_DATA> owner;
 	int target_type;
 	int trigger_type;
 	int level;
@@ -309,10 +315,23 @@ struct rune_data
 struct descriptor_data
 {
 	DESCRIPTOR_DATA *next;
-	DESCRIPTOR_DATA *snoop_by;
-	CHAR_DATA *character;
-	CHAR_DATA *original;
-	bool valid;
+	// This connection's own handle, handed out so a character can name it
+	// without holding a pointer into a recycled struct. Registered by
+	// new_descriptor and retired by free_descriptor.
+	Handle<DESCRIPTOR_DATA> self;
+	// The connection watching this one, if any. Non-owning; it expires by
+	// itself when that connection closes, which is what close_socket's
+	// hand-written sweep over descriptor_list used to do.
+	Handle<DESCRIPTOR_DATA> snoop_by;
+	// The body this connection drives, and -- while an immortal is switched
+	// into a mob -- the immortal's own body parked behind it. Non-owning both
+	// ways: a character can be extracted while the connection lives on, so
+	// these are handles rather than pointers. `character` used to be nulled by
+	// hand on each of the five paths that free it; `original` was nulled on
+	// none of them, and check_playing reads its `true_name` for every open
+	// connection on every login attempt.
+	Handle<CHAR_DATA> character;
+	Handle<CHAR_DATA> original;
 	char *host;
 	short descriptor;
 	short connected;
@@ -1287,6 +1306,9 @@ struct trap_data
 // Solution to Horde trophy ugliness
 //
 
+// One node of a mob tracking search. The search owns every node it makes and
+// outlives none of them (see PathSearch in act_move.c); `prev`, `dir_to` and
+// room->path are all non-owning pointers between nodes of the same search.
 struct pathfind_data
 {
 	ROOM_INDEX_DATA *room;				// What room is this?

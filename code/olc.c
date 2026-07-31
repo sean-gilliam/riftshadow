@@ -217,16 +217,16 @@ bool run_olc_editor(DESCRIPTOR_DATA *d)
 	switch (d->editor)
 	{
 		case ED_AREA:
-			aedit(d->character, d->incomm);
+			aedit(Deref(d->character), d->incomm);
 			break;
 		case ED_ROOM:
-			redit(d->character, d->incomm);
+			redit(Deref(d->character), d->incomm);
 			break;
 		case ED_OBJECT:
-			oedit(d->character, d->incomm);
+			oedit(Deref(d->character), d->incomm);
 			break;
 		case ED_MOBILE:
-			medit(d->character, d->incomm);
+			medit(Deref(d->character), d->incomm);
 			break;
 		default:
 			return false;
@@ -237,7 +237,7 @@ bool run_olc_editor(DESCRIPTOR_DATA *d)
 
 bool is_editing(CHAR_DATA *ch)
 {
-	switch (ch->desc->editor)
+	switch (Deref(ch->desc)->editor)
 	{
 		case ED_AREA:
 		case ED_ROOM:
@@ -257,7 +257,7 @@ char *olc_ed_name(CHAR_DATA *ch)
 
 	buf[0] = '\0';
 
-	switch (ch->desc->editor)
+	switch (Deref(ch->desc)->editor)
 	{
 		case ED_AREA:
 			sprintf(buf, "AEdit");
@@ -289,10 +289,12 @@ char *olc_ed_vnum(CHAR_DATA *ch)
 
 	buf[0] = '\0';
 
-	switch (ch->desc->editor)
+	DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+	switch (d->editor)
 	{
 		case ED_AREA:
-			pArea = (AREA_DATA *)ch->desc->pEdit;
+			pArea = (AREA_DATA *)d->pEdit;
 			sprintf(buf, "%d", pArea ? pArea->vnum : 0);
 			break;
 		case ED_ROOM:
@@ -300,11 +302,11 @@ char *olc_ed_vnum(CHAR_DATA *ch)
 			sprintf(buf, "%d", pRoom ? pRoom->vnum : 0);
 			break;
 		case ED_OBJECT:
-			pObj = (OBJ_INDEX_DATA *)ch->desc->pEdit;
+			pObj = (OBJ_INDEX_DATA *)d->pEdit;
 			sprintf(buf, "%d", pObj ? pObj->vnum : 0);
 			break;
 		case ED_MOBILE:
-			pMob = (MOB_INDEX_DATA *)ch->desc->pEdit;
+			pMob = (MOB_INDEX_DATA *)d->pEdit;
 			sprintf(buf, "%d", pMob ? pMob->vnum : 0);
 			break;
 		default:
@@ -350,7 +352,7 @@ void show_olc_cmds(CHAR_DATA *ch, const struct olc_cmd_type *olc_table)
  ****************************************************************************/
 bool show_commands(CHAR_DATA *ch, char *argument)
 {
-	switch (ch->desc->editor)
+	switch (Deref(ch->desc)->editor)
 	{
 		case ED_AREA:
 			show_olc_cmds(ch, aedit_table);
@@ -394,8 +396,10 @@ AREA_DATA *get_area_data(int vnum)
  ****************************************************************************/
 bool edit_done(CHAR_DATA *ch)
 {
-	ch->desc->pEdit = nullptr;
-	ch->desc->editor = 0;
+	DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+	d->pEdit = nullptr;
+	d->editor = 0;
 
 	send_to_char("Exiting Riftshadow OLC...\n\r", ch);
 	return false;
@@ -813,8 +817,10 @@ void do_aedit(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	ch->desc->pEdit = (void *)pArea;
-	ch->desc->editor = ED_AREA;
+	DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+	d->pEdit = (void *)pArea;
+	d->editor = ED_AREA;
 
 	aedit_show(ch, "");
 }
@@ -858,7 +864,7 @@ void do_redit(CHAR_DATA *ch, char *argument)
 		if (redit_create(ch, argument))
 		{
 			char_from_room(ch);
-			char_to_room(ch, (ROOM_INDEX_DATA *)ch->desc->pEdit);
+			char_to_room(ch, (ROOM_INDEX_DATA *)Deref(ch->desc)->pEdit);
 			SET_BIT(pRoom->area->area_flags, AREA_CHANGED);
 			pRoom = ch->in_room;
 		}
@@ -886,7 +892,7 @@ void do_redit(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	ch->desc->editor = ED_ROOM;
+	Deref(ch->desc)->editor = ED_ROOM;
 	redit_show(ch, "");
 }
 
@@ -926,9 +932,11 @@ void do_oedit(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		ch->desc->pEdit = (void *)pObj;
+		DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+		d->pEdit = (void *)pObj;
 		ch->pcdata->editing_item = value;
-		ch->desc->editor = ED_OBJECT;
+		d->editor = ED_OBJECT;
 
 		oedit_show(ch, "");
 		return;
@@ -962,7 +970,7 @@ void do_oedit(CHAR_DATA *ch, char *argument)
 			if (oedit_create(ch, argument))
 			{
 				SET_BIT(pArea->area_flags, AREA_CHANGED);
-				ch->desc->editor = ED_OBJECT;
+				Deref(ch->desc)->editor = ED_OBJECT;
 				oedit_show(ch, "");
 			}
 
@@ -1001,8 +1009,10 @@ void do_medit(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		ch->desc->pEdit = (void *)pMob;
-		ch->desc->editor = ED_MOBILE;
+		DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+		d->pEdit = (void *)pMob;
+		d->editor = ED_MOBILE;
 
 		medit_show(ch, "");
 		return;
@@ -1036,7 +1046,7 @@ void do_medit(CHAR_DATA *ch, char *argument)
 			if (medit_create(ch, argument))
 			{
 				SET_BIT(pArea->area_flags, AREA_CHANGED);
-				ch->desc->editor = ED_MOBILE;
+				Deref(ch->desc)->editor = ED_MOBILE;
 			}
 
 			return;

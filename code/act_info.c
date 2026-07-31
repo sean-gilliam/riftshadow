@@ -48,6 +48,7 @@
 
 #include "merc.h"
 #include "act_info.h"
+#include "entity/handles.h"
 #include "rift.h"
 #include "weather_enums.h"
 #include "handler.h"
@@ -188,7 +189,11 @@ char *format_obj_to_char(OBJ_DATA *obj, CHAR_DATA *ch, bool fShort)
 	if (is_affected_obj(obj, gsn_stash) && is_immortal(ch))
 	{
 		OBJ_AFFECT_DATA *oaf = affect_find_obj(obj->affected, gsn_stash);
-		sprintf(buf, "(Stashed by %s) ", oaf->owner->name);
+		CHAR_DATA *stasher = Deref(oaf->owner);
+
+		// An object outlives whoever stashed it, and nothing removes the affect
+		// when they go, so this is a routine case rather than a defensive one.
+		sprintf(buf, "(Stashed by %s) ", stasher ? stasher->name : "someone gone");
 	}
 
 	if (is_obj_stat(obj, ITEM_NOSHOW) && is_immortal(ch))
@@ -214,7 +219,7 @@ char *format_obj_to_char(OBJ_DATA *obj, CHAR_DATA *ch, bool fShort)
  */
 void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNothing)
 {
-	if (ch->desc == nullptr)
+	if (Deref(ch->desc) == nullptr)
 		return;
 
 	/*
@@ -476,6 +481,7 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 		strcat(buf, victim->pcdata->title);
 
 	char message[MAX_STRING_LENGTH];
+	OBJ_DATA *seatedOn = Deref(victim->on);	// the furniture, if it is still around
 	switch (victim->position)
 	{
 		case POS_DEAD:
@@ -491,21 +497,21 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			strcat(buf, " is lying here stunned.");
 			break;
 		case POS_SLEEPING:
-			if (victim->on != nullptr)
+			if (seatedOn != nullptr)
 			{
-				if (IS_SET_OLD(victim->on->value[2], SLEEP_AT))
+				if (IS_SET_OLD(seatedOn->value[2], SLEEP_AT))
 				{
-					sprintf(message, " is here, sleeping at %s.", victim->on->short_descr);
+					sprintf(message, " is here, sleeping at %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], SLEEP_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], SLEEP_ON))
 				{
-					sprintf(message, " is here, sleeping on %s.", victim->on->short_descr);
+					sprintf(message, " is here, sleeping on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 				else
 				{
-					sprintf(message, " is here, sleeping in %s.", victim->on->short_descr);
+					sprintf(message, " is here, sleeping in %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 			}
@@ -515,26 +521,26 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			}
 			break;
 		case POS_RESTING:
-			if (victim->on != nullptr)
+			if (seatedOn != nullptr)
 			{
-				if (IS_SET_OLD(victim->on->value[2], REST_AT))
+				if (IS_SET_OLD(seatedOn->value[2], REST_AT))
 				{
-					sprintf(message, " is here, resting at %s.", victim->on->short_descr);
+					sprintf(message, " is here, resting at %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], REST_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], REST_ON))
 				{
-					sprintf(message, " is here, resting on %s.", victim->on->short_descr);
+					sprintf(message, " is here, resting on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], LOUNGE_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], LOUNGE_ON))
 				{
-					sprintf(message, " is here, lounging on %s.", victim->on->short_descr);
+					sprintf(message, " is here, lounging on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 				else
 				{
-					sprintf(message, " is here, resting in %s.", victim->on->short_descr);
+					sprintf(message, " is here, resting in %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 			}
@@ -544,21 +550,21 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			}
 			break;
 		case POS_SITTING:
-			if (victim->on != nullptr)
+			if (seatedOn != nullptr)
 			{
-				if (IS_SET_OLD(victim->on->value[2], SIT_AT))
+				if (IS_SET_OLD(seatedOn->value[2], SIT_AT))
 				{
-					sprintf(message, " is here, sitting at %s.", victim->on->short_descr);
+					sprintf(message, " is here, sitting at %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], SIT_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], SIT_ON))
 				{
-					sprintf(message, " is here, sitting on %s.", victim->on->short_descr);
+					sprintf(message, " is here, sitting on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 				else
 				{
-					sprintf(message, " is here, sitting in %s.", victim->on->short_descr);
+					sprintf(message, " is here, sitting in %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 			}
@@ -568,21 +574,21 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			}
 			break;
 		case POS_STANDING:
-			if (victim->on != nullptr)
+			if (seatedOn != nullptr)
 			{
-				if (IS_SET_OLD(victim->on->value[2], STAND_AT))
+				if (IS_SET_OLD(seatedOn->value[2], STAND_AT))
 				{
-					sprintf(message, " is here, standing at %s.", victim->on->short_descr);
+					sprintf(message, " is here, standing at %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
-				else if (IS_SET_OLD(victim->on->value[2], STAND_ON))
+				else if (IS_SET_OLD(seatedOn->value[2], STAND_ON))
 				{
-					sprintf(message, " is here, standing on %s.", victim->on->short_descr);
+					sprintf(message, " is here, standing on %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 				else
 				{
-					sprintf(message, " is here, standing in %s.", victim->on->short_descr);
+					sprintf(message, " is here, standing in %s.", seatedOn->short_descr);
 					strcat(buf, message);
 				}
 			}
@@ -592,19 +598,22 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 			}
 			break;
 		case POS_FIGHTING:
+		{
+			CHAR_DATA *opponent = Deref(victim->fighting);
+
 			strcat(buf, " is here, fighting ");
 
-			if (victim->fighting == nullptr)
+			if (opponent == nullptr)
 			{
 				strcat(buf, "thin air??");
 			}
-			else if (victim->fighting == ch)
+			else if (opponent == ch)
 			{
 				strcat(buf, "YOU!");
 			}
-			else if (victim->in_room == victim->fighting->in_room)
+			else if (victim->in_room == opponent->in_room)
 			{
-				strcat(buf, pers(victim->fighting, ch));
+				strcat(buf, pers(opponent, ch));
 				strcat(buf, ".");
 			}
 			else
@@ -612,6 +621,7 @@ void show_char_to_char_0(CHAR_DATA *victim, CHAR_DATA *ch)
 				strcat(buf, "someone who left??");
 			}
 			break;
+		}
 	}
 
 	strcat(buf, "\n\r");
@@ -1001,7 +1011,7 @@ bool check_blind(CHAR_DATA *ch)
 	{
 		auto paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
-		if (paf && paf->owner != ch)
+		if (paf && Deref(paf->owner) != ch)
 		{
 			send_to_char("You can't see a thing through the snow!\n\r", ch);
 			return false;
@@ -1573,7 +1583,7 @@ void do_nosummon(CHAR_DATA *ch, char *argument)
 
 void do_glance(CHAR_DATA *ch, char *argument)
 {
-	if (ch->desc == nullptr)
+	if (Deref(ch->desc) == nullptr)
 		return;
 
 	if (argument[0] == '\0')
@@ -1615,7 +1625,7 @@ void do_glance(CHAR_DATA *ch, char *argument)
 
 void do_examine(CHAR_DATA *ch, char *argument)
 {
-	if (ch->desc == nullptr)
+	if (Deref(ch->desc) == nullptr)
 		return;
 
 	char arg[MAX_INPUT_LENGTH];
@@ -1708,7 +1718,7 @@ void do_look(CHAR_DATA *ch, char *argument)
 	int door;
 	int i;
 
-	if (ch->desc == nullptr)
+	if (Deref(ch->desc) == nullptr)
 		return;
 
 	if (ch->position < POS_SLEEPING)
@@ -1853,7 +1863,7 @@ void do_look(CHAR_DATA *ch, char *argument)
 		{
 			for (auto &raf : ch->in_room->affected)
 			{
-				if (raf.type == gsn_riptide && raf.owner == ch && raf.location == APPLY_ROOM_NONE &&
+				if (raf.type == gsn_riptide && Deref(raf.owner) == ch && raf.location == APPLY_ROOM_NONE &&
 					raf.modifier == 1)
 				{
 					sprintf(buf, "%sThe calm surface of the water belies the deadly riptide churning beneath!%s\n\r",
@@ -1863,7 +1873,7 @@ void do_look(CHAR_DATA *ch, char *argument)
 					send_to_char(buf, ch);
 					break;
 				}
-				else if (raf.type == gsn_riptide && raf.owner == ch && raf.location == APPLY_ROOM_NONE &&
+				else if (raf.type == gsn_riptide && Deref(raf.owner) == ch && raf.location == APPLY_ROOM_NONE &&
 						 raf.modifier == 2)
 				{
 					sprintf(buf, "%sThe waters swirl menacingly, ready to receive the riptide's prey.%s\n\r",
@@ -1882,14 +1892,14 @@ void do_look(CHAR_DATA *ch, char *argument)
 
 			for (i = 0; i < MAX_TRACKS; i++)
 			{
-				if (ch->in_room->tracks[i].prey != af->owner)
+				if (ch->in_room->tracks[i].prey != Deref(af->owner))
 					continue;
 
 				direction = (char *)flag_name_lookup(ch->in_room->tracks[i].direction, direction_table);
 
 				sprintf(buf, "%sThrough the veil of your rage, you sense %s's tracks leading %s.%s\n\r",
 					get_char_color(ch, "lightred"),
-					af->owner->name,
+					Deref(af->owner)->name,
 					direction,
 					END_COLOR(ch));
 
@@ -2662,9 +2672,11 @@ void do_score(CHAR_DATA *ch, char *argument)
 	else
 		send_to_char("chaotic ethos.\n\r", ch);
 
-	if (ch->pcdata->trusting)
+	CHAR_DATA *trusted = Deref(ch->pcdata->trusting);
+
+	if (trusted)
 	{
-		sprintf(buf, "You are trusting %s.\n\r", ch->pcdata->trusting->name);
+		sprintf(buf, "You are trusting %s.\n\r", trusted->name);
 		send_to_char(buf, ch);
 	}
 	if (ch->Class()->GetIndex() == CLASS_SORCERER)
@@ -2911,7 +2923,9 @@ void do_oldhelp(CHAR_DATA *ch, char *argument)
 			found = true;
 
 			/* small hack :) */
-			if (ch->desc != nullptr && ch->desc->connected != CON_PLAYING && ch->desc->connected != CON_GEN_GROUPS)
+			DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+			if (connection != nullptr && connection->connected != CON_PLAYING && connection->connected != CON_GEN_GROUPS)
 				break;
 		}
 	}
@@ -2944,15 +2958,15 @@ void do_whois(CHAR_DATA *ch, char *argument)
 		char const *class_name;
 		char const *imm_lvl;
 
-		if (d->connected != CON_PLAYING || !can_see(ch, d->character))
+		if (d->connected != CON_PLAYING || !can_see(ch, Deref(d->character)))
 			continue;
 
-		auto wch = (d->original != nullptr) ? d->original : d->character;
+		auto wch = (Deref(d->original) != nullptr) ? Deref(d->original) : Deref(d->character);
 
 		if (!can_see(ch, wch))
 			continue;
 
-		if (is_affected(d->character, gsn_disguise))
+		if (is_affected(Deref(d->character), gsn_disguise))
 			continue;
 
 		if (str_cmp(wch->name, wch->true_name)
@@ -3292,12 +3306,12 @@ void do_who(CHAR_DATA *ch, char *argument)
 		 * Check for match against restrictions.
 		 * Don't use trust as that exposes trusted mortals.
 		 */
-		if (d->connected != CON_PLAYING || !can_see(ch, d->character))
+		if (d->connected != CON_PLAYING || !can_see(ch, Deref(d->character)))
 			continue;
 
-		auto wch = d->original != nullptr
-			? d->original
-			: d->character;
+		auto wch = Deref(d->original) != nullptr
+			? Deref(d->original)
+			: Deref(d->character);
 
 		if (!can_see(ch, wch))
 			continue;
@@ -3494,7 +3508,7 @@ void do_count(CHAR_DATA *ch, char *argument)
 	{
 		if (d->connected == CON_PLAYING)
 		{
-			if (can_see(ch, d->character) && !is_switched(d->character))
+			if (can_see(ch, Deref(d->character)) && !is_switched(Deref(d->character)))
 				count++;
 			else
 				not_seen++;
@@ -3691,7 +3705,7 @@ void do_where(CHAR_DATA *ch, char *argument)
 
 		for (auto d = descriptor_list; d; d = d->next)
 		{
-			auto victim = d->character;
+			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr
 				&& !is_npc(victim)
@@ -3726,7 +3740,7 @@ void do_where(CHAR_DATA *ch, char *argument)
 	{
 		for (auto d = descriptor_list; d; d = d->next)
 		{
-			auto victim = d->character;
+			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr
 				&& !is_npc(victim)
@@ -5214,10 +5228,12 @@ void do_xlook(CHAR_DATA *ch, char *argument)
 	if (foundIR == 0)
 		send_to_char("none.", ch);
 
-	if (victim->fighting != nullptr)
+	CHAR_DATA *opponent = Deref(victim->fighting);
+
+	if (opponent != nullptr)
 	{
 		send_to_char("\n\rFighting: ", ch);
-		send_to_char((is_npc(victim->fighting) ? victim->fighting->short_descr : victim->fighting->name), ch);
+		send_to_char((is_npc(opponent) ? opponent->short_descr : opponent->name), ch);
 	}
 	else
 	{
@@ -5302,18 +5318,20 @@ void do_trustchar(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(argument, "self"))
 	{
-		if (!ch->pcdata->trusting)
+		CHAR_DATA *trusted = Deref(ch->pcdata->trusting);
+
+		if (!trusted)
 		{
 			send_to_char("You are not trusting anybody specific.\n\r", ch);
 			return;
 		}
 
-		act("You no longer trust $N with questionable actions.", ch, 0, ch->pcdata->trusting, TO_CHAR);
+		act("You no longer trust $N with questionable actions.", ch, 0, trusted, TO_CHAR);
 		ch->pcdata->trusting = nullptr;
 		return;
 	}
 
-	ch->pcdata->trusting = victim;
+	ch->pcdata->trusting = victim->self;
 	act("You now trust $N with questionable actions.", ch, 0, victim, TO_CHAR);
 }
 

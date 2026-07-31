@@ -7,6 +7,7 @@
 #include <time.h>
 #include <math.h>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "ap.h"
 #include "../interp.h"
 #include "../tables.h"
@@ -55,7 +56,7 @@ void check_bloodlust(CHAR_DATA *ch, CHAR_DATA *victim)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_SKILL;
 		af.type = gsn_bloodlust;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = level;
 		af.duration = 96;
 		af.modifier = level * 2;
@@ -108,7 +109,7 @@ void spell_indomitability(int sn, int level, CHAR_DATA *ch, void *vo, int target
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SPELL;
 	af.type = gsn_indom;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.duration = level / 5;
 	af.modifier = 0;
@@ -187,7 +188,7 @@ void spell_wrack(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.level = level;
 	af.location = APPLY_DAM_MOD;
 	af.modifier = 20;
-	af.owner = ch;
+	af.owner = ch->self;
 	affect_to_char(victim, &af);
 
 	af.aftype = AFT_MALADY;
@@ -217,7 +218,7 @@ void spell_radiance(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	init_affect(&af);
 	af.where = TO_AFFECTS;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.location = 0;
 	af.modifier = 3;
@@ -264,7 +265,7 @@ void spell_inspire_lust(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		af.level = level;
 		af.location = 0;
 		af.modifier = 0;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.pulse_fun = lust_pulse;
 		af.type = sn;
 		af.duration = level / 6;
@@ -295,7 +296,7 @@ void spell_inspire_lust(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		af.level = level;
 		af.location = 0;
 		af.modifier = 0;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.pulse_fun = lust_pulse;
 		af.type = sn;
 		af.duration = level / 6;
@@ -310,7 +311,7 @@ void lust_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 	char buf[MSL];
 	int skill;
 
-	if (ch->fighting || !is_awake(ch))
+	if (Deref(ch->fighting) || !is_awake(ch))
 		return;
 
 	skill = (int)(get_skill(ch, skill_lookup("steal")) * 0.8);
@@ -483,7 +484,7 @@ void spell_baals_mastery(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_INVIS;
 	af.type = gsn_baals_mastery;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = MAX_LEVEL;
 	af.location = 0;
 	af.modifier = weapon;
@@ -508,7 +509,7 @@ void check_baals_mastery(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (!is_affected(ch, gsn_baals_mastery))
 		return;
 
-	if (victim != ch->fighting)
+	if (victim != Deref(ch->fighting))
 		return;
 
 	if (!(af = affect_find(ch->affected, gsn_baals_mastery)))
@@ -561,7 +562,7 @@ void check_baals_mastery(CHAR_DATA *ch, CHAR_DATA *victim)
 				af2.where = TO_AFFECTS;
 				af2.aftype = AFT_MALADY;
 				af2.type = gsn_bleeding;
-				af2.owner = ch;
+				af2.owner = ch->self;
 				af2.level = ch->level;
 				af2.location = APPLY_STR;
 				af2.modifier = -4;
@@ -686,7 +687,7 @@ void spell_word_of_command(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_INVIS;
 	af.type = gsn_word_of_command;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.level = level;
 	af.location = 0;
 	af.duration = -1;
@@ -759,7 +760,7 @@ void spell_mark_of_wrath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_INVIS;
 	af.type = gsn_mark_of_wrath;
-	af.owner = victim;
+	af.owner = victim->self;
 	af.level = level;
 
 	if (is_good(victim))
@@ -794,7 +795,7 @@ void spell_living_blade(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	oaf.where = TO_OBJ_APPLY;
 	oaf.type = gsn_living_blade;
 	oaf.aftype = AFT_SPELL;
-	oaf.owner = ch;
+	oaf.owner = ch->self;
 	oaf.level = level;
 	oaf.duration = level;
 	oaf.location = APPLY_DAMROLL;
@@ -815,10 +816,10 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	char buf[MSL];
 	CHAR_DATA *ch;
 
-	if ((ch = obj->carried_by) == nullptr)
+	if ((ch = Deref(obj->carried_by)) == nullptr)
 		return;
 
-	if (ch != af->owner)
+	if (ch != Deref(af->owner))
 	{
 		if (number_percent() < 7 && af->location == APPLY_DAMROLL)
 		{
@@ -839,7 +840,7 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 		return;
 	}
 
-	if (!ch->fighting && af->modifier == 0)
+	if (!Deref(ch->fighting) && af->modifier == 0)
 	{
 		if (number_percent() < 4 && af->location == APPLY_DAMROLL)
 		{
@@ -873,7 +874,7 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 		}
 	}
 
-	if (!ch->fighting && number_percent() <= 33)
+	if (!Deref(ch->fighting) && number_percent() <= 33)
 	{
 		OBJ_AFFECT_DATA af2;
 		af2.where = af->where;
@@ -894,7 +895,7 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 
 		return;
 	}
-	else if (!ch->fighting)
+	else if (!Deref(ch->fighting))
 	{
 		return;
 	}
@@ -902,7 +903,7 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	if (!(obj->wear_loc == WEAR_WIELD || obj->wear_loc == WEAR_DUAL_WIELD))
 		return;
 
-	if (is_npc(ch->fighting) && number_percent() > 5)
+	if (is_npc(Deref(ch->fighting)) && number_percent() > 5)
 		return;
 
 	OBJ_AFFECT_DATA af2;
@@ -918,12 +919,12 @@ void living_blade_pulse(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	af2.pulse_fun = af->pulse_fun;
 	affect_remove_obj(obj, af, false);
 
-	if (is_npc(ch->fighting) && af2.modifier <= 15)
+	if (is_npc(Deref(ch->fighting)) && af2.modifier <= 15)
 	{
 		af2.modifier++;
 		af2.modifier = std::min((int)af2.modifier, 15);
 	}
-	else if (is_npc(ch->fighting))
+	else if (is_npc(Deref(ch->fighting)))
 	{
 		af2.modifier -= 2;
 	}
@@ -957,21 +958,23 @@ void living_blade_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	if (af->location == APPLY_HITROLL)
 		return;
 
-	if (!obj->carried_by)
+	CHAR_DATA *carrier = Deref(obj->carried_by);
+
+	if (carrier == nullptr)
 		return;
 
-	act("$p ceases its slight writhing and seems less animated.", obj->carried_by, obj, 0, TO_CHAR);
+	act("$p ceases its slight writhing and seems less animated.", carrier, obj, 0, TO_CHAR);
 }
 
 void traitor_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 {
-	if (!af->owner)
+	if (!Deref(af->owner))
 	{
 		affect_remove(ch, af);
 		return;
 	}
 
-	if (!is_same_group(ch, af->owner) && af->duration == -1)
+	if (!is_same_group(ch, Deref(af->owner)) && af->duration == -1)
 	{
 		af->duration = 10;
 		return;
@@ -991,7 +994,7 @@ void spell_dark_familiar(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	for (check = char_list; check != nullptr; check = check->next)
 	{
-		if (is_npc(check) && check->leader == ch)
+		if (is_npc(check) && Deref(check->leader) == ch)
 		{
 			found = true;
 			break;
@@ -1068,7 +1071,7 @@ void spell_dark_familiar(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	add_follower(fam, ch);
 
-	fam->leader = ch;
+	fam->leader = ch->self;
 
 	SET_BIT(fam->affected_by, AFF_CHARM);
 
@@ -1085,7 +1088,7 @@ void spell_dark_familiar(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.type = gsn_dark_familiar;
 	af.aftype = AFT_TIMER;
 	af.level = ch->level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.duration = 64;
 	affect_to_char(ch, &af);
 }
@@ -1127,7 +1130,7 @@ void spell_unholy_communion(int sn, int level, CHAR_DATA *ch, void *vo, int targ
 	af.type = gsn_unholy_communion;
 	af.aftype = AFT_SPELL;
 	af.level = level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.duration = 12;
 	af.end_fun = communion_end;
 	affect_to_char(ch, &af);
@@ -1145,7 +1148,7 @@ void communion_end(CHAR_DATA *ch, AFFECT_DATA *af)
 	timer.type = gsn_unholy_communion;
 	timer.aftype = AFT_TIMER;
 	timer.level = ch->level;
-	timer.owner = ch;
+	timer.owner = ch->self;
 	timer.duration = 96;
 	affect_to_char(ch, &timer);
 }
@@ -1210,10 +1213,10 @@ void check_unholy_communion(CHAR_DATA *ch, char *argument)
 	for (d = descriptor_list; d; d = d->next)
 	{
 		if (d->connected == CON_PLAYING 
-			&& !is_immortal(d->character)
-			&& !is_npc(d->character)
-			&& d->character->in_room->area == ch->in_room->area
-			&& d->character != ch)
+			&& !is_immortal(Deref(d->character))
+			&& !is_npc(Deref(d->character))
+			&& Deref(d->character)->in_room->area == ch->in_room->area
+			&& Deref(d->character) != ch)
 		{
 			send_to_char("A voice hisses in your mind: 'Ssssolitude, mortal.  There are othersss near...'\n\r", ch);
 			return;
@@ -1376,7 +1379,7 @@ void demon_appear(CHAR_DATA *ch, int *demonptr, int *typeptr)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_lesser_demon;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = 60;
 		af.tick_fun = lesser_demon_tick;
 
@@ -1451,7 +1454,7 @@ void demon_appear(CHAR_DATA *ch, int *demonptr, int *typeptr)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_greater_demon;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = 60;
 		af.tick_fun = greater_demon_tick;
 		switch (demon)
@@ -1530,7 +1533,7 @@ void lesser_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 {
 	char buf[MSL];
 
-	if (!is_npc(mob) || !af->owner)
+	if (!is_npc(mob) || !Deref(af->owner))
 		return;
 
 	switch (mob->pIndexData->vnum)
@@ -1538,21 +1541,21 @@ void lesser_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 		case MOB_VNUM_BARBAS:
 			break;
 		case MOB_VNUM_FURCAS:
-			if (af->owner && af->duration == 12)
+			if (Deref(af->owner) && af->duration == 12)
 			{
-				sprintf(buf, "%s Does it want a hint?  Does it?  We might not be in the same area as we were before, we might not... but always somewhere near, yes....", af->owner->name);
+				sprintf(buf, "%s Does it want a hint?  Does it?  We might not be in the same area as we were before, we might not... but always somewhere near, yes....", Deref(af->owner)->name);
 				do_tell(mob, buf);
 				break;
 			}
 
-			if (af->owner && af->duration == 1)
+			if (Deref(af->owner) && af->duration == 1)
 			{
-				sprintf(buf, "%s We give up... it cannnot find us... a pity, yes.  Goodbye, it.", af->owner->name);
+				sprintf(buf, "%s We give up... it cannnot find us... a pity, yes.  Goodbye, it.", Deref(af->owner)->name);
 				do_tell(mob, buf);
 
 				act("$n vanishes in a crimson flash!", mob, 0, 0, TO_ROOM);
 
-				af->owner->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_FURCAS] = FAVOR_FAILED;
 				extract_char(mob, true);
 			}
 
@@ -1584,7 +1587,7 @@ void lesser_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 				do_say(mob, "My friend, I have better things to do with my time.  A pity.");
 				act("$n vanishes in a crimson flash!", mob, 0, 0, TO_ROOM);
 
-				af->owner->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_MALAPHAR] = FAVOR_FAILED;
 				extract_char(mob, true);
 			}
 			break;
@@ -1594,7 +1597,7 @@ void lesser_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 				do_say(mob, "I've better things to do with my time, than wait for you to mumble a rhyme!");
 				act("$n vanishes in a crimson flash!", mob, 0, 0, TO_ROOM);
 
-				af->owner->pcdata->lesserdata[LESSER_IPOS] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->lesserdata[LESSER_IPOS] = FAVOR_FAILED;
 				extract_char(mob, true);
 			}
 			break;
@@ -1607,7 +1610,7 @@ void greater_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 {
 	char buf[MSL];
 
-	if (!is_npc(mob) || !af->owner)
+	if (!is_npc(mob) || !Deref(af->owner))
 		return;
 
 	switch (mob->pIndexData->vnum)
@@ -1627,11 +1630,11 @@ void greater_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 
 			if (af->duration == 1)
 			{
-				sprintf(buf, "The abyss will not forget this treachery, %s.", af->owner->name);
+				sprintf(buf, "The abyss will not forget this treachery, %s.", Deref(af->owner)->name);
 				do_whisper(mob, buf);
 
 				act("The puddle of gore before you which was once a greater demon seeps downward.", mob, 0, 0, TO_ROOM);
-				af->owner->pcdata->greaterdata[GREATER_OZE] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->greaterdata[GREATER_OZE] = FAVOR_FAILED;
 
 				extract_char(mob, true);
 				break;
@@ -1641,7 +1644,7 @@ void greater_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 		case MOB_VNUM_GAMYGYN:
 			if (af->duration == 1)
 			{
-				sprintf(buf, "%s You fool.  You utter fool.  You know not what power you have squandered.", af->owner->name);
+				sprintf(buf, "%s You fool.  You utter fool.  You know not what power you have squandered.", Deref(af->owner)->name);
 				do_tell(mob, buf);
 
 				act("Flashing a great dark light, $n vanishes from sight.", mob, 0, 0, TO_ROOM);
@@ -1653,7 +1656,7 @@ void greater_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 		case MOB_VNUM_OROBAS:
 			if (af->duration == 1)
 			{
-				sprintf(buf, "%s, you fool.  You utter fool.  You know not what power you have squandered!", af->owner->name);
+				sprintf(buf, "%s, you fool.  You utter fool.  You know not what power you have squandered!", Deref(af->owner)->name);
 				do_say(mob, buf);
 
 				act("With a fierce snarl, and many assorted whispers, Orobas streaks into the sky.", mob, 0, 0, TO_ROOM);
@@ -1694,7 +1697,7 @@ void greater_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 
 				act("Turning coldly and melting into a cool mist, $n wafts away on a breeze.", mob, 0, 0, TO_ALL);
 
-				af->owner->pcdata->greaterdata[GREATER_GERYON] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->greaterdata[GREATER_GERYON] = FAVOR_FAILED;
 
 				extract_char(mob, true);
 				break;
@@ -1709,7 +1712,7 @@ void greater_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 
 			if (af->duration == 2)
 			{
-				act("As blood trickles down your neck, your mind races to decide:  ear or nose?", mob, 0, af->owner,
+				act("As blood trickles down your neck, your mind races to decide:  ear or nose?", mob, 0, Deref(af->owner),
 					TO_VICT);
 				break;
 
@@ -1719,7 +1722,7 @@ void greater_demon_tick(CHAR_DATA *mob, AFFECT_DATA *af)
 				act("In disgust, $n rips his claws free and moves his massive frame back.", mob, 0, 0, TO_ROOM);
 				act("Slowly, the monstrous demon fades into shadows and dissipates.", mob, 0, 0, TO_ROOM);
 
-				af->owner->pcdata->greaterdata[GREATER_CIMERIES] = FAVOR_FAILED;
+				Deref(af->owner)->pcdata->greaterdata[GREATER_CIMERIES] = FAVOR_FAILED;
 				extract_char(mob, true);
 			}
 			break;
@@ -1774,7 +1777,7 @@ void spell_insanity(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.location = APPLY_DAMROLL;
 	af.pulse_fun = insanity_pulse;
 	af.end_fun = insanity_end;
-	af.owner = ch;
+	af.owner = ch->self;
 	affect_to_char(ch, &af);
 
 	af.pulse_fun = nullptr;
@@ -1792,7 +1795,7 @@ void insanity_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 	if (number_percent() < 5)
 		return;
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		insanity_fight(ch);
 		return;
@@ -1804,7 +1807,7 @@ void insanity_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 
 	for (victim = ch->in_room->people; victim != nullptr; victim = victim->next_in_room)
 	{
-		if (ch->fighting != nullptr)
+		if (Deref(ch->fighting) != nullptr)
 			return;
 
 		if ((victim == ch) || (is_safe_new(ch, victim, false)) || (number_percent() > 95))
@@ -1941,7 +1944,7 @@ void insanity_end(CHAR_DATA *ch, AFFECT_DATA *af)
 
 void insanity_fight(CHAR_DATA *ch)
 {
-	CHAR_DATA *victim = ch->fighting;
+	CHAR_DATA *victim = Deref(ch->fighting);
 
 	if (victim == nullptr)
 		return;
@@ -2119,9 +2122,9 @@ void do_breath_mephisto(CHAR_DATA *ch, char *argument)
 
 	if (argument[0] == '\0')
 	{
-		if (ch->fighting)
+		if (Deref(ch->fighting))
 		{
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 		else
 		{
@@ -2157,7 +2160,7 @@ void mephisto_two(CHAR_DATA *ch, CHAR_DATA *victim, char *argument)
 {
 	AFFECT_DATA af;
 
-	if (!(ch->fighting) && !(get_char_room(ch, argument)))
+	if (!(Deref(ch->fighting)) && !(get_char_room(ch, argument)))
 	{
 		act("You let the intense cold dissipate, your target having escaped.", ch, 0, 0, TO_CHAR);
 		return;
@@ -2178,7 +2181,7 @@ void mephisto_two(CHAR_DATA *ch, CHAR_DATA *victim, char *argument)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_TIMER;
 	af.type = skill_lookup("breath of mephisto");
-	af.owner = ch;
+	af.owner = ch->self;
 	af.duration = 4;
 	af.modifier = 0;
 	af.location = 0;
@@ -2193,9 +2196,9 @@ void do_touch(CHAR_DATA *ch, char *argument)
 
 	if (argument[0] == '\0')
 	{
-		if (ch->fighting)
+		if (Deref(ch->fighting))
 		{
-			victim = ch->fighting;
+			victim = Deref(ch->fighting);
 		}
 		else
 		{
@@ -2225,7 +2228,7 @@ void do_touch(CHAR_DATA *ch, char *argument)
 	if (is_safe_new(ch, victim, true))
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 		chance -= 20;
 
 	if (victim->position == POS_SLEEPING)
@@ -2251,7 +2254,7 @@ void do_touch(CHAR_DATA *ch, char *argument)
 		af.where = TO_AFFECTS;
 		af.location = 0;
 		af.modifier = 0;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.type = skill_lookup("burning touch");
 		af.aftype = AFT_MALADY;
 		af.end_fun = nullptr;
@@ -2323,7 +2326,7 @@ void check_orobas_gamygyn(CHAR_DATA *ch, CHAR_DATA *victim)
 
 void burning_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 {
-	CHAR_DATA *owner = af->owner;
+	CHAR_DATA *owner = Deref(af->owner);
 	if (number_percent() > 50)
 		return;
 
@@ -2378,7 +2381,7 @@ void do_darksight(CHAR_DATA *ch, char *argument)
 	init_affect(&af);
 	af.where = TO_AFFECTS;
 	af.type = gsn_darksight;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.aftype = AFT_SKILL;
 	af.duration = 12;
 	af.location = 0;
@@ -2399,7 +2402,7 @@ void darksight_end(CHAR_DATA *ch, AFFECT_DATA *af)
 	init_affect(&af2);
 	af2.where = TO_AFFECTS;
 	af2.type = gsn_darksight;
-	af2.owner = ch;
+	af2.owner = ch->self;
 	af2.aftype = AFT_TIMER;
 	af2.duration = 36;
 	af2.modifier = 0;

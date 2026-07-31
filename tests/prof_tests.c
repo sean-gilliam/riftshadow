@@ -371,7 +371,7 @@ SCENARIO("retrieve the proficiencies taught by a trainer", "[GetProfsTaughtByTra
 			{
 				player->Profs()->GetProfsTaughtByTrainer(player, trainer);
 
-				auto result = !str_cmp(player->desc->outbuf, "\n\rcooking          | 13 points\n\rfirestarting     | 15 points\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf, "\n\rcooking          | 13 points\n\rfirestarting     | 15 points\n\r");
 				REQUIRE(result == true);
 			}
 
@@ -404,7 +404,7 @@ SCENARIO("a trainer tries to teach a character a procificiency", "[TrainProficie
 			{
 				player->Profs()->TrainProficiency(player, trainer, "moo");
 
-				auto result = !str_cmp(player->desc->outbuf,"\n\rSyntax: proficiencies train <proficiency>\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rSyntax: proficiencies train <proficiency>\n\r");
 				REQUIRE(result == true);
 			}
 
@@ -430,7 +430,7 @@ SCENARIO("a trainer tries to teach a character a procificiency", "[TrainProficie
 			{
 				player->Profs()->TrainProficiency(player, trainer, "train butchery");
 
-				auto result = !str_cmp(player->desc->outbuf,"\n\rYou can't study that here.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou can't study that here.\n\r");
 				REQUIRE(result == true);
 			}
 
@@ -457,7 +457,7 @@ SCENARIO("a trainer tries to teach a character a procificiency", "[TrainProficie
 				player->Profs()->SetProf(6, 1); // cooking
 				player->Profs()->TrainProficiency(player, trainer, "train cooking");
 
-				auto result = !str_cmp(player->desc->outbuf,"\n\rYou are already familiar with that proficiency.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou are already familiar with that proficiency.\n\r");
 				REQUIRE(result == true);
 			}
 
@@ -484,7 +484,7 @@ SCENARIO("a trainer tries to teach a character a procificiency", "[TrainProficie
 				player->Profs()->SetPoints(8);
 				player->Profs()->TrainProficiency(player, trainer, "train cooking");
 
-				auto result = !str_cmp(player->desc->outbuf,"\n\rYou don't have enough points to study that proficiency.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou don't have enough points to study that proficiency.\n\r");
 				REQUIRE(result == true);
 			}
 
@@ -523,7 +523,7 @@ SCENARIO("a trainer tries to teach a character a procificiency", "[TrainProficie
 				player->Profs()->SetPoints(30);
 				player->Profs()->TrainProficiency(player, trainer, "train tracking");
 
-				auto result = !str_cmp(player->desc->outbuf,"\n\rYou are not advanced enough in your guild to learn that proficiency.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou are not advanced enough in your guild to learn that proficiency.\n\r");
 				REQUIRE(result == true);
 			}
 
@@ -555,7 +555,7 @@ SCENARIO("a trainer tries to teach a character a procificiency", "[TrainProficie
 				//RS.Queue.ProcessQueue();
 
 				// TODO: this should be the trainers message to the character
-				//auto result = !str_cmp(player->desc->outbuf,"\n\r$N beckons you over to a nearby tree.\n\r");
+				//auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\r$N beckons you over to a nearby tree.\n\r");
 				//REQUIRE(result == true);
 
 				REQUIRE(player->Profs()->GetPoints() == 0);
@@ -975,7 +975,7 @@ SCENARIO("testing outputting character known proficiencies", "[ListKnownProficie
 
 			THEN("it should send a single line of text to the player buffer")
 			{
-				auto result = !str_cmp(player->desc->outbuf, "\n\rYou currently have no proficiencies.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf, "\n\rYou currently have no proficiencies.\n\r");
 
 				REQUIRE(result == true);
 			}
@@ -998,7 +998,7 @@ SCENARIO("testing outputting character known proficiencies", "[ListKnownProficie
 
 			THEN("it should send a listing of proficiencies to the player buffer")
 			{
-				auto result = !str_cmp(player->desc->outbuf, "\n\rYour proficiencies are:\n\rYou are proficient at cooking.\n\rYou are proficient at firestarting.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf, "\n\rYour proficiencies are:\n\rYou are proficient at cooking.\n\rYou are proficient at firestarting.\n\r");
 
 				REQUIRE(result == true);
 			}
@@ -1030,7 +1030,7 @@ SCENARIO("testing outputting a list of basic proficiencies", "[ListBasicProficie
 				buffer += std::string("cooking               firestarting          \n\r");
 				buffer += std::string("Many other proficiencies are known to Shalaran adventurers, but you must first find a teacher.\n\r");
 
-				REQUIRE(!str_cmp(buffer.c_str(), player->desc->outbuf));
+				REQUIRE(!str_cmp(buffer.c_str(), Deref(player->desc)->outbuf));
 			}
 
 			TestHelperCleanupPlayerObject(player);
@@ -1057,7 +1057,7 @@ SCENARIO("testing outputting a list of known proficiencies and points", "[Displa
 			{
 				auto buffer = std::string("\n\rProficiencies (30 pts left): \n\r");
 
-				REQUIRE(!str_cmp(buffer.c_str(), player->desc->outbuf));
+				REQUIRE(!str_cmp(buffer.c_str(), Deref(player->desc)->outbuf));
 			}
 
 			TestHelperCleanupPlayerObject(player);
@@ -1082,7 +1082,7 @@ SCENARIO("testing outputting a list of known proficiencies and points", "[Displa
 			{
 				auto buffer = std::string("\n\rProficiencies (30 pts left): mountaineering (1) cooking (1) firestarting\n\r(1) \n\r");
 
-				REQUIRE(!str_cmp(buffer.data(), player->desc->outbuf));
+				REQUIRE(!str_cmp(buffer.data(), Deref(player->desc)->outbuf));
 			}
 
 			TestHelperCleanupPlayerObject(player);
@@ -1164,7 +1164,7 @@ SCENARIO("display a list of proficiencies and skill mastery the player has learn
 			{
 				auto buffer = std::string("\n\rYou are adept in mountaineering.\n\rYou are masterful in cooking.\n\r");
 
-				REQUIRE(!str_cmp(buffer.c_str(), player->desc->outbuf));
+				REQUIRE(!str_cmp(buffer.c_str(), Deref(player->desc)->outbuf));
 			}
 
 			TestHelperCleanupPlayerObject(player);
@@ -1189,7 +1189,7 @@ SCENARIO("update the players proficiency points and notify them", "[UpdateProfPo
 			THEN("it should display a message notifying the player")
 			{
 				auto buffer = std::string("\n\rYou feel ready to study new proficiencies.\n\r");
-				REQUIRE(!str_cmp(buffer.c_str(), player->desc->outbuf));
+				REQUIRE(!str_cmp(buffer.c_str(), Deref(player->desc)->outbuf));
 			}
 
 			TestHelperCleanupPlayerObject(player);
@@ -1213,7 +1213,7 @@ SCENARIO("check to see if player leveled a proficiency (int int)", "[CheckImprov
 			THEN("it should display a message notifying the player")
 			{
 				// TODO: figure out how to game the chance generator to test correct output
-				auto result = player->desc->outbuf;
+				auto result = Deref(player->desc)->outbuf;
 
 				REQUIRE(1 == 1);
 			}
@@ -1237,7 +1237,7 @@ SCENARIO("check to see if player leveled a proficiency (char* int)", "[CheckImpr
 			THEN("it should display a message notifying the player")
 			{
 				// TODO: figure out how to game the chance generator to test correct output
-				auto result = player->desc->outbuf;
+				auto result = Deref(player->desc)->outbuf;
 
 				REQUIRE(1 == 1);
 			}
@@ -1428,7 +1428,7 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 				char_list = player2;
 				player->Profs()->InterpCommand("track", "player2");
 
-				auto result = !str_cmp(player->desc->outbuf,"\n\rTrack who?\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rTrack who?\n\r");
 
 				REQUIRE(result == true);
 			}
@@ -1455,7 +1455,7 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 				char_list = player2;
 				player->Profs()->InterpCommand("track", "player2");
 
-				auto result = !str_cmp(player->desc->outbuf,"\n\rYou cannot attempt to track them again yet.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou cannot attempt to track them again yet.\n\r");
 
 				REQUIRE(result == true);
 			}
@@ -1482,7 +1482,7 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 				char_list = player2;
 				player->Profs()->InterpCommand("track", "player2");
 
-				auto result = !str_cmp(player->desc->outbuf,"\n\rEven if they had been here, there would be no suitable tracks left for you to follow.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rEven if they had been here, there would be no suitable tracks left for you to follow.\n\r");
 
 				REQUIRE(result == true);
 			}
@@ -1512,7 +1512,7 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 				char_list = player2;
 				player->Profs()->InterpCommand("track", "player2");
 
-				//auto result = !str_cmp(player->desc->outbuf,"\n\rYou were unable to find any sign of player2 here.\n\r");
+				//auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou were unable to find any sign of player2 here.\n\r");
 				// TODO: find out how act() writes to buffer
 				REQUIRE(1 == 1);
 			}
@@ -1669,7 +1669,7 @@ SCENARIO("Attempt to bandage a character", "[prof_bandage]")
 			THEN("it should display a message notifying the player")
 			{
 				player->Profs()->InterpCommand("bandage", "self");
-				auto result = !str_cmp(player->desc->outbuf,"\n\rYou can only bandage wounds that are bleeding.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou can only bandage wounds that are bleeding.\n\r");
 
 				REQUIRE(result == true);
 			}
@@ -1689,7 +1689,7 @@ SCENARIO("Attempt to bandage a character", "[prof_bandage]")
 			THEN("it should display a message notifying the player")
 			{
 				player->Profs()->InterpCommand("bandage", "self");
-				auto result = !str_cmp(player->desc->outbuf,"\n\rThat wound has been bandaged too recently.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rThat wound has been bandaged too recently.\n\r");
 
 				REQUIRE(result == true);
 			}
@@ -1721,7 +1721,7 @@ SCENARIO("Attempt to bandage a character", "[prof_bandage]")
 			THEN("it should display a message notifying the player")
 			{
 				player->Profs()->InterpCommand("bandage", "self");
-				auto result = !str_cmp(player->desc->outbuf,"\n\rYou bandage your wounds, staunching the worst of the bleeding.\n\r");
+				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou bandage your wounds, staunching the worst of the bleeding.\n\r");
 
 				REQUIRE(result == true);
 			}

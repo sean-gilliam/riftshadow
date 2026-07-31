@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "quest.h"
 #include "comm.h"
 #include "update.h"
@@ -736,10 +737,10 @@ void pulse_prog_talismanic_page(OBJ_DATA *obj, bool isTick)
 	OBJ_DATA *scrap;
 	CHAR_DATA *ch;
 
-	if (!obj->carried_by)
-		return;
+	ch = Deref(obj->carried_by);
 
-	ch = obj->carried_by;
+	if (ch == nullptr)
+		return;
 
 	if (is_npc(ch))
 		return;
@@ -760,10 +761,10 @@ void pulse_prog_talismanic_scrap(OBJ_DATA *obj, bool isTick)
 	OBJ_DATA *page;
 	CHAR_DATA *ch;
 
-	if (!obj->carried_by)
-		return;
+	ch = Deref(obj->carried_by);
 
-	ch = obj->carried_by;
+	if (ch == nullptr)
+		return;
 
 	if (is_npc(ch))
 		return;
@@ -814,17 +815,17 @@ void pulse_prog_ilopheth_hermit(CHAR_DATA *mob)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && !is_npc(d->character) && d->character->in_room != nullptr &&
-			d->character->in_room->area != nullptr && d->character->in_room->area == mob->in_room->area &&
-			d->character->pcdata->quests[TALISMANIC_QUEST] == 5 && number_percent() < 5)
+		if (d->connected == CON_PLAYING && !is_npc(Deref(d->character)) && Deref(d->character)->in_room != nullptr &&
+			Deref(d->character)->in_room->area != nullptr && Deref(d->character)->in_room->area == mob->in_room->area &&
+			Deref(d->character)->pcdata->quests[TALISMANIC_QUEST] == 5 && number_percent() < 5)
 		{
-			sprintf(buf, "%s You!  Coming again to grub, eh?  You'll pay, oh yes yes, you will!", d->character->name);
+			sprintf(buf, "%s You!  Coming again to grub, eh?  You'll pay, oh yes yes, you will!", Deref(d->character)->name);
 			do_tell(mob, buf);
 
-			act("A bolt of lightning streaks down from the clouds above!", d->character, 0, 0, TO_ALL);
-			do_myell(d->character, "Argh!  I've been struck by lightning!", nullptr);
+			act("A bolt of lightning streaks down from the clouds above!", Deref(d->character), 0, 0, TO_ALL);
+			do_myell(Deref(d->character), "Argh!  I've been struck by lightning!", nullptr);
 
-			damage_new(mob, d->character, dice(d->character->level, 8), gsn_call_lightning, DAM_LIGHTNING, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "The lightning strike*");
+			damage_new(mob, Deref(d->character), dice(Deref(d->character)->level, 8), gsn_call_lightning, DAM_LIGHTNING, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "The lightning strike*");
 		}
 	}
 
@@ -1020,7 +1021,7 @@ void give_prog_starvin_pete(CHAR_DATA *mob, CHAR_DATA *ch, OBJ_DATA *obj)
 			if (!str_cmp(material_table[obj->pIndexData->material_index].mat_name, "meat"))
 			{
 				if (is_affected(mob, gsn_bash)
-					&& ((paf = affect_find(mob->affected, gsn_bash)) != nullptr && (ch == paf->owner)))
+					&& ((paf = affect_find(mob->affected, gsn_bash)) != nullptr && (ch == Deref(paf->owner))))
 				{
 					act("$n gobbles down $p noisily.", mob, obj, ch, TO_ALL);
 					do_say(mob, "Pete got no more money for you.");
@@ -1045,7 +1046,7 @@ void give_prog_starvin_pete(CHAR_DATA *mob, CHAR_DATA *ch, OBJ_DATA *obj)
 				af.aftype = AFT_INVIS;
 				af.type = gsn_bash;
 				af.duration = 2;
-				af.owner = ch;
+				af.owner = ch->self;
 			}
 			else
 			{

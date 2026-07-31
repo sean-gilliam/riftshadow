@@ -45,6 +45,7 @@
 #include "merc.h"
 #include "db.h"
 #include "db2.h"
+#include "entity/handles.h"
 #include "rift.h"
 #include "recycle.h"
 #include "lookup.h"
@@ -85,6 +86,11 @@ SHOP_DATA *shop_last;
 
 char bug_buf[2 * MAX_INPUT_LENGTH];
 CHAR_DATA *char_list;
+// The same entities as char_list/object_list, indexed so a cross-reference can
+// be checked for liveness instead of trusted. See entity/handles.h.
+SlotMap<CHAR_DATA> charHandles;
+SlotMap<OBJ_DATA> objectHandles;
+SlotMap<DESCRIPTOR_DATA> descriptorHandles;
 char *help_greeting;
 char log_buf[2 * MAX_INPUT_LENGTH];
 KILL_DATA kill_table[MAX_LEVEL];
@@ -1740,7 +1746,7 @@ void reset_room(ROOM_INDEX_DATA *pRoom)
 					break;
 
 				add_follower(LastMob, rch);
-				LastMob->leader = rch;
+				LastMob->leader = rch->self;
 				break;
 			case 'D':
 				pRoomIndex = get_room_index(pReset->arg1);
@@ -2406,46 +2412,6 @@ void clone_object(OBJ_DATA *parent, OBJ_DATA *clone)
 	/* extended desc — prepend each (reverses order), matching the old intrusive list */
 	for (const auto &ed : parent->extra_descr)
 		clone->extra_descr.insert(clone->extra_descr.begin(), ed);
-}
-
-/*
- * Clear a new character.
- */
-void clear_char(CHAR_DATA *ch)
-{
-	int i;
-
-	*ch = CHAR_DATA();
-	ch->name = &str_empty[0];
-	ch->short_descr = &str_empty[0];
-	ch->long_descr = &str_empty[0];
-	ch->description = &str_empty[0];
-	ch->prompt = &str_empty[0];
-	ch->logon = current_time;
-	ch->lines = PAGELEN;
-
-	for (i = 0; i < 4; i++)
-	{
-		ch->armor[i] = 0;
-	}
-
-	ch->position = POS_STANDING;
-	ch->hit = 20;
-	ch->max_hit = 20;
-	ch->mana = 100;
-	ch->max_mana = 100;
-	ch->move = 100;
-	ch->max_move = 100;
-	ch->last_fought = nullptr;
-	ch->last_fight_time = 0;
-	ch->last_fight_name = nullptr;
-	ch->on = nullptr;
-	ch->hometown = 0;
-	ch->arms = 2;
-	ch->legs = 2;
-	ch->balance = 0;
-	ch->regen_rate = 0;
-	ch->ghost = 0;
 }
 
 /*
@@ -3858,7 +3824,7 @@ void do_llimit(CHAR_DATA *ch, char *argument)
 
 	for (obj = object_list; obj != nullptr; obj = obj->next)
 	{
-		carrier = obj->carried_by;
+		carrier = Deref(obj->carried_by);
 
 		if (carrier != nullptr && !is_npc(carrier))
 			continue;
@@ -3978,7 +3944,10 @@ void load_rooms(FILE *fp)
 
 		fBootDb = true;
 
-		pRoomIndex = new ROOM_INDEX_DATA;
+		// Value-init, not default-init: the scalar members are read before
+		// anything assigns them -- `rune` in particular, which is now the only
+		// record of whether this room carries one.
+		pRoomIndex = new ROOM_INDEX_DATA();
 		pRoomIndex->reset_first = nullptr;
 		pRoomIndex->reset_last = nullptr;
 		pRoomIndex->owner = palloc_string("");
@@ -4007,7 +3976,6 @@ void load_rooms(FILE *fp)
 		pRoomIndex->rprogs = nullptr;
 		zero_vector(pRoomIndex->progtypes);
 		pRoomIndex->cabal = 0;
-		pRoomIndex->has_rune= false;
 
 		zero_vector(pRoomIndex->affected_by);
 		if (pRoomIndex->area->area_type == ARE_SHRINE)
@@ -4066,7 +4034,11 @@ void load_rooms(FILE *fp)
 					exit(1);
 				}
 
-				pexit = new EXIT_DATA;
+				// Value-init for the same reason as the room above. This one
+				// was the worse of the two: nothing zeroed the exit's rune
+				// fields at all, so every exit in the world booted with an
+				// indeterminate rune pointer behind an indeterminate flag.
+				pexit = new EXIT_DATA();
 				pexit->u1.vnum = fread_number(fp);
 				fread_flag_new(pexit->exit_info, fp);
 				pexit->key = fread_number(fp);

@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include "../merc.h"
+#include "../entity/handles.h"
 #include "necro.h"
 #include "../comm.h"
 #include "../act_comm.h"
@@ -259,7 +260,7 @@ void spell_hex(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	hex.aftype = AFT_MALADY;
 	hex.type = sn;
 	hex.level = level;
-	hex.owner = ch;
+	hex.owner = ch->self;
 	hex.location = APPLY_SAVING_SPELL;
 	hex.modifier = 30;
 	hex.duration = level / 6;
@@ -347,7 +348,7 @@ void spell_animate_dead(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (search = char_list; search != nullptr; search = search->next)
 	{
 		if (is_npc(search)
-			&& search->master == ch
+			&& Deref(search->master) == ch
 			&& (search->pIndexData->vnum == MOB_VNUM_ZOMBIE
 				|| (search->pIndexData->vnum >= 2940 && search->pIndexData->vnum <= 2947)))
 		{
@@ -417,7 +418,7 @@ void animate_two(CHAR_DATA *ch, OBJ_DATA *corpse)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		act("The interruption disrupts your concentration, and $p crumbles to dust.", ch, corpse, nullptr, TO_CHAR);
 		act("$n is unable to continue the animation process, and $p crumbles to dust.", ch, corpse, nullptr, TO_ROOM);
@@ -447,7 +448,7 @@ void animate_three(CHAR_DATA *ch, OBJ_DATA *corpse)
 		return;
 	}
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		act("The interruption disrupts your concentration, and $p crumbles to dust.", ch, corpse, nullptr, TO_CHAR);
 		act("$n is unable to continue the animation process, and $p crumbles to dust.", ch, corpse, nullptr, TO_ROOM);
@@ -563,7 +564,7 @@ void animate_four(CHAR_DATA *ch, OBJ_DATA *corpse)
 	std::snprintf(buf1, static_cast<size_t>(MAX_STRING_LENGTH), "%s", name);
 	add_follower(zombie, ch);
 
-	zombie->leader = ch;
+	zombie->leader = ch->self;
 
 	SET_BIT(zombie->affected_by, AFF_CHARM);
 
@@ -606,7 +607,7 @@ void spell_black_circle(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	for (pet = char_list; pet != nullptr; pet = pet->next)
 	{
-		if (is_npc(pet) && is_affected_by(pet, AFF_CHARM) && pet->master && pet->master == ch)
+		if (is_npc(pet) && is_affected_by(pet, AFF_CHARM) && Deref(pet->master) && Deref(pet->master) == ch)
 		{
 			stop_fighting(pet, true);
 
@@ -687,7 +688,7 @@ void spell_visceral(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void visceral_two(CHAR_DATA *ch)
 {
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The profane ritual disrupted, the magicks dissipate harmlessly.\n\r", ch);
 		ch->disrupted = true;
@@ -705,7 +706,7 @@ void visceral_three(CHAR_DATA *ch)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The dark powers are furious at the disruption of the unholy orgy!\n\r", ch);
 
@@ -731,7 +732,7 @@ void visceral_four(CHAR_DATA *ch)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unseen dark powers howl in fury at the disruption!\n\r", ch);
 		send_to_char("Invisible claws rend at your flesh as they seek to sate their bloodthirst!\n\r", ch);
@@ -751,7 +752,7 @@ void visceral_four(CHAR_DATA *ch)
 	af.aftype = AFT_SPELL;
 	af.level = ch->level;
 	af.duration = 60;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.end_fun = nullptr;
 	af.location = APPLY_HIT;
 	af.modifier = ch->level * 8;
@@ -763,7 +764,7 @@ void visceral_four(CHAR_DATA *ch)
 
 	for (mob = ch->in_room->people; mob != nullptr; mob = mob->next_in_room)
 	{
-		if (is_npc(mob) && is_affected_by(mob, AFF_CHARM) && mob->master && mob->master == ch)
+		if (is_npc(mob) && is_affected_by(mob, AFF_CHARM) && Deref(mob->master) && Deref(mob->master) == ch)
 		{
 			af.location = APPLY_DAMROLL;
 			af.modifier = (ch->level / 2) - 5;
@@ -780,7 +781,7 @@ void spell_ritual_soul(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (search = char_list; search != nullptr; search = search->next)
 	{
 		if (is_npc(search)
-			&& search->master == ch
+			&& Deref(search->master) == ch
 			&& search->pIndexData->vnum > 2939
 			&& search->pIndexData->vnum < 2945)
 		{
@@ -789,7 +790,7 @@ void spell_ritual_soul(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		}
 	}
 
-	if (!is_npc(victim) || victim->pIndexData->vnum != MOB_VNUM_ZOMBIE || victim->master != ch)
+	if (!is_npc(victim) || victim->pIndexData->vnum != MOB_VNUM_ZOMBIE || Deref(victim->master) != ch)
 	{
 		send_to_char("You must cast the ritual upon a zombie you control.\n\r", ch);
 		return;
@@ -811,7 +812,7 @@ void ritual_two(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unholy ritual disrupted, the harnessed energy dissipates harmlessly.\n\r", ch);
 
@@ -830,7 +831,7 @@ void ritual_three(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unholy ritual disrupted, the harnessed energy dissipates harmlessly.\n\r", ch);
 
@@ -856,7 +857,7 @@ void ritual_four(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The Dark Gods are angered at the disruption, and unleash their fury upon you!\n\r", ch);
 		act("A swirling black cloud coalesces above and lashes out at $n!", ch, nullptr, nullptr, TO_ROOM);
@@ -891,7 +892,7 @@ void ritual_four(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	add_follower(mob, ch);
 
-	mob->leader = ch;
+	mob->leader = ch->self;
 
 	SET_BIT(mob->affected_by, AFF_CHARM);
 
@@ -910,7 +911,7 @@ void spell_ritual_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (search = char_list; search != nullptr; search = search->next)
 	{
 		if (is_npc(search)
-			&& search->master == ch
+			&& Deref(search->master) == ch
 			&& search->pIndexData->vnum > 2944
 			&& search->pIndexData->vnum < 2948)
 		{
@@ -919,7 +920,7 @@ void spell_ritual_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		}
 	}
 
-	if (!is_npc(victim) || victim->pIndexData->vnum != MOB_VNUM_ZOMBIE || victim->master != ch)
+	if (!is_npc(victim) || victim->pIndexData->vnum != MOB_VNUM_ZOMBIE || Deref(victim->master) != ch)
 	{
 		send_to_char("You must cast the ritual upon a zombie you control.\n\r", ch);
 		return;
@@ -936,7 +937,7 @@ void spell_ritual_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void flesh_two(CHAR_DATA *ch, CHAR_DATA *victim)
 {
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unholy ritual disrupted, the harnessed energy dissipates harmlessly.\n\r", ch);
 		ch->disrupted = true;
@@ -954,7 +955,7 @@ void flesh_three(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The unholy ritual disrupted, the harnessed energy dissipates harmlessly.\n\r", ch);
 		ch->disrupted = true;
@@ -978,7 +979,7 @@ void flesh_four(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (ch->disrupted)
 		return;
 
-	if (ch->fighting)
+	if (Deref(ch->fighting))
 	{
 		send_to_char("The Dark Gods are angered at the disruption, and unleash their fury upon you!\n\r", ch);
 		act("A swirling black cloud coalesces above and lashes out at $n!", ch, nullptr, nullptr, TO_ROOM);
@@ -1017,7 +1018,7 @@ void flesh_four(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	add_follower(mob, ch);
 
-	mob->leader = ch;
+	mob->leader = ch->self;
 
 	SET_BIT(mob->affected_by, AFF_CHARM);
 
@@ -1129,7 +1130,7 @@ void spell_corrupt_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		do_myell(victim, buf, ch);
 		obj_from_char(obj);
 
-		if (ch->fighting == nullptr)
+		if (Deref(ch->fighting) == nullptr)
 			one_hit(victim, ch, TYPE_HIT);
 	}
 
@@ -1241,7 +1242,7 @@ void spell_corrupt_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		extract_obj(obj);
 
 		mob->level = 1;
-		mob->leader = ch;
+		mob->leader = ch->self;
 	}
 }
 
@@ -1375,7 +1376,7 @@ void spell_lesser_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (check = char_list; check != nullptr; check = check->next)
 	{
 		if (is_npc(check)
-			&& check->master == ch
+			&& Deref(check->master) == ch
 			&& (check->pIndexData->vnum == 2955 || check->pIndexData->vnum == 2956 || check->pIndexData->vnum == 2957))
 		{
 			send_to_char("You already have a golem under your command.\n\r", ch);
@@ -1429,7 +1430,7 @@ void spell_lesser_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	add_follower(mob, ch);
 
-	mob->leader = ch;
+	mob->leader = ch->self;
 
 	SET_BIT(mob->affected_by, AFF_CHARM);
 
@@ -1466,7 +1467,7 @@ void spell_greater_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	for (check = char_list; check != nullptr; check = check->next)
 	{
 		if (is_npc(check)
-			&& check->master == ch
+			&& Deref(check->master) == ch
 			&& (check->pIndexData->vnum == 2959 || check->pIndexData->vnum == 2960 || check->pIndexData->vnum == 2961))
 		{
 			send_to_char("You already have a golem under your command.\n\r", ch);
@@ -1559,7 +1560,7 @@ void spell_greater_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	add_follower(mob, ch);
 
-	mob->leader = ch;
+	mob->leader = ch->self;
 
 	SET_BIT(mob->affected_by, AFF_CHARM);
 
@@ -1656,7 +1657,7 @@ bool check_bond(CHAR_DATA *ch, CHAR_DATA *mob)
 		init_affect(&af);
 		af.where = TO_AFFECTS;
 		af.duration = -1;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.type = gsn_unholy_bond;
 		af.aftype = AFT_SKILL;
 		affect_to_char(mob, &af);
@@ -1684,8 +1685,8 @@ bool check_zombie_summon(CHAR_DATA *ch)
 	{
 		if (is_npc(mob)
 			&& is_affected_by(mob, AFF_CHARM)
-			&& mob->master
-			&& mob->master == ch
+			&& Deref(mob->master)
+			&& Deref(mob->master) == ch
 			&& is_affected(mob, gsn_unholy_bond))
 		{
 			if (number_percent() > 75)

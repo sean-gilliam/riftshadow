@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "magic.h"
+#include "entity/handles.h"
 #include "characterClasses/necro.h"
 #include "recycle.h"
 #include "tables.h"
@@ -217,8 +218,9 @@ bool saves_spell(int level, CHAR_DATA *victim, int dam_type)
 	int roll;
 	float save;
 	AFFECT_DATA *af;
+	CHAR_DATA *opponent = Deref(victim->fighting);
 	//    char buf[MSL];
-	if (victim->fighting && get_trust(victim->fighting) == MAX_LEVEL)
+	if (opponent && get_trust(opponent) == MAX_LEVEL)
 		return false;
 
 	if (victim->saving_throw < 0)
@@ -256,7 +258,7 @@ bool saves_spell(int level, CHAR_DATA *victim, int dam_type)
 	if (is_affected(victim, gsn_traitors_luck))
 	{
 		af = affect_find(victim->affected, gsn_traitors_luck);
-		if (victim->fighting && (victim->fighting == af->owner))
+		if (opponent && (opponent == Deref(af->owner)))
 			save -= 50;
 	}
 
@@ -267,11 +269,11 @@ bool saves_spell(int level, CHAR_DATA *victim, int dam_type)
 	roll = number_percent();
 
 	/*
-	if(victim->fighting && !is_npc(victim->fighting) && !is_npc(victim))
+	if(Deref(victim->fighting) && !is_npc(Deref(victim->fighting)) && !is_npc(victim))
 	{
 		sprintf(buf,"Saves_spell: Caster is probably %s, victim is %s, dt is %d.  Victim level %d, spell level %d (%d - %.2f%%mod)."\
 			" Victim has %dsvs (%.2f%%mod).  Chance of saving is %d, roll is %d: %s",
-			victim->fighting->name,
+			Deref(victim->fighting)->name,
 			victim->true_name,
 			dam_type,
 			victim->level,
@@ -597,7 +599,7 @@ void cast_myell(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (victim == ch)
 		return;
 
-	if (!is_npc(ch) && !is_npc(victim) && (ch->fighting == nullptr || victim->fighting == nullptr))
+	if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 	{
 		if (can_see(ch, victim) && victim->position > POS_SLEEPING)
 		{
@@ -833,7 +835,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 		case TAR_CHAR_OFFENSIVE:
 			if (arg2[0] == '\0')
 			{
-				if ((victim = ch->fighting) == nullptr)
+				if ((victim = Deref(ch->fighting)) == nullptr)
 				{
 					send_to_char("Cast the spell on whom?\n\r", ch);
 					return;
@@ -848,7 +850,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 				}
 			}
 
-			if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+			if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 			{
 				send_to_char("You can't do that on your own master.\n\r", ch);
 				return;
@@ -909,7 +911,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 		case TAR_OBJ_CHAR_OFF:
 			if (arg2[0] == '\0')
 			{
-				if ((victim = ch->fighting) == nullptr)
+				if ((victim = Deref(ch->fighting)) == nullptr)
 				{
 					send_to_char("Cast the spell on whom or what?\n\r", ch);
 					return;
@@ -924,7 +926,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 
 			if (target == TARGET_CHAR) /* check the sanity of the attack */
 			{
-				if (is_affected_by(ch, AFF_CHARM) && ch->master == victim)
+				if (is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim)
 				{
 					send_to_char("You can't do that on your own follower.\n\r", ch);
 					return;
@@ -1073,7 +1075,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 			&& get_skill(victim, gsn_nullify) > 1
 			&& !(is_npc(victim) && victim->cabal != CABAL_SCION)
 			&& (!is_immortal(ch) || !is_immortal(victim))
-			&& (!victim->fighting || (saves_spell(ch->level, victim, DAM_OTHER) && number_percent() < 50)))
+			&& (!Deref(victim->fighting) || (saves_spell(ch->level, victim, DAM_OTHER) && number_percent() < 50)))
 		{
 			if (!cabal_down(victim, CABAL_SCION))
 			{
@@ -1102,7 +1104,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 
 	if ((targtype == TAR_CHAR_OFFENSIVE || (targtype == TAR_OBJ_CHAR_OFF && target == TARGET_CHAR))
 		&& victim != ch
-		&& victim->master != ch
+		&& Deref(victim->master) != ch
 		&& !(is_affected(victim, gsn_bind_feet) && sn == gsn_bind_feet))
 	{
 		CHAR_DATA *vch, *vch_next;
@@ -1110,7 +1112,7 @@ void do_cast(CHAR_DATA *ch, char *argument)
 		for (vch = ch->in_room->people; vch; vch = vch_next)
 		{
 			vch_next = vch->next_in_room;
-			if (victim == vch && victim->fighting == nullptr)
+			if (victim == vch && Deref(victim->fighting) == nullptr)
 			{
 				multi_hit(victim, ch, TYPE_UNDEFINED);
 				break;
@@ -1150,7 +1152,7 @@ void obj_cast_spell(int sn, int level, CHAR_DATA *ch, CHAR_DATA *victim, OBJ_DAT
 			break;
 		case TAR_CHAR_OFFENSIVE:
 			if (victim == nullptr)
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 
 			if (victim == nullptr)
 			{
@@ -1188,9 +1190,9 @@ void obj_cast_spell(int sn, int level, CHAR_DATA *ch, CHAR_DATA *victim, OBJ_DAT
 		case TAR_OBJ_CHAR_OFF:
 			if (victim == nullptr && obj == nullptr)
 			{
-				if (ch->fighting != nullptr)
+				if (Deref(ch->fighting) != nullptr)
 				{
-					victim = ch->fighting;
+					victim = Deref(ch->fighting);
 				}
 				else
 				{
@@ -1236,20 +1238,20 @@ void obj_cast_spell(int sn, int level, CHAR_DATA *ch, CHAR_DATA *victim, OBJ_DAT
 
 			break;
 		case TAR_CHAR_AMBIGUOUS:
-			if (victim == ch && !ch->fighting)
+			if (victim == ch && !Deref(ch->fighting))
 			{
 				vo = (void *)victim;
 				target = TARGET_CHAR;
 			}
-			else if (victim == nullptr && !ch->fighting)
+			else if (victim == nullptr && !Deref(ch->fighting))
 			{
 				victim = ch;
 				vo = (void *)victim;
 				target = TARGET_CHAR;
 			}
-			else if (victim == nullptr && ch->fighting)
+			else if (victim == nullptr && Deref(ch->fighting))
 			{
-				victim = ch->fighting;
+				victim = Deref(ch->fighting);
 				vo = (void *)victim;
 				target = TARGET_CHAR;
 			}
@@ -1272,7 +1274,7 @@ void obj_cast_spell(int sn, int level, CHAR_DATA *ch, CHAR_DATA *victim, OBJ_DAT
 			|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF && target == TARGET_CHAR)
 			|| (skill_table[sn].target == TAR_CHAR_AMBIGUOUS && (!trusts(ch, victim) && !is_safe(ch, victim))))
 		&& victim != ch
-		&& victim->master != ch)
+		&& Deref(victim->master) != ch)
 	{
 		CHAR_DATA *vch;
 		CHAR_DATA *vch_next;
@@ -1280,7 +1282,7 @@ void obj_cast_spell(int sn, int level, CHAR_DATA *ch, CHAR_DATA *victim, OBJ_DAT
 		for (vch = ch->in_room->people; vch; vch = vch_next)
 		{
 			vch_next = vch->next_in_room;
-			if (victim == vch && victim->fighting == nullptr)
+			if (victim == vch && Deref(victim->fighting) == nullptr)
 			{
 				multi_hit(victim, ch, TYPE_UNDEFINED);
 				break;
@@ -1418,7 +1420,7 @@ void spell_blindness(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.level = level;
 	af.location = APPLY_HITROLL;
 	af.modifier = -4;
-	af.owner = ch;
+	af.owner = ch->self;
 
 	dur = level / 4;
 
@@ -1503,7 +1505,7 @@ void spell_cancellation(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	if (arg2[0] == '\0')
 	{
-		if ((!is_npc(ch) && is_npc(victim) && !(is_affected_by(ch, AFF_CHARM) && ch->master == victim))
+		if ((!is_npc(ch) && is_npc(victim) && !(is_affected_by(ch, AFF_CHARM) && Deref(ch->master) == victim))
 			|| (is_npc(ch) && !is_npc(victim)))
 		{
 			send_to_char("You failed.\n\r", ch);
@@ -1725,7 +1727,7 @@ void spell_charm_person(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	for (check = char_list; check != nullptr; check = check->next)
 	{
-		if (check->leader == ch && is_affected_by(check, AFF_CHARM))
+		if (Deref(check->leader) == ch && is_affected_by(check, AFF_CHARM))
 			count++;
 	}
 
@@ -1735,12 +1737,12 @@ void spell_charm_person(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	if (victim->master)
+	if (Deref(victim->master))
 		stop_follower(victim);
 
 	add_follower(victim, ch);
 
-	victim->leader = ch;
+	victim->leader = ch->self;
 
 	init_affect(&af);
 	af.where = TO_AFFECTS;
@@ -2637,7 +2639,7 @@ void spell_dispel_magic(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	bool commune = false;
 	int spell;
 
-	if (!ch->fighting && !str_cmp(target_name, ""))
+	if (!Deref(ch->fighting) && !str_cmp(target_name, ""))
 	{
 		ch->wait = 0;
 
@@ -2645,8 +2647,8 @@ void spell_dispel_magic(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	if (ch->fighting && !str_cmp(target_name, ""))
-		victim = ch->fighting;
+	if (Deref(ch->fighting) && !str_cmp(target_name, ""))
+		victim = Deref(ch->fighting);
 
 	target_name = one_argument(target_name, arg1);
 	one_argument(target_name, arg2);
@@ -2665,13 +2667,13 @@ void spell_dispel_magic(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	if (ch->Class()->ctype == CLASS_COMMUNER)
 		commune = true;
 
-	if (!is_npc(victim) && (ch != victim) && (!ch->fighting || !victim->fighting))
+	if (!is_npc(victim) && (ch != victim) && (!Deref(ch->fighting) || !Deref(victim->fighting)))
 	{
 		sprintf(buf, "Die, %s, you sorcerous dog!", pers(ch, victim));
 		do_myell(victim, buf, ch);
 	}
 
-	if (!victim->fighting && (ch != victim))
+	if (!Deref(victim->fighting) && (ch != victim))
 		multi_hit(victim, ch, TYPE_UNDEFINED);
 
 	if (arg2[0] == '\0')
@@ -2743,7 +2745,7 @@ void spell_fireball(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (is_same_group(vch, ch) || is_safe(ch, vch) || is_same_cabal(ch, vch))
 			continue;
 
-		if (!is_npc(ch) && !is_npc(vch) && (ch->fighting == nullptr || vch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(vch) && (Deref(ch->fighting) == nullptr || Deref(vch->fighting) == nullptr))
 		{
 			switch (number_range(0, 2))
 			{
@@ -2985,7 +2987,7 @@ void spell_gate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	CHAR_DATA *victim;
 	bool gate_pet;
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 	{
 		send_to_char("You can't concentrate enough.\n\r", ch);
 		return;
@@ -3041,7 +3043,7 @@ void spell_gate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	if (ch->pet != nullptr && ch->in_room == ch->pet->in_room)
+	if (Deref(ch->pet) != nullptr && ch->in_room == Deref(ch->pet)->in_room)
 		gate_pet = true;
 	else
 		gate_pet = false;
@@ -3060,14 +3062,14 @@ void spell_gate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	if (gate_pet)
 	{
-		act("$n steps through a gate and vanishes.", ch->pet, nullptr, nullptr, TO_ROOM);
-		send_to_char("You step through a gate and vanish.\n\r", ch->pet);
+		act("$n steps through a gate and vanishes.", Deref(ch->pet), nullptr, nullptr, TO_ROOM);
+		send_to_char("You step through a gate and vanish.\n\r", Deref(ch->pet));
 
-		char_from_room(ch->pet);
-		char_to_room(ch->pet, victim->in_room);
+		char_from_room(Deref(ch->pet));
+		char_to_room(Deref(ch->pet), victim->in_room);
 
-		act("$n has arrived through a gate.", ch->pet, nullptr, nullptr, TO_ROOM);
-		do_look(ch->pet, "auto");
+		act("$n has arrived through a gate.", Deref(ch->pet), nullptr, nullptr, TO_ROOM);
+		do_look(Deref(ch->pet), "auto");
 	}
 }
 
@@ -3521,7 +3523,7 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 			|| is_obj_stat(obj, ITEM_NOLOCATE)
 			|| number_percent() > level
 			|| ch->level < obj->level
-			|| (obj->carried_by && is_immortal(obj->carried_by)))
+			|| (Deref(obj->carried_by) && is_immortal(Deref(obj->carried_by))))
 		{
 			continue;
 		}
@@ -3529,14 +3531,17 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		found = true;
 		number++;
 
-		for (in_obj = obj; in_obj->in_obj != nullptr; in_obj = in_obj->in_obj)
-			;
+		in_obj = obj;
+		while (OBJ_DATA *outer = Deref(in_obj->in_obj))
+			in_obj = outer;
 
-		if (in_obj->carried_by != nullptr)
+		CHAR_DATA *carrier = Deref(in_obj->carried_by);
+
+		if (carrier != nullptr)
 		{
-			if (!is_affected(in_obj->carried_by, gsn_shadow_cloak))
+			if (!is_affected(carrier, gsn_shadow_cloak))
 			{
-				sprintf(buf, "%s is carried by %s.\n\r", obj->short_descr, pers(in_obj->carried_by, ch));
+				sprintf(buf, "%s is carried by %s.\n\r", obj->short_descr, pers(carrier, ch));
 			}
 			else
 			{
@@ -3547,7 +3552,9 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		}
 		else if (in_obj->in_room != nullptr)
 		{
-			if (is_affected(in_obj->carried_by, gsn_stash))
+			// carrier is null on this branch -- the object is in a room, not held.
+			// Preserved as found; is_affected tolerates null and returns false.
+			if (is_affected(carrier, gsn_stash))
 				sprintf(buf, "%s's location is blurry, you have a hard time trying to locate it.\n\r", obj->short_descr);
 			else
 				sprintf(buf, "%s is in %s.\n\r", obj->short_descr, get_room_name(in_obj->in_room));
@@ -3729,7 +3736,7 @@ void spell_plague(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	SET_BIT(af.bitvector, AFF_PLAGUE);
 
-	af.owner = ch;
+	af.owner = ch->self;
 	af.tick_fun = plague_tick;
 	af.end_fun = nullptr;
 	new_affect_join(victim, &af);
@@ -3784,7 +3791,7 @@ void plague_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 	dam = std::min(ch->level, af->level);
 	dam = std::max((int)(dam * .7), 10);
 
-	damage_new(af->owner, ch, dam, gsn_plague, DAM_DISEASE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "sickness");
+	damage_new(Deref(af->owner), ch, dam, gsn_plague, DAM_DISEASE, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "sickness");
 
 	ch->mana -= number_range(af->level / 2, (int)(af->level * 1.5));
 	ch->move -= number_range(af->level / 2, (int)(af->level * 1.5));
@@ -3844,7 +3851,7 @@ void spell_poison(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	SET_BIT(af.bitvector, AFF_POISON);
 
-	af.owner = ch;
+	af.owner = ch->self;
 	af.end_fun = nullptr;
 	af.tick_fun = poison_tick;
 	new_affect_to_char(victim, &af);
@@ -3861,10 +3868,10 @@ void poison_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 	act("$n shivers and suffers.", ch, nullptr, nullptr, TO_ROOM);
 	send_to_char("You shiver and suffer.\n\r", ch);
 
-	if (!af->owner)
-		af->owner = ch;
+	if (!Deref(af->owner))
+		af->owner = ch->self;
 
-	damage_new(af->owner, ch, af->level, gsn_poison, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "poison");
+	damage_new(Deref(af->owner), ch, af->level, gsn_poison, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "poison");
 }
 
 void spell_protection(int sn, int level, CHAR_DATA *ch, void *vo, int target)
@@ -4328,7 +4335,7 @@ void spell_summon(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		|| (is_npc(victim) && IS_SET(victim->act, ACT_AGGRESSIVE))
 		|| (is_npc(victim) && victim->level >= (level + 10))
 		|| (!is_npc(victim) && victim->level >= LEVEL_IMMORTAL && !is_immortal(ch))
-		|| victim->fighting != nullptr
+		|| Deref(victim->fighting) != nullptr
 		|| (is_npc(victim) && IS_SET(victim->imm_flags, IMM_SUMMON))
 		|| (is_npc(victim) && victim->pIndexData->pShop != nullptr)
 		|| (is_npc(victim) && IS_SET(victim->act, ACT_AGGRESSIVE))
@@ -4539,7 +4546,7 @@ void spell_turn_undead(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	{
 		for (follower = char_list; follower != nullptr; follower = follower->next)
 		{
-			if (follower->master == ch && IS_SET(follower->act, ACT_UNDEAD) && follower != ch)
+			if (Deref(follower->master) == ch && IS_SET(follower->act, ACT_UNDEAD) && follower != ch)
 			{
 				num++;
 				count += follower->level;
@@ -4572,8 +4579,8 @@ void spell_turn_undead(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 				act("$n stares in hatred for a moment then suddenly becomes very subdued.", victim, 0, 0, TO_NOTVICT);
 				stop_fighting(victim, true);
 
-				victim->master = ch;
-				victim->leader = ch;
+				victim->master = ch->self;
+				victim->leader = ch->self;
 
 				SET_BIT(victim->affected_by, AFF_CHARM);
 				REMOVE_BIT(victim->act, ACT_AGGRESSIVE);
@@ -4688,7 +4695,7 @@ void spell_word_of_recall(int sn, int level, CHAR_DATA *ch, void *vo, int target
 
 void recall_execute(CHAR_DATA *ch, ROOM_INDEX_DATA *location)
 {
-	if (ch->fighting || ch->disrupted)
+	if (Deref(ch->fighting) || ch->disrupted)
 	{
 		send_to_char("The magic of the recall spell dissipates as your focus is disrupted.\n\r", ch);
 		return;
@@ -4797,13 +4804,13 @@ void spell_fire_breath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		vch_next = vch->next_in_room;
 		/*
 		if (is_safe_spell(ch,vch,true)
-			|| (is_npc(vch) && is_npc(ch) && (ch->fighting != vch || vch->fighting != ch)))
+			|| (is_npc(vch) && is_npc(ch) && (Deref(ch->fighting) != vch || Deref(vch->fighting) != ch)))
 		{
 			continue;
 		}
 		*/
 
-		if (is_safe(ch, vch) && vch->fighting != nullptr && vch->fighting != ch)
+		if (is_safe(ch, vch) && Deref(vch->fighting) != nullptr && Deref(vch->fighting) != ch)
 			continue;
 
 		if (is_same_group(vch, ch))
@@ -4875,13 +4882,13 @@ void spell_frost_breath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		vch_next = vch->next_in_room;
 		/*
 		if (is_safe_spell(ch,vch,true)
-			||  (is_npc(vch) && is_npc(ch) && (ch->fighting != vch || vch->fighting != ch)))
+			||  (is_npc(vch) && is_npc(ch) && (Deref(ch->fighting) != vch || Deref(vch->fighting) != ch)))
 		{
 			continue;
 		}
 		*/
 
-		if ((is_safe(ch, vch) && vch->fighting != nullptr && vch->fighting != ch) || vch == ch)
+		if ((is_safe(ch, vch) && Deref(vch->fighting) != nullptr && Deref(vch->fighting) != ch) || vch == ch)
 			continue;
 
 		if (vch == victim) /* full damage */
@@ -4930,7 +4937,7 @@ void spell_gas_breath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	{
 		vch_next = vch->next_in_room;
 
-		if (is_safe(ch, vch) && vch->fighting != nullptr && vch->fighting != ch)
+		if (is_safe(ch, vch) && Deref(vch->fighting) != nullptr && Deref(vch->fighting) != ch)
 			continue;
 
 		if (is_same_group(ch, vch))
@@ -4978,7 +4985,7 @@ void spell_nether_breath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		af.modifier = level / 3;
 		af.duration = 12;
 		af.level = level;
-		af.owner = ch;
+		af.owner = ch->self;
 
 		SET_BIT(af.bitvector, AFF_CURSE);
 
@@ -5048,7 +5055,7 @@ void spell_iceball(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (is_safe(ch, vch))
 			continue;
 
-		if (!is_npc(ch) && !is_npc(vch) && (ch->fighting == nullptr || vch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(vch) && (Deref(ch->fighting) == nullptr || Deref(vch->fighting) == nullptr))
 		{
 			switch (number_range(0, 2))
 			{
@@ -5127,7 +5134,7 @@ void sanguine_blind(CHAR_DATA *ch, CHAR_DATA *victim)
 	af.type = gsn_blindness;
 	af.name = palloc_string("infected eyes");
 	af.level = ch->level;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.duration = number_percent() > 50 ? 1 : 0;
 	af.location = 0;
 	af.modifier = 0;
@@ -5266,7 +5273,7 @@ void spell_consecrate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	raf.duration = number_range(4, 6);
 	raf.location = APPLY_NONE;
 	raf.modifier = 0;
-	raf.owner = ch;
+	raf.owner = ch->self;
 	raf.end_fun = nullptr;
 	raf.tick_fun = nullptr;
 	new_affect_to_room(ch->in_room, &raf);
@@ -5325,7 +5332,7 @@ void spell_safety(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (IS_SET(gch->in_room->room_flags, ROOM_NO_RECALL) || is_affected_by(gch, AFF_CURSE))
 			continue;
 
-		if (gch->fighting != nullptr)
+		if (Deref(gch->fighting) != nullptr)
 			stop_fighting(gch, true);
 
 		char_from_room(gch);
@@ -5646,7 +5653,7 @@ void spell_deathspell(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (is_safe(ch, vch))
 			continue;
 
-		if (!is_npc(ch) && !is_npc(vch) && (ch->fighting == nullptr || vch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(vch) && (Deref(ch->fighting) == nullptr || Deref(vch->fighting) == nullptr))
 		{
 			switch (number_range(0, 2))
 			{
@@ -5726,7 +5733,7 @@ void spell_lifebane(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		if (vch == ch)
 			tmp_dam /= 2;
 
-		if (!is_npc(ch) && !is_npc(vch) && (ch->fighting == nullptr || vch->fighting == nullptr))
+		if (!is_npc(ch) && !is_npc(vch) && (Deref(ch->fighting) == nullptr || Deref(vch->fighting) == nullptr))
 		{
 			switch (number_range(0, 2))
 			{
@@ -5805,7 +5812,7 @@ void spell_heavenly_sceptre_fire(int sn, int level, CHAR_DATA *ch, void *vo, int
 	int dam;
 	CHAR_DATA *victim;
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 
 	if (is_affected(ch, sn) || victim == nullptr || ch->level < 30)
 	{
@@ -5921,7 +5928,7 @@ void spell_forget(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.aftype = AFT_SPELL;
 	af.type = sn;
 	af.modifier = 0;
-	af.owner = ch;
+	af.owner = ch->self;
 	af.duration = level / 10;
 	af.location = 0;
 	af.level = level;
@@ -6628,7 +6635,7 @@ void spell_talismanic_aura(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	af.duration = 8;
 	af.location = APPLY_DAM_MOD;
 	af.modifier = -(short)(ch->level * reduction);
-	af.owner = ch;
+	af.owner = ch->self;
 	af.end_fun = talismanic_end;
 	af.mod_name = MOD_PROTECTION;
 

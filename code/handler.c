@@ -39,6 +39,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "handler.h"
+#include "entity/handles.h"
 #include "magic.h"
 #include "recycle.h"
 #include "tables.h"
@@ -118,7 +119,7 @@ int count_users(OBJ_DATA *obj)
 
 	for (fch = obj->in_room->people; fch != nullptr; fch = fch->next_in_room)
 	{
-		if (fch->on == obj)
+		if (fch->on == obj->self)
 			count++;
 	}
 
@@ -493,12 +494,14 @@ int get_skill(CHAR_DATA *ch, int sn)
 	AFFECT_DATA *af;
 	bool using_switched= false;
 	CHAR_DATA *original = ch;
+	CHAR_DATA *opponent;
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
 
-	if (is_npc(ch) && ch->desc && ch->desc->original && IS_SET(ch->comm, COMM_SWITCHSKILLS))
+	if (is_npc(ch) && connection && Deref(connection->original) && IS_SET(ch->comm, COMM_SWITCHSKILLS))
 		using_switched = true;
 
 	if (using_switched)
-		ch = ch->desc->original;
+		ch = Deref(connection->original);
 
 	if (sn == -1) /* shorthand for level based skills */
 	{
@@ -629,17 +632,19 @@ int get_skill(CHAR_DATA *ch, int sn)
 	if (is_affected_room(ch->in_room, gsn_infidels_fate) && is_good(ch))
 		skill += (int)(skill * .1);
 
-	if (ch->fighting && is_affected(ch->fighting, gsn_traitors_luck))
-	{
-		af = affect_find(ch->fighting->affected, gsn_traitors_luck);
+	opponent = Deref(ch->fighting);
 
-		if (ch == af->owner)
+	if (opponent && is_affected(opponent, gsn_traitors_luck))
+	{
+		af = affect_find(opponent->affected, gsn_traitors_luck);
+
+		if (ch == Deref(af->owner))
 			skill += 20;
 	}
 
-	if (ch->fighting
-		&& (is_evil(ch) && is_affected(ch->fighting, gsn_awe))
-		&& ch->level > ch->fighting->level
+	if (opponent
+		&& (is_evil(ch) && is_affected(opponent, gsn_awe))
+		&& ch->level > opponent->level
 		&& number_percent() > 96)
 	{
 		skill = 0;
@@ -845,8 +850,10 @@ void reset_char(CHAR_DATA *ch)
  */
 int get_trust(CHAR_DATA *ch)
 {
-	if (ch->desc != nullptr && ch->desc->original != nullptr)
-		ch = ch->desc->original;
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
+		ch = Deref(connection->original);
 
 	if (ch->trust)
 		return ch->trust;
@@ -864,6 +871,7 @@ int get_trust(CHAR_DATA *ch)
 int get_curr_stat(CHAR_DATA *ch, int stat)
 {
 	AFFECT_DATA *af;
+	CHAR_DATA *opponent;
 	int max;
 	int mod = 0;
 
@@ -916,11 +924,13 @@ int get_curr_stat(CHAR_DATA *ch, int stat)
 		max = std::min(max, 25);
 	}
 
-	if (ch->fighting && is_affected(ch->fighting, gsn_traitors_luck))
-	{
-		af = affect_find(ch->fighting->affected, gsn_traitors_luck);
+	opponent = Deref(ch->fighting);
 
-		if (ch == af->owner)
+	if (opponent && is_affected(opponent, gsn_traitors_luck))
+	{
+		af = affect_find(opponent->affected, gsn_traitors_luck);
+
+		if (ch == Deref(af->owner))
 			mod = 2;
 	}
 
@@ -1613,7 +1623,7 @@ void char_from_room(CHAR_DATA *ch)
 	{
 		af = affect_find_room(prev_room->affected, gsn_gravity_well);
 
-		if (ch == af->owner)
+		if (ch == Deref(af->owner))
 			gravity_well_explode(prev_room, af);
 	}
 	if (!is_affected(ch, gsn_pull) && (check_entwine(ch, 1) || check_entwine(ch, 2)))
@@ -1628,7 +1638,7 @@ void char_from_room(CHAR_DATA *ch)
 			}
 		}
 
-		do_uncoil(aaf->owner, "automagic");
+		do_uncoil(Deref(aaf->owner), "automagic");
 	}
 	else if (!is_affected(ch, gsn_pull) && check_entwine(ch, 0))
 	{
@@ -1705,7 +1715,7 @@ void char_to_room(CHAR_DATA *ch, ROOM_INDEX_DATA *pRoomIndex)
 		}
 	}
 
-	if ((!IS_ZERO_VECTOR(ch->in_room->affected_by) || ch->in_room->has_rune) && is_immortal(ch))
+	if ((!IS_ZERO_VECTOR(ch->in_room->affected_by) || ch->in_room->rune != nullptr) && is_immortal(ch))
 		do_raffects(ch, "");
 }
 
@@ -1719,7 +1729,7 @@ void obj_to_char(OBJ_DATA *obj, CHAR_DATA *ch)
 {
 	obj->next_content = ch->carrying;
 	ch->carrying = obj;
-	obj->carried_by = ch;
+	obj->carried_by = ch->self;
 	obj->in_room = nullptr;
 	obj->in_obj = nullptr;
 	ch->carry_number += get_obj_number(obj);
@@ -1733,7 +1743,7 @@ void obj_from_char(OBJ_DATA *obj)
 {
 	CHAR_DATA *ch;
 
-	if ((ch = obj->carried_by) == nullptr)
+	if ((ch = Deref(obj->carried_by)) == nullptr)
 	{
 		RS.Logger.Debug("Obj_from_char: null ch.");
 		return;
@@ -1949,9 +1959,11 @@ void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 		return;
 	}
 
-	if (obj->wear_loc == WEAR_WIELD && check_entwine(obj->carried_by, 0))
+	CHAR_DATA *carrier = Deref(obj->carried_by);
+
+	if (obj->wear_loc == WEAR_WIELD && check_entwine(carrier, 0))
 	{
-		do_uncoil(obj->carried_by, "automagic");
+		do_uncoil(carrier, "automagic");
 	}
 
 	obj->wear_loc = -1;
@@ -2030,9 +2042,13 @@ void obj_from_room(OBJ_DATA *obj)
 	if (obj->item_type == ITEM_CAMPFIRE)
 		in_room->light = std::max(in_room->light - obj->value[0], 0);
 
+	// This is not a liveness check, and it cannot be replaced by one. Most
+	// callers leave the object entirely alive -- it is being picked up, blown
+	// into the next room, or relocated. What ends is the character's use of it,
+	// because it is no longer here to sit on.
 	for (ch = in_room->people; ch != nullptr; ch = ch->next_in_room)
 	{
-		if (ch->on == obj)
+		if (ch->on == obj->self)
 			ch->on = nullptr;
 	}
 
@@ -2092,18 +2108,18 @@ void obj_to_obj(OBJ_DATA *obj, OBJ_DATA *obj_to)
 
 	obj->next_content = obj_to->contains;
 	obj_to->contains = obj;
-	obj->in_obj = obj_to;
+	obj->in_obj = obj_to->self;
 	obj->in_room = nullptr;
 	obj->carried_by = nullptr;
 
 	if (obj_to->pIndexData->vnum == OBJ_VNUM_PIT)
 		obj->cost = 0;
 
-	for (; obj_to != nullptr; obj_to = obj_to->in_obj)
+	for (; obj_to != nullptr; obj_to = Deref(obj_to->in_obj))
 	{
-		if (obj_to->carried_by != nullptr)
+		if (CHAR_DATA *carrier = Deref(obj_to->carried_by))
 		{
-			obj_to->carried_by->carry_weight += get_obj_weight(obj);
+			carrier->carry_weight += get_obj_weight(obj);
 		}
 	}
 }
@@ -2115,7 +2131,7 @@ void obj_from_obj(OBJ_DATA *obj)
 {
 	OBJ_DATA *obj_from;
 
-	if ((obj_from = obj->in_obj) == nullptr)
+	if ((obj_from = Deref(obj->in_obj)) == nullptr)
 	{
 		RS.Logger.Debug("Obj_from_obj: null obj_from.");
 		return;
@@ -2148,11 +2164,11 @@ void obj_from_obj(OBJ_DATA *obj)
 	obj->next_content = nullptr;
 	obj->in_obj = nullptr;
 
-	for (; obj_from != nullptr; obj_from = obj_from->in_obj)
+	for (; obj_from != nullptr; obj_from = Deref(obj_from->in_obj))
 	{
-		if (obj_from->carried_by != nullptr)
+		if (CHAR_DATA *carrier = Deref(obj_from->carried_by))
 		{
-			obj_from->carried_by->carry_weight -= get_obj_weight(obj);
+			carrier->carry_weight -= get_obj_weight(obj);
 		}
 	}
 }
@@ -2165,11 +2181,14 @@ void extract_obj(OBJ_DATA *obj)
 	OBJ_DATA *obj_content;
 	OBJ_DATA *obj_next;
 
+	// Asks whether there is a live container to detach from, not merely whether
+	// the field was ever set: a carrier that has already been freed has no
+	// carrying list left to unlink from.
 	if (obj->in_room != nullptr)
 		obj_from_room(obj);
-	else if (obj->carried_by != nullptr)
+	else if (Deref(obj->carried_by) != nullptr)
 		obj_from_char(obj);
-	else if (obj->in_obj != nullptr)
+	else if (Deref(obj->in_obj) != nullptr)
 		obj_from_obj(obj);
 
 	obj->pIndexData->limcount -= 1;
@@ -2217,10 +2236,8 @@ void delay_extract(CHAR_DATA *ch)
  */
 void extract_char(CHAR_DATA *ch, bool fPull)
 {
-	CHAR_DATA *wch;
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
-	CHAR_DATA *tch;
 	ROOM_INDEX_DATA *room;
 
 	if (ch->in_room == nullptr)
@@ -2233,24 +2250,6 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 		RS.Logger.Warn("Extract_char: in_room is nullptr.  {}{}.",
 			is_npc(ch) ? "Vnum is " : "Name is ",
 			is_npc(ch) ? vn : ch->name);
-	}
-	/* remove all tracking */
-	for (tch = char_list; tch != nullptr; tch = tch->next)
-	{
-		if (tch->last_fought == ch)
-			tch->last_fought = nullptr;
-
-		if (!is_npc(ch) && !is_npc(tch) && tch->last_fight_name == ch->true_name)
-			tch->last_fight_name = nullptr;
-
-		if (!is_npc(tch) && !is_npc(ch) && tch->pcdata->trusting == ch)
-			tch->pcdata->trusting = nullptr;
-
-		for (auto &af : tch->affected)
-		{
-			if (af.owner == ch)
-				af.owner = nullptr;
-		}
 	}
 
 	nuke_pets(ch);
@@ -2292,25 +2291,29 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 		total_wealth -= ch->pIndexData->wealth;
 	}
 
-	if (ch->desc != nullptr && ch->desc->original != nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection != nullptr && Deref(connection->original) != nullptr)
 	{
 		do_return(ch, "");
 		ch->desc = nullptr;
 	}
 
-	for (wch = char_list; wch != nullptr; wch = wch->next)
-	{
-		if (wch->reply == ch)
-			wch->reply = nullptr;
-	}
-
+	// A character's room affects end with them. This is not the reference
+	// expiring -- that happens on its own now -- it is the effect itself being
+	// destroyed, which a handle cannot do: a disowned wall of fire goes on
+	// burning everyone who walks in, and every consumer of raf->owner in
+	// act_move.c and update.c hands it straight to damage_new and is_safe.
+	//
+	// It sits below the altar return deliberately, so it fires only when the
+	// character is really being freed. A slain player keeps what they placed.
 	for (room = top_affected_room; room; room = room->aff_next)
 	{
 		for (auto it = room->affected.begin(); it != room->affected.end(); )
 		{
 			auto next = std::next(it);
 
-			if (it->owner == ch)
+			if (Deref(it->owner) == ch)
 				affect_remove_room(room, &*it);
 
 			it = next;
@@ -2339,9 +2342,6 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 			return;
 		}
 	}
-
-	if (ch->desc != nullptr)
-		ch->desc->character = nullptr;
 
 	free_char(ch);
 }
@@ -2799,7 +2799,7 @@ bool can_see(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (!is_immortal(ch) && is_affected_by(victim, AFF_NOSHOW))
 		return false;
 
-	if (is_cabal_guard(ch) && !ch->desc)
+	if (is_cabal_guard(ch) && !Deref(ch->desc))
 		return true;
 
 	if (get_trust(ch) < victim->invis_level)
@@ -2834,7 +2834,7 @@ bool can_see(CHAR_DATA *ch, CHAR_DATA *victim)
 	{
 		paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
-		if (paf && paf->owner != ch)
+		if (paf && Deref(paf->owner) != ch)
 			return false;
 	}
 
@@ -2867,7 +2867,7 @@ bool can_see(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	if (is_affected_by(victim, AFF_HIDE)
 		&& !is_affected_by(ch, AFF_DETECT_HIDDEN)
-		&& victim->fighting == nullptr
+		&& Deref(victim->fighting) == nullptr
 		&& !(is_affected(ch, gsn_darksight)
 			&& (af = affect_find(ch->affected, gsn_darksight))
 			&& af->aftype == AFT_SKILL
@@ -2919,7 +2919,7 @@ bool can_see_obj(CHAR_DATA *ch, OBJ_DATA *obj)
 	{
 		oaf = affect_find_obj(obj->affected, gsn_stash);
 
-		if (oaf->owner != ch && !is_immortal(ch))
+		if (Deref(oaf->owner) != ch && !is_immortal(ch))
 			return false;
 	}
 
@@ -2939,7 +2939,7 @@ bool can_see_obj(CHAR_DATA *ch, OBJ_DATA *obj)
 	{
 		paf = affect_find_area(ch->in_room->area->affected, gsn_whiteout);
 
-		if (paf && paf->owner != ch)
+		if (paf && Deref(paf->owner) != ch)
 			return false;
 	}
 
@@ -4251,7 +4251,7 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 				BITWISE_OR(obj->affected_by, paf->bitvector);
 				break;
 			case TO_OBJ_APPLY:
-				ch = obj->carried_by;
+				ch = Deref(obj->carried_by);
 				wear = obj->wear_loc;
 
 				if (ch && (wear != WEAR_NONE))
@@ -4277,7 +4277,7 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 			BITWISE_XAND(obj->affected_by, paf->bitvector);
 			break;
 		case TO_OBJ_APPLY:
-			ch = obj->carried_by;
+			ch = Deref(obj->carried_by);
 			wear = obj->wear_loc;
 
 			if (ch && (wear != WEAR_NONE))

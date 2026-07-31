@@ -40,6 +40,7 @@
 #include <iterator>
 #include "merc.h"
 #include "act_wiz.h"
+#include "entity/handles.h"
 #include "rift.h"
 #include "prof.h"
 #include "weather_enums.h"
@@ -193,20 +194,22 @@ void wiznet(char *string, CHAR_DATA *ch, OBJ_DATA *obj, long flag, long flag_ski
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->connected == CON_PLAYING
-			&& d->character
-			&& is_immortal(d->character)
-			&& IS_SET(d->character->wiznet, WIZ_ON)
-			&& (!flag || IS_SET(d->character->wiznet, flag))
-			&& (!flag_skip || !IS_SET(d->character->wiznet, flag_skip))
-			&& get_trust(d->character) >= min_level
-			&& d->character != ch)
-		{
-			if (IS_SET(d->character->wiznet, WIZ_PREFIX))
-				send_to_char("--> ", d->character);
+		CHAR_DATA *wch = Deref(d->character);
 
-			sprintf(str, "%s%s%s", get_char_color(d->character, "wiznet"), string, END_COLOR(d->character));
-			act_new(str, d->character, obj, ch, TO_CHAR, POS_DEAD);
+		if (d->connected == CON_PLAYING
+			&& wch
+			&& is_immortal(wch)
+			&& IS_SET(wch->wiznet, WIZ_ON)
+			&& (!flag || IS_SET(wch->wiznet, flag))
+			&& (!flag_skip || !IS_SET(wch->wiznet, flag_skip))
+			&& get_trust(wch) >= min_level
+			&& wch != ch)
+		{
+			if (IS_SET(wch->wiznet, WIZ_PREFIX))
+				send_to_char("--> ", wch);
+
+			sprintf(str, "%s%s%s", get_char_color(wch, "wiznet"), string, END_COLOR(wch));
+			act_new(str, wch, obj, ch, TO_CHAR, POS_DEAD);
 		}
 	}
 }
@@ -842,7 +845,7 @@ void do_smote(CHAR_DATA *ch, char *argument)
 
 	for (vch = ch->in_room->people; vch != nullptr; vch = vch->next_in_room)
 	{
-		if (vch->desc == nullptr || vch == ch)
+		if (Deref(vch->desc) == nullptr || vch == ch)
 			continue;
 
 		letter = strstr(argument, vch->name);
@@ -1014,10 +1017,10 @@ void do_deny(CHAR_DATA *ch, char *argument)
 	victim->pause = 0;
 
 	// add to denial #
-	if (victim->desc)
+	if (Deref(victim->desc))
 	{
 		auto sites = SiteTrackerRepository(RS.DbRift);
-		sites.IncrementDenialsByHost(victim->desc->host);
+		sites.IncrementDenialsByHost(Deref(victim->desc)->host);
 	}
 
 	sprintf(buf, "AUTO: Denied by %s.\n\r", ch->true_name);
@@ -1071,7 +1074,7 @@ void do_disconnect(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->desc == nullptr)
+	if (Deref(victim->desc) == nullptr)
 	{
 		act("$N doesn't have a descriptor.", ch, nullptr, victim, TO_CHAR);
 		return;
@@ -1079,7 +1082,7 @@ void do_disconnect(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d == victim->desc)
+		if (d == Deref(victim->desc))
 		{
 			close_socket(d);
 			send_to_char("Ok.\n\r", ch);
@@ -1162,18 +1165,20 @@ void do_echo(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING)
 		{
-			colorconv(buffer, argument, d->character);
+			colorconv(buffer, argument, wch);
 
-			if (get_trust(d->character) >= get_trust(ch))
+			if (get_trust(wch) >= get_trust(ch))
 			{
-				send_to_char(ch->name, d->character);
-				send_to_char(" globals: ", d->character);
+				send_to_char(ch->name, wch);
+				send_to_char(" globals: ", wch);
 			}
 
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1191,11 +1196,13 @@ void do_immecho(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && (d->character->level > 51))
+		CHAR_DATA *wch = Deref(d->character);
+
+		if (d->connected == CON_PLAYING && (wch->level > 51))
 		{
-			colorconv(buffer, argument, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, argument, wch);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1213,15 +1220,17 @@ void do_recho(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && d->character->in_room == ch->in_room)
+		CHAR_DATA *wch = Deref(d->character);
+
+		if (d->connected == CON_PLAYING && wch->in_room == ch->in_room)
 		{
-			colorconv(buffer, argument, d->character);
+			colorconv(buffer, argument, wch);
 
-			if (get_trust(d->character) >= get_trust(ch) && !is_npc(ch))
-				send_to_char("local> ", d->character);
+			if (get_trust(wch) >= get_trust(ch) && !is_npc(ch))
+				send_to_char("local> ", wch);
 
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1239,18 +1248,20 @@ void do_zecho(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d; d = d->next)
 	{
+		CHAR_DATA *wch = Deref(d->character);
+
 		if (d->connected == CON_PLAYING
-			&& d->character->in_room != nullptr
+			&& wch->in_room != nullptr
 			&& ch->in_room != nullptr
-			&& d->character->in_room->area == ch->in_room->area)
+			&& wch->in_room->area == ch->in_room->area)
 		{
-			colorconv(buffer, argument, d->character);
+			colorconv(buffer, argument, wch);
 
-			if (get_trust(d->character) >= get_trust(ch) && !is_npc(ch))
-				send_to_char("zone> ", d->character);
+			if (get_trust(wch) >= get_trust(ch) && !is_npc(ch))
+				send_to_char("zone> ", wch);
 
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }
@@ -1332,12 +1343,14 @@ void do_transfer(CHAR_DATA *ch, char *argument)
 	{
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
+			CHAR_DATA *wch = Deref(d->character);
+
 			if (d->connected == CON_PLAYING
-				&& d->character != ch
-				&& d->character->in_room != nullptr
-				&& can_see(ch, d->character))
+				&& wch != ch
+				&& wch->in_room != nullptr
+				&& can_see(ch, wch))
 			{
-				auto buffer = fmt::format("{} {}", d->character->name, arg2);
+				auto buffer = fmt::format("{} {}", wch->name, arg2);
 				do_transfer(ch, buffer.data());
 			}
 		}
@@ -1395,7 +1408,7 @@ void do_transfer(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->fighting != nullptr)
+	if (Deref(victim->fighting) != nullptr)
 		stop_fighting(victim, true);
 
 	act("$n disappears in a mushroom cloud.", victim, nullptr, nullptr, TO_ROOM);
@@ -1418,7 +1431,10 @@ void do_at(CHAR_DATA *ch, char *argument)
 	char arg[MAX_INPUT_LENGTH];
 	ROOM_INDEX_DATA *location;
 	ROOM_INDEX_DATA *original;
-	OBJ_DATA *on;
+	// Held across interpret() below, which can run any command at all -- including
+	// one that destroys this object. A handle that outlives what it names simply
+	// stops resolving, where the pointer this replaced would have dangled.
+	Handle<OBJ_DATA> on;
 	CHAR_DATA *wch;
 
 	argument = one_argument(argument, arg);
@@ -1511,7 +1527,7 @@ void do_goto(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 		stop_fighting(ch, true);
 
 	for (rch = ch->in_room->people; rch != nullptr; rch = rch->next_in_room)
@@ -1573,7 +1589,7 @@ void do_violate(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->fighting != nullptr)
+	if (Deref(ch->fighting) != nullptr)
 		stop_fighting(ch, true);
 
 	for (rch = ch->in_room->people; rch != nullptr; rch = rch->next_in_room)
@@ -1841,7 +1857,9 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 
 	obj = get_obj_world(ch, argument);
 
-	if (obj == nullptr || (obj && obj->carried_by && !can_see(ch, obj->carried_by)))
+	CHAR_DATA *objCarrier = obj != nullptr ? Deref(obj->carried_by) : nullptr;
+
+	if (obj == nullptr || (objCarrier && !can_see(ch, objCarrier)))
 	{
 		send_to_char("Nothing like that in hell, earth, or heaven.\n\r", ch);
 		return;
@@ -1888,10 +1906,11 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 		obj->timer);
 	send_to_char(buf, ch);
 
+	OBJ_DATA *container = Deref(obj->in_obj);
 	sprintf(buf, "In room: %d  In object: %s  Carried by: %s  Wear_loc: %d\n\r",
 		obj->in_room == nullptr ? 0 : obj->in_room->vnum,
-		obj->in_obj == nullptr ? "(none)" : obj->in_obj->short_descr,
-		obj->carried_by == nullptr ? "(none)" : can_see(ch, obj->carried_by) ? obj->carried_by->name : "someone",
+		container == nullptr ? "(none)" : container->short_descr,
+		objCarrier == nullptr ? "(none)" : can_see(ch, objCarrier) ? objCarrier->name : "someone",
 		obj->wear_loc);
 	send_to_char(buf, ch);
 
@@ -2296,6 +2315,8 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 
 	for (auto &paf : obj->affected)
 	{
+		CHAR_DATA *owner = Deref(paf.owner);
+
 		if (paf.aftype == AFT_SKILL)
 			sprintf(buf2, "Skill");
 		else if (paf.aftype == AFT_POWER)
@@ -2322,7 +2343,7 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 			(paf.duration == 0) ? "" : (paf.duration == -1) ? "" : ".5",
 			(paf.where == TO_OBJ_AFFECTS) ? "aff" : (paf.where == TO_OBJ_APPLY) ? "apply" : "?",
 			oaffect_bit_name(paf.bitvector),
-			(paf.owner) ? paf.owner->name : "none", paf.level);
+			owner ? owner->name : "none", paf.level);
 		send_to_char(buffer.c_str(), ch);
 	}
 }
@@ -2471,6 +2492,8 @@ void do_astat(CHAR_DATA *ch, char *argument)
 
 		for (auto &paf : area->affected)
 		{
+			CHAR_DATA *owner = Deref(paf.owner);
+
 			if (paf.aftype == AFT_SKILL)
 				sprintf(buf, "Skill: '%s' ", skill_table[paf.type].name);
 			else if (paf.aftype == AFT_POWER)
@@ -2488,7 +2511,7 @@ void do_astat(CHAR_DATA *ch, char *argument)
 				(paf.duration == -1) ? paf.duration : paf.duration / 2,
 				"flag",
 				"nullptr",
-				paf.owner != nullptr ? paf.owner->name : "none",
+				owner ? owner->name : "none",
 				paf.level);
 			send_to_char(buf, ch);
 		}
@@ -2507,6 +2530,9 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	char cred[MSL], tbuf[MSL];
 	char arg[MAX_INPUT_LENGTH];
 	CHAR_DATA *victim;
+	CHAR_DATA *opponent;
+	CHAR_DATA *quarry;
+	CHAR_DATA *replyTo;
 	ROOM_INDEX_DATA *barred;
 	int i, x;
 
@@ -2594,16 +2620,21 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		position_table[victim->position].name);
 	send_to_char(buf, ch);
 
+	opponent = Deref(victim->fighting);
+	quarry = Deref(victim->hunting);
+
 	sprintf(buf, "Saves:  %-11d Dammod: %-8.4f%%   Hunt:   %-10s Fight: %-11s\n\r",
 		victim->saving_throw,
 		victim->dam_mod,
-		!victim->hunting ? "(none)" : victim->hunting->name,
-		!victim->fighting ? "(none)" : victim->fighting->name);
+		!quarry ? "(none)" : quarry->name,
+		!opponent ? "(none)" : opponent->name);
 	send_to_char(buf, ch);
 
+	replyTo = Deref(victim->reply);
+
 	sprintf(buf, "Master: %-11s Leader: %-10s  Pet:    %-10s Reply: %s\n\r",
-		victim->master ? victim->master->name : "(none)", victim->leader ? victim->leader->name : "(none)",
-		victim->pet ? victim->pet->name : "(none)", victim->reply ? victim->reply->name : "(none)");
+		Deref(victim->master) ? Deref(victim->master)->name : "(none)", Deref(victim->leader) ? Deref(victim->leader)->name : "(none)",
+		Deref(victim->pet) ? Deref(victim->pet)->name : "(none)", replyTo ? replyTo->name : "(none)");
 	send_to_char(buf, ch);
 
 	sprintf(buf, "Pierce: %-10d  Bash:   %-8d    Slash:  %-8d   Exotic: %-10d\n\r",
@@ -2630,10 +2661,12 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		sprintf(buf, "Short:  %-30s  ", victim->short_descr);
 		send_to_char(buf, ch);
 
-		if (victim->last_fought != nullptr)
+		CHAR_DATA *quarry = Deref(victim->last_fought);
+
+		if (quarry != nullptr)
 		{
 			sprintf(buf, "Tracking: Player %s.  Remaining Timer: %d\n\r",
-				victim->last_fought->name,
+				quarry->name,
 				victim->tracktimer);
 			send_to_char(buf, ch);
 		}
@@ -2725,7 +2758,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		sprintf(buf, "Trust: %s%s%s\n\r",
 			IS_SET(victim->pcdata->trust, TRUST_GROUP) ? "group " : "",
 			IS_SET(victim->pcdata->trust, TRUST_CABAL) ? "cabal " : "",
-			ch->pcdata->trusting ? ch->pcdata->trusting->true_name : "");
+			Deref(ch->pcdata->trusting) ? Deref(ch->pcdata->trusting)->true_name : "");
 		send_to_char(buf, ch);
 	}
 
@@ -2767,8 +2800,10 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 
 	if (!is_npc(victim))
 	{
+		CHAR_DATA *lastOpponent = Deref(victim->last_fight_opponent);
+
 		sprintf(buf, "Last PC fought: %s, %d seconds ago\n\r",
-			victim->last_fight_name != nullptr ? victim->last_fight_name : "(none)",
+			lastOpponent != nullptr ? lastOpponent->true_name : "(none)",
 			victim->last_fight_time ? (int)(current_time - victim->last_fight_time) : -1);
 		send_to_char(buf, ch);
 	}
@@ -3027,6 +3062,8 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 
 	for (auto &paf : victim->affected)
 	{
+		CHAR_DATA *owner = Deref(paf.owner);
+
 		if (paf.aftype == AFT_SPELL)
 			sprintf(buf2, "Spell");
 		else if (paf.aftype == AFT_SKILL)
@@ -3061,7 +3098,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 			paf.where == TO_IMMUNE || paf.where == TO_RESIST || paf.where == TO_VULN
 				? imm_bit_name(paf.bitvector)
 				: affect_bit_name(paf.bitvector),
-			paf.owner != nullptr ? paf.owner->true_name : "none", paf.level);
+			owner ? owner->true_name : "none", paf.level);
 		send_to_char(buffer.c_str(), ch);
 	}
 
@@ -3243,15 +3280,18 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 
 		number++;
 
-		for (in_obj = obj; in_obj->in_obj != nullptr; in_obj = in_obj->in_obj)
-			;
+		in_obj = obj;
+		while (OBJ_DATA *outer = Deref(in_obj->in_obj))
+			in_obj = outer;
 
-		if (in_obj->carried_by != nullptr && can_see(ch, in_obj->carried_by) && in_obj->carried_by->in_room != nullptr)
+		CHAR_DATA *carrier = Deref(in_obj->carried_by);
+
+		if (carrier != nullptr && can_see(ch, carrier) && carrier->in_room != nullptr)
 		{
 			sprintf(buf, "%3d) %s is carried by %s [Room %d]\n\r",
 				number, obj->short_descr,
-				pers(in_obj->carried_by, ch),
-				in_obj->carried_by->in_room->vnum);
+				pers(carrier, ch),
+				carrier->in_room->vnum);
 		}
 		else if (in_obj->in_room != nullptr && can_see_room(ch, in_obj->in_room))
 		{
@@ -3298,20 +3338,23 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
-			if (d->character != nullptr
+			victim = Deref(d->character);
+
+			if (victim != nullptr
 				&& d->connected == CON_PLAYING
-				&& d->character->in_room != nullptr
-				&& can_see(ch, d->character)
-				&& can_see_room(ch, d->character->in_room))
+				&& victim->in_room != nullptr
+				&& can_see(ch, victim)
+				&& can_see_room(ch, victim->in_room))
 			{
-				victim = d->character;
+				CHAR_DATA *original = Deref(d->original);
+
 				count++;
 
-				if (d->original != nullptr)
+				if (original != nullptr)
 				{
 					sprintf(buf, "%3d) %s (in the body of %s) is in %s [%d]\n\r",
 						count,
-						d->original->true_name,
+						original->true_name,
 						victim->short_descr,
 						get_room_name(victim->in_room),
 						victim->in_room->vnum);
@@ -3411,7 +3454,9 @@ void reboot_now(CHAR_DATA *ch)
 	for (d = descriptor_list; d != nullptr; d = d_next)
 	{
 		d_next = d->next;
-		vch = d->original ? d->original : d->character;
+		CHAR_DATA *original = Deref(d->original);
+
+		vch = original ? original : Deref(d->character);
 
 		if (vch != nullptr && d->connected == 0)
 		{
@@ -3569,7 +3614,7 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->desc == nullptr)
+	if (Deref(victim->desc) == nullptr)
 	{
 		send_to_char("No descriptor to snoop.\n\r", ch);
 		return;
@@ -3580,16 +3625,20 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 		send_to_char("Cancelling all snoops.\n\r", ch);
 		wiznet("$N stops being such a snoop.", ch, nullptr, WIZ_SNOOPS, WIZ_SECURE, get_trust(ch));
 
+		// A game rule, not lifetime: "snoop self" means "drop every snoop I am
+		// running", and nobody is leaving the world.
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
-			if (d->snoop_by == ch->desc)
+			if (Deref(d->snoop_by) == Deref(ch->desc))
 				d->snoop_by = nullptr;
 		}
 
 		return;
 	}
 
-	if (victim->desc->snoop_by != nullptr)
+	DESCRIPTOR_DATA *watched = Deref(victim->desc);
+
+	if (Deref(watched->snoop_by) != nullptr)
 	{
 		send_to_char("Busy already.\n\r", ch);
 		return;
@@ -3616,19 +3665,26 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->desc != nullptr)
+	DESCRIPTOR_DATA *watcher = Deref(ch->desc);
+
+	if (watcher == nullptr)
 	{
-		for (d = ch->desc->snoop_by; d != nullptr; d = d->snoop_by)
+		// Assigning the field used to be harmless when there was no connection
+		// to assign; taking a handle off one is not.
+		send_to_char("You have no connection to snoop with.\n\r", ch);
+		return;
+	}
+
+	for (d = Deref(watcher->snoop_by); d != nullptr; d = Deref(d->snoop_by))
+	{
+		if (Deref(d->character) == victim || Deref(d->original) == victim)
 		{
-			if (d->character == victim || d->original == victim)
-			{
-				send_to_char("No snoop loops.\n\r", ch);
-				return;
-			}
+			send_to_char("No snoop loops.\n\r", ch);
+			return;
 		}
 	}
 
-	victim->desc->snoop_by = ch->desc;
+	watched->snoop_by = watcher->self;
 
 	sprintf(buf, "$N starts snooping on %s", (is_npc(ch) ? victim->short_descr : victim->name));
 	wiznet(buf, ch, nullptr, WIZ_SNOOPS, WIZ_SECURE, get_trust(ch));
@@ -3649,10 +3705,12 @@ void do_switch(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->desc == nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
 		return;
 
-	if (ch->desc->original != nullptr)
+	if (Deref(connection->original) != nullptr)
 	{
 		send_to_char("You are already switched.\n\r", ch);
 		return;
@@ -3687,7 +3745,7 @@ void do_switch(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->desc != nullptr)
+	if (Deref(victim->desc) != nullptr)
 	{
 		send_to_char("Character in use.\n\r", ch);
 		return;
@@ -3696,8 +3754,8 @@ void do_switch(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "$N switches into %s.", victim->short_descr);
 	wiznet(buf, ch, nullptr, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
 
-	ch->desc->character = victim;
-	ch->desc->original = ch;
+	Deref(ch->desc)->character = victim->self;
+	Deref(ch->desc)->original = ch->self;
 	victim->desc = ch->desc;
 	// The possessed mob borrows the immortal's pcdata (it's an NPC, so its own
 	// pcdata is null). Ownership stays with the original body; do_return calls
@@ -3720,10 +3778,12 @@ void do_return(CHAR_DATA *ch, char *argument)
 {
 	char buf[MAX_STRING_LENGTH];
 
-	if (ch->desc == nullptr)
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
 		return;
 
-	if (ch->desc->original == nullptr)
+	if (Deref(connection->original) == nullptr)
 	{
 		send_to_char("You aren't switched.\n\r", ch);
 		return;
@@ -3739,12 +3799,12 @@ void do_return(CHAR_DATA *ch, char *argument)
 
 	sprintf(buf, "$N returns from %s.", ch->short_descr);
 
-	wiznet(buf, ch->desc->original, 0, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
+	wiznet(buf, Deref(connection->original), 0, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
 
 	ch->pcdata.release();		// relinquish the borrowed pcdata WITHOUT freeing it
-	ch->desc->character = ch->desc->original;
-	ch->desc->original = nullptr;
-	ch->desc->character->desc = ch->desc;
+	connection->character = connection->original;
+	connection->original = nullptr;
+	Deref(connection->character)->desc = ch->desc;
 	ch->desc = nullptr;
 }
 
@@ -3841,7 +3901,7 @@ void do_clone(CHAR_DATA *ch, char *argument)
 		clone = create_object(obj->pIndexData, 0);
 		clone_object(obj, clone);
 
-		if (obj->carried_by != nullptr)
+		if (Deref(obj->carried_by) != nullptr)
 			obj_to_char(clone, ch);
 		else
 			obj_to_room(clone, ch->in_room);
@@ -4089,7 +4149,7 @@ void do_purge(CHAR_DATA *ch, char *argument)
 		if (victim->level > 1)
 			save_char_obj(victim);
 
-		d = victim->desc;
+		d = Deref(victim->desc);
 		extract_char(victim, true);
 
 		if (d != nullptr)
@@ -4289,7 +4349,7 @@ void do_restore(CHAR_DATA *ch, char *argument)
 
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
-			victim = d->character;
+			victim = Deref(d->character);
 
 			if (victim == nullptr || is_npc(victim))
 				continue;
@@ -4613,7 +4673,7 @@ void do_peace(CHAR_DATA *ch, char *argument)
 {
 	for (CHAR_DATA *rch = ch->in_room->people; rch != nullptr; rch = rch->next_in_room)
 	{
-		if (rch->fighting != nullptr)
+		if (Deref(rch->fighting) != nullptr)
 			stop_fighting(rch, true);
 
 		if (is_npc(rch) && IS_SET(rch->act, ACT_AGGRESSIVE))
@@ -5804,11 +5864,14 @@ void do_sockets(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->character != nullptr
-			&& ((!d->original && can_see(ch, d->character))
-				|| (d->original && can_see(ch, d->original)))
-			&& (!IS_SET(d->character->comm, COMM_NOSOCKET) || get_trust(ch) == MAX_LEVEL)
-			&& (arg[0] == '\0' || is_name(arg, d->character->true_name) || bDis))
+		CHAR_DATA *wch = Deref(d->character);
+		CHAR_DATA *original = Deref(d->original);
+
+		if (wch != nullptr
+			&& ((!original && can_see(ch, wch))
+				|| (original && can_see(ch, original)))
+			&& (!IS_SET(wch->comm, COMM_NOSOCKET) || get_trust(ch) == MAX_LEVEL)
+			&& (arg[0] == '\0' || is_name(arg, wch->true_name) || bDis))
 		{
 			count++;
 
@@ -5836,15 +5899,15 @@ void do_sockets(CHAR_DATA *ch, char *argument)
 				d->connected == (CON_READ_MOTD) ? "Getting motd" :
 				d->connected == (CON_CHOOSE_WEAPON) ? "Choosing weapon" :
 				d->connected == (CON_GET_CABAL) ? "Getting cabal" : "null",
-				(int)((current_time - d->character->logon) / 60),
-				d->original
-					? (d->original->true_name)
-						? d->original->true_name
-						: d->original->name
-					: d->character
-						? (d->character->true_name)
-							? d->character->true_name
-							: d->character->name
+				(int)((current_time - wch->logon) / 60),
+				original
+					? (original->true_name)
+						? original->true_name
+						: original->name
+					: wch
+						? (wch->true_name)
+							? wch->true_name
+							: wch->name
 						: "(none)",
 				bDis && get_trust(ch) > 58 ? d->host : "unknown");
 		}
@@ -5895,7 +5958,9 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->character != nullptr && can_see(ch, d->character))
+		CHAR_DATA *wch = Deref(d->character);
+
+		if (wch != nullptr && can_see(ch, wch))
 		{
 			CHARLIST[i].des = d;
 			i++;
@@ -5927,19 +5992,22 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 		if (!strcmp(CHARLIST[j].des->host, CHARLIST[j + 1].des->host)
 			|| (j != 0 && !strcmp(CHARLIST[j].des->host, CHARLIST[j - 1].des->host)))
 		{
+			CHAR_DATA *original = Deref(CHARLIST[j].des->original);
+			CHAR_DATA *player = Deref(CHARLIST[j].des->character);
+
 			count++;
 
 			sprintf(buf + strlen(buf), "[%3d %2d] %s@%s\n\r",
 				CHARLIST[j].des->descriptor,
 				CHARLIST[j].des->connected,
-				CHARLIST[j].des->original
-					? CHARLIST[j].des->original->true_name
-						? CHARLIST[j].des->original->true_name
-						: CHARLIST[j].des->original->name
-					: CHARLIST[j].des->character
-						? CHARLIST[j].des->character->true_name
-							? CHARLIST[j].des->character->true_name
-							: CHARLIST[j].des->character->name
+				original
+					? original->true_name
+						? original->true_name
+						: original->name
+					: player
+						? player->true_name
+							? player->true_name
+							: player->name
 						: "(none)",
 				(get_trust(ch) >= 55) ? CHARLIST[j].des->host : "unknown");
 		}
@@ -5951,14 +6019,17 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 	*/
 	if (!strcmp(CHARLIST[j].des->host, CHARLIST[j - 1].des->host))
 	{
+		CHAR_DATA *original = Deref(CHARLIST[j].des->original);
+		CHAR_DATA *player = Deref(CHARLIST[j].des->character);
+
 		count++;
 		sprintf(buf + strlen(buf), "[%3d %2d] %s@%s\n\r",
 			CHARLIST[j].des->descriptor,
 			CHARLIST[j].des->connected,
-			CHARLIST[j].des->original
-				? CHARLIST[j].des->original->name
-				: CHARLIST[j].des->character
-					? CHARLIST[j].des->character->name : "(none)",
+			original
+				? original->name
+				: player
+					? player->name : "(none)",
 			(get_trust(ch) >= 55) ? CHARLIST[j].des->host : "unknown");
 	}
 
@@ -6097,7 +6168,7 @@ void do_force(CHAR_DATA *ch, char *argument)
 		}
 
 		/*
-		if(victim->desc == nullptr)
+		if(Deref(victim->desc) == nullptr)
 		{
 			send_to_char("They have no descriptor!\n\r",ch);
 			return;
@@ -7145,6 +7216,8 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 
 		for (auto &paf : ch->in_room->affected)
 		{
+			CHAR_DATA *owner = Deref(paf.owner);
+
 			if (paf.aftype == AFT_SPELL)
 				sprintf(buf, "Spell: '%s' ", skill_table[paf.type].name);
 
@@ -7168,19 +7241,23 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 				paf.duration / 2,
 				paf.where == TO_ROOM_FLAGS ? "flag" : paf.where == TO_ROOM_CONST ? "const" : "aff",
 				"nullptr",
-				paf.owner != nullptr ? paf.owner->name : "none",
+				owner ? owner->name : "none",
 				paf.level);
 			send_to_char(buf, ch);
 		}
 	}
 
-	if (ch->in_room->has_rune)
+	if (ch->in_room->rune != nullptr)
 	{
 		for (rune = ch->in_room->rune; rune; rune = rune->next_content)
 		{
+			// A rune outlives its caster by design and nothing clears the
+			// back-reference, so "gone" is an ordinary answer here.
+			CHAR_DATA *caster = Deref(rune->owner);
+
 			sprintf(buf, "Rune '%s' placed in room by %s, level %d, duration %d hours.\n\r",
 				skill_table[rune->type].name,
-				!is_npc(rune->owner) ? rune->owner->true_name : rune->owner->name,
+				caster == nullptr ? "someone gone" : (!is_npc(caster) ? caster->true_name : caster->name),
 				rune->level,
 				rune->duration);
 			send_to_char(buf, ch);
@@ -7189,14 +7266,16 @@ void do_raffects(CHAR_DATA *ch, char *argument)
 
 	for (i = 0; i < 6; i++)
 	{
-		if (ch->in_room->exit[i] && ch->in_room->exit[i]->has_rune == true)
+		if (ch->in_room->exit[i] && ch->in_room->exit[i]->rune != nullptr)
 		{
 			rune = ch->in_room->exit[i]->rune;
+
+			CHAR_DATA *caster = Deref(rune->owner);
 
 			sprintf(buf, "Rune '%s' placed on %s door by %s, level %d, duration %d hours.\n\r",
 				skill_table[rune->type].name,
 				direction_table[i].name,
-				!is_npc(rune->owner) ? rune->owner->true_name : rune->owner->name,
+				caster == nullptr ? "someone gone" : (!is_npc(caster) ? caster->true_name : caster->name),
 				rune->level, rune->duration);
 			send_to_char(buf, ch);
 

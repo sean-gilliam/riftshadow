@@ -55,7 +55,7 @@ void spell_healing_sleep(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	af.type = sn;
 	af.level = level;
 	af.duration = 4;
-	af.owner = ch;
+	af.owner = ch->self;
 
 	SET_BIT(af.bitvector, AFF_SLEEP);
 

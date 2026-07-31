@@ -46,6 +46,7 @@
 #include "recycle.h"
 #include "comm.h"
 #include "db.h"
+#include "entity/handles.h"
 #include "handler.h"
 #include "newmem.h"
 #include "misc.h"
@@ -81,13 +82,19 @@ DESCRIPTOR_DATA *new_descriptor(void)
 
 	*d = d_zero;
 
-	d->valid = true;
+	// After the reset, which zeroes the old handle along with everything else.
+	d->self = descriptorHandles.Add(d);
+
 	return d;
 }
 
 void free_descriptor(DESCRIPTOR_DATA *d)
 {
-	if (!(d != nullptr && d->valid))
+	// The slot map answers "is this a live connection this module handed out",
+	// which is what the old `valid` bool was for and one thing more: a
+	// descriptor that was never registered has a null handle, so a stack-built
+	// one cannot be pushed onto the free list by mistake.
+	if (d == nullptr || Deref(d->self) != d)
 		return;
 
 	free_pstring(d->host);
@@ -95,7 +102,12 @@ void free_descriptor(DESCRIPTOR_DATA *d)
 	if (d->outbuf)
 		delete[] d->outbuf;
 
-	d->valid = false;
+	// Expires every handle to this connection. Must happen before it goes on
+	// the free list, since new_descriptor can hand the same address straight
+	// back out.
+	descriptorHandles.Remove(d->self);
+	d->self = nullptr;
+
 	d->next = descriptor_free;
 	descriptor_free = d;
 }
@@ -221,47 +233,6 @@ void free_race_data(RACE_DATA *race_specs)
 	{
 		free_race_data(race_specs->next);
 		delete race_specs;
-	}
-}
-
-PATHFIND_DATA *new_path_data(void)
-{
-	PATHFIND_DATA *path = new PATHFIND_DATA;
-
-	path->room = nullptr;
-	path->evaluated= false;
-	path->dir_from = -1;
-	path->steps = -1;
-	path->prev = nullptr;
-
-	for (int i = 0; i < 6; i++)
-	{
-		path->dir_to[i] = nullptr;
-	}
-
-	return path;
-}
-
-void free_path(PATHFIND_DATA *path)
-{
-	if (!path->dir_to[Directions::North]
-		&& !path->dir_to[Directions::East]
-		&& !path->dir_to[Directions::South]
-		&& !path->dir_to[Directions::West]
-		&& !path->dir_to[Directions::Up]
-		&& !path->dir_to[Directions::Down])
-	{
-		delete path;
-	}
-	else
-	{
-		for (int i = 0; i < 6; i++)
-		{
-			if (path->dir_to[i])
-				free_path(path->dir_to[i]);
-		}
-
-		delete path;
 	}
 }
 
@@ -447,13 +418,15 @@ OBJ_DATA *new_obj(void)
 
 	*obj = obj_zero;
 
-	obj->valid = true;
+	// After the reset, which zeroes the old handle along with everything else.
+	obj->self = objectHandles.Add(obj);
+
 	return obj;
 }
 
 void free_obj(OBJ_DATA *obj)
 {
-	if (!(obj != nullptr && obj->valid))
+	if (obj == nullptr || Deref(obj->self) != obj)
 		return;
 
 	obj->affected.clear();
@@ -466,7 +439,12 @@ void free_obj(OBJ_DATA *obj)
 	free_pstring(obj->short_descr);
 
 	// free_pstring( obj->owner     );
-	obj->valid = false;
+
+	// Expires every handle to this object. Must happen before it goes on the
+	// free list, since new_obj can hand the same address straight back out.
+	objectHandles.Remove(obj->self);
+	obj->self = nullptr;
+
 	obj->next = obj_free;
 	obj_free = obj;
 }
@@ -496,7 +474,8 @@ CHAR_DATA *new_char(void)
 	// temporary zeroes the PODs and frees/clears the owned members.
 	*ch = CHAR_DATA();
 
-	ch->valid = true;
+	// After the reset, which zeroes the old handle along with everything else.
+	ch->self = charHandles.Add(ch);
 
 	ch->name = &str_empty[0];
 	ch->short_descr = &str_empty[0];
@@ -545,7 +524,7 @@ void free_char(CHAR_DATA *ch)
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
 
-	if (!(ch != nullptr && ch->valid) || !ch)
+	if (ch == nullptr || Deref(ch->self) != ch)
 		return;
 
 	if (is_npc(ch))
@@ -580,10 +559,13 @@ void free_char(CHAR_DATA *ch)
 	ch->pcdata.reset();
 	ch->gen_data.reset();
 
+	// Expires every handle to this character. Must happen before it goes on the
+	// free list, since new_char can hand the same address straight back out.
+	charHandles.Remove(ch->self);
+	ch->self = nullptr;
+
 	ch->next = char_free;
 	char_free = ch;
-
-	ch->valid = false;
 }
 
 std::unique_ptr<PC_DATA> new_pcdata(void)
@@ -591,7 +573,6 @@ std::unique_ptr<PC_DATA> new_pcdata(void)
 	auto pcdata = std::make_unique<PC_DATA>();	// value-init zeroes every POD field
 
 	pcdata->buffer = new BUFFER;
-	pcdata->valid = true;
 
 	return pcdata;
 }

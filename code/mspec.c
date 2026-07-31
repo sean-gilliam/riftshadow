@@ -5,6 +5,7 @@
 #include <time.h>
 #include <algorithm>
 #include "merc.h"
+#include "entity/handles.h"
 #include "mspec.h"
 #include "handler.h"
 #include "spec.h"
@@ -263,8 +264,8 @@ void create_academy_pet(CHAR_DATA *ch)
 
 	add_follower(mob, ch);
 
-	mob->leader = ch;
-	ch->pet = mob;
+	mob->leader = ch->self;
+	ch->pet = mob->self;
 
 	RS.Logger.Info("entered create_academy_pet queue");
 	RS.Queue.AddToQueue(3, "create_academy_pet", "do_say_queue", do_say_queue, mob,
@@ -291,10 +292,10 @@ void apet_force(CHAR_DATA *ch, const char *cmd, int delay)
 
 void apet_at_room(CHAR_DATA *ch, int vnum)
 {
-	ch->leader->master = nullptr;
-	ch->master = ch->leader;
+	CHAR_DATA *player = Deref(ch->leader);
 
-	CHAR_DATA *player = ch->leader;
+	player->master = nullptr;
+	ch->master = ch->leader;
 
 	char buf[MSL], cname[50];
 
@@ -343,40 +344,46 @@ void apet_walk_to_room(CHAR_DATA *ch, int vnum)
 
 	walk_to_room(ch, room);
 
-	if (ch->in_room == oldroom || ch->in_room != ch->leader->in_room)
+	// Read after the move rather than before it: walk_to_room relocates this
+	// mob and can fire progs on the way.
+	CHAR_DATA *player = Deref(ch->leader);
+
+	if (ch->in_room == oldroom || ch->in_room != player->in_room)
 	{
-		if (ch->in_room != ch->leader->in_room)
+		if (ch->in_room != player->in_room)
 		{
 			char_from_room(ch);
-			char_to_room(ch, ch->leader->in_room);
+			char_to_room(ch, player->in_room);
 		}
 
 		do_say(ch, "I can't seem to lead us over there from here.  Try heading back to another part of town?");
 
-		ch->leader->master = ch;
-		ch->master = ch->leader;
+		player->master = ch->self;
+		ch->master = ch->leader;		// handle to handle; no lookup needed
 		return;
 	}
 
-	WAIT_STATE(ch->leader, PULSE_VIOLENCE);
+	WAIT_STATE(player, PULSE_VIOLENCE);
 
 	RS.Queue.AddToQueue(2, "apet_walk_to_room", "apet_walk_to_room", apet_walk_to_room, ch, vnum);
 }
 
 BEGIN_SPEC(mspec_academy_pet)
 	EVENT_MPULSE
-		if (!ch->leader)
+		CHAR_DATA *player = Deref(ch->leader);
+
+		if (player == nullptr)
 		{
 			extract_char(ch, true);
 			return 0;
 		}
 
-		if (ch->leader->level > 22 && !is_immortal(ch->leader))
+		if (player->level > 22 && !is_immortal(player))
 		{
 			do_say(ch, "You are strong enough to stand on your own now.  Perhaps we shall meet again.");
 			act("$n fades into the shadows.", ch, 0, 0, TO_ROOM);
 
-			ch->leader->pet = nullptr;
+			player->pet = nullptr;
 			ch->leader = nullptr;
 			ch->master = nullptr;
 
@@ -384,18 +391,18 @@ BEGIN_SPEC(mspec_academy_pet)
 			return 0;
 		}
 
-		if (ch->in_room != ch->leader->in_room)
+		if (ch->in_room != player->in_room)
 		{
-			if (ch->fighting)
+			if (Deref(ch->fighting))
 			{
 				act("$n seems to fade into the shadows.", ch, 0, 0, TO_ROOM);
 				stop_fighting(ch, true);
 			}
 
 			char_from_room(ch);
-			char_to_room(ch, ch->leader->in_room);
+			char_to_room(ch, player->in_room);
 
-			act("$n emerges from the shadows behind you.", ch, 0, ch->leader, TO_VICT);
+			act("$n emerges from the shadows behind you.", ch, 0, player, TO_VICT);
 			return 0;
 		}
 
@@ -408,7 +415,7 @@ BEGIN_SPEC(mspec_academy_pet)
 			return 0;
 		}
 
-		if (number_percent() > 96 && !ch->fighting && !IS_SET(ch->comm, COMM_NOGOSSIP))
+		if (number_percent() > 96 && !Deref(ch->fighting) && !IS_SET(ch->comm, COMM_NOGOSSIP))
 		{
 			char *msg;
 
@@ -418,7 +425,7 @@ BEGIN_SPEC(mspec_academy_pet)
 					msg = "I know an inexpensive place to buy food, if you need some.";
 					break;
 				case 1:
-					if (get_skill(ch->leader, gsn_enhanced_damage) < 1)
+					if (get_skill(player, gsn_enhanced_damage) < 1)
 						msg = "Looking for adventure? I know just the place!";
 					else
 						msg = "I've heard of a new place for you to learn that might be ideal for you.";
@@ -433,7 +440,7 @@ BEGIN_SPEC(mspec_academy_pet)
 					break;
 			}
 
-			if (ch->leader->level < 15 && number_percent() > 50)
+			if (player->level < 15 && number_percent() > 50)
 				msg = "When you are ready to leave the Academy, walk out or recall and you will be trained to the twentieth level of your guild.";
 
 			do_say(ch, msg);
@@ -442,7 +449,7 @@ BEGIN_SPEC(mspec_academy_pet)
 	END_EVENT
 
 	EVENT_MSPEECH
-		if (ch != mob->leader)
+		if (ch != Deref(mob->leader))
 			return 0;
 
 		char arg1[MSL];
@@ -462,7 +469,7 @@ BEGIN_SPEC(mspec_academy_pet)
 				return 0;
 			}
 
-			ch->master = mob;
+			ch->master = mob->self;
 			mob->master = nullptr;
 
 			apet_walk_to_room(mob, CIM_FOOD);
@@ -479,7 +486,7 @@ BEGIN_SPEC(mspec_academy_pet)
 				return 0;
 			}
 
-			ch->master = mob;
+			ch->master = mob->self;
 			mob->master = nullptr;
 
 			apet_walk_to_room(mob, CIM_WATER);
@@ -499,7 +506,7 @@ BEGIN_SPEC(mspec_academy_pet)
 				return 0;
 			}
 
-			ch->master = mob;
+			ch->master = mob->self;
 			mob->master = nullptr;
 
 			int vnum = 0, cclass = ch->Class()->GetIndex();
@@ -587,7 +594,7 @@ BEGIN_SPEC(mspec_academy_pet)
 				return 0;
 			}
 
-			ch->master = mob;
+			ch->master = mob->self;
 			mob->master = nullptr;
 
 			apet_walk_to_room(mob, CIM_BOAT);
@@ -617,7 +624,7 @@ BEGIN_SPEC(mspec_academy_pet)
 
 		stop_fighting(mob, true);
 
-		if (!mob->leader)
+		if (!Deref(mob->leader))
 			extract_char(mob, true);
 
 		return 1;

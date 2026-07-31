@@ -40,6 +40,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "update.h"
+#include "entity/handles.h"
 #include "weather_enums.h"
 #include "direction.h"
 #include "newmem.h"
@@ -291,7 +292,9 @@ int hit_gain(CHAR_DATA *ch)
 			gain /= 2;
 	}
 
-	if (ch->on != nullptr && ch->on->item_type == ITEM_FURNITURE)
+	OBJ_DATA *seatedOn = Deref(ch->on);
+
+	if (seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
 		gain = (gain * 7 / 5);
 
 	if (is_affected(ch, gsn_bleeding))
@@ -424,7 +427,9 @@ int mana_gain(CHAR_DATA *ch)
 			gain /= 2;
 	}
 
-	if (ch->on != nullptr && ch->on->item_type == ITEM_FURNITURE)
+	OBJ_DATA *seatedOn = Deref(ch->on);
+
+	if (seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
 		gain = gain * 7 / 5;
 
 	if (is_affected_by(ch, AFF_POISON))
@@ -500,7 +505,9 @@ int move_gain(CHAR_DATA *ch)
 
 	gain *= ch->in_room->heal_rate / 100;
 
-	if (ch->on != nullptr && ch->on->item_type == ITEM_FURNITURE)
+	OBJ_DATA *seatedOn = Deref(ch->on);
+
+	if (seatedOn != nullptr && seatedOn->item_type == ITEM_FURNITURE)
 		gain = gain * 6 / 5;
 
 	if (is_affected_by(ch, AFF_POISON))
@@ -532,7 +539,7 @@ void gain_condition(CHAR_DATA *ch, int iCond, int value)
 	if (value == 0 || is_npc(ch) || is_immortal(ch) || is_heroimm(ch) || IS_SET(ch->act, PLR_NOVOID))
 		return;
 
-	if (!ch->desc)
+	if (!Deref(ch->desc))
 		return;
 
 	condition = ch->pcdata->condition[iCond];
@@ -895,19 +902,21 @@ void time_update(void)
 	{
 		for (d = descriptor_list; d != nullptr; d = d->next)
 		{
+			CHAR_DATA *wch = Deref(d->character);
+
 			if (d->connected == CON_PLAYING
-				&& d->character->in_room
-				&& d->character->in_room->sector_type != SECT_UNDERWATER
-				&& is_outside(d->character)
-				&& is_awake(d->character)
-				&& !is_editing(d->character)
-				&& !(is_affected_area(d->character->in_room->area, gsn_whiteout))
-				&& !(is_affected_area(d->character->in_room->area, gsn_cyclone))
-				&& !(is_affected_by(d->character, AFF_BLIND)))
+				&& wch->in_room
+				&& wch->in_room->sector_type != SECT_UNDERWATER
+				&& is_outside(wch)
+				&& is_awake(wch)
+				&& !is_editing(wch)
+				&& !(is_affected_area(wch->in_room->area, gsn_whiteout))
+				&& !(is_affected_area(wch->in_room->area, gsn_cyclone))
+				&& !(is_affected_by(wch, AFF_BLIND)))
 			{
-				colorconv(colbuf, buf, d->character);
-				send_to_char(colbuf, d->character);
-				send_to_char("\n\r", d->character);
+				colorconv(colbuf, buf, wch);
+				send_to_char(colbuf, wch);
+				send_to_char("\n\r", wch);
 			}
 		}
 	}
@@ -1178,14 +1187,14 @@ void char_update(void)
 			&& ch->in_room
 			&& number_percent() < 90
 			&& !is_affected_by(ch, AFF_SLEEP)
-			&& ch->fighting == nullptr)
+			&& Deref(ch->fighting) == nullptr)
 		{
 			if (IS_SET(ch->act, ACT_DIURNAL) && is_affected_by(ch, AFF_NOSHOW))
 				REMOVE_BIT(ch->affected_by, AFF_NOSHOW);
 			else if (IS_SET(ch->act, ACT_NOCTURNAL) && !is_affected_by(ch, AFF_NOSHOW))
 				SET_BIT(ch->affected_by, AFF_NOSHOW);
 		}
-		else if (is_npc(ch) && sun >= SolarPosition::Sunset && ch->in_room && number_percent() < 90 && ch->fighting == nullptr)
+		else if (is_npc(ch) && sun >= SolarPosition::Sunset && ch->in_room && number_percent() < 90 && Deref(ch->fighting) == nullptr)
 		{
 			if (IS_SET(ch->act, ACT_NOCTURNAL) && is_affected_by(ch, AFF_NOSHOW))
 				REMOVE_BIT(ch->affected_by, AFF_NOSHOW);
@@ -1243,9 +1252,11 @@ void char_update(void)
 			colorconv(buf1, "{GYou are now level 20.{x\n\r", ch);
 			send_to_char(buf1, ch);
 
-			if (ch->pet)
+			CHAR_DATA *pet = Deref(ch->pet);
+
+			if (pet)
 			{
-				sprintf(buf1, "Remember, you can ask your familiar questions.  For example, 'say %s, how do I get to my guild?'.\n\r", ch->pet->short_descr);
+				sprintf(buf1, "Remember, you can ask your familiar questions.  For example, 'say %s, how do I get to my guild?'.\n\r", pet->short_descr);
 				send_to_char(buf1, ch);
 			}
 		}
@@ -1323,7 +1334,7 @@ void char_update(void)
 				{
 					ch->was_in_room = ch->in_room;
 
-					if (ch->fighting != nullptr)
+					if (Deref(ch->fighting) != nullptr)
 						stop_fighting(ch, true);
 
 					act("$n disappears into the void.", ch, nullptr, nullptr, TO_ROOM);
@@ -1343,12 +1354,20 @@ void char_update(void)
 			gain_condition(ch, COND_HUNGER, 1);
 		}
 
-		if (!is_npc(ch) && ch->desc == nullptr)
+		if (!is_npc(ch) && Deref(ch->desc) == nullptr)
 		{
 			/* nothing */
 		}
 		else
 		{
+			// Held across the loop because a tick can free the character, and
+			// free_char clears ch->self on the way out -- so reading the handle
+			// back off `ch` afterwards would be reading the freed struct, and
+			// would read the *replacement's* handle if the address had already
+			// been reissued. This copy keeps the generation the loop started
+			// with, which is exactly the case a handle exists to catch.
+			Handle<CHAR_DATA> ticking = ch->self;
+
 			for (auto it = ch->affected.begin(); it != ch->affected.end(); )
 			{
 				auto next = std::next(it);
@@ -1366,7 +1385,7 @@ void char_update(void)
 
 					/* A tick can extract (free) the character, clearing its
 					 * affect list; stop before touching the stale iterator. */
-					if (!ch->valid || (!ghost && ch->ghost > 0))
+					if (Deref(ticking) != ch || (!ghost && ch->ghost > 0))
 						break;
 
 					if (!paf)
@@ -1385,33 +1404,39 @@ void char_update(void)
 					if (paf->tick_fun)
 						(*paf->tick_fun)(ch, paf);
 
-					if (!ch->valid || (!ghost && ch->ghost > 0))
+					if (Deref(ticking) != ch || (!ghost && ch->ghost > 0))
 						break;
 				}
 				else if (paf->type == gsn_entwine
-					&& (paf->owner == nullptr || (paf->owner && ch->in_room != paf->owner->in_room)))
+					&& (Deref(paf->owner) == nullptr || (Deref(paf->owner) && ch->in_room != Deref(paf->owner)->in_room)))
 				{
 					affect_remove(ch, paf);
 				}
 				else
 				{
-					if (((paf->owner && paf->owner->Class()->GetIndex() == CLASS_PALADIN)
-							|| (!paf->owner && ch->Class()->GetIndex() == CLASS_PALADIN)
-							&& trusts(ch, paf->owner ? paf->owner : ch))
+					// Read once: this branch only rolls, messages and adjusts
+					// durations, so nothing in it can free the owner. The
+					// branches above that call tick_fun can, which is why this
+					// is not hoisted out of the chain.
+					CHAR_DATA *owner = Deref(paf->owner);
+
+					if (((owner && owner->Class()->GetIndex() == CLASS_PALADIN)
+							|| (!owner && ch->Class()->GetIndex() == CLASS_PALADIN)
+							&& trusts(ch, owner ? owner : ch))
 						&& paf->aftype == AFT_COMMUNE)
 					{
-						if (number_percent() < (get_skill(paf->owner ? paf->owner : ch, gsn_channeling) * .85)
+						if (number_percent() < (get_skill(owner ? owner : ch, gsn_channeling) * .85)
 							&& !(skill_table[paf->type].dispel & CAN_CLEANSE))
 						{
-							check_improve(paf->owner ? paf->owner : ch, gsn_channeling, true, 1);
+							check_improve(owner ? owner : ch, gsn_channeling, true, 1);
 
-							if (!paf->owner || ch == paf->owner)
+							if (!owner || ch == owner)
 							{
 								act("You feel invigorated as your $t supplication is renewed by your deity.", ch, skill_table[paf->type].name, 0, TO_CHAR);
 							}
 							else
 							{
-								act("You feel invigorated as $N renews your $t supplication.", ch, skill_table[paf->type].name, paf->owner, TO_CHAR);
+								act("You feel invigorated as $N renews your $t supplication.", ch, skill_table[paf->type].name, owner, TO_CHAR);
 							}
 
 							paf->duration = paf->init_duration;
@@ -1464,7 +1489,9 @@ void char_update(void)
 	{
 		ch_next = ch->next;
 
-		if (ch->desc != nullptr && ch->desc->descriptor % 3 == save_number)
+		DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+		if (connection != nullptr && connection->descriptor % 3 == save_number)
 			save_char_obj(ch);
 	}
 }
@@ -1482,6 +1509,11 @@ void obj_update(void)
 	for (obj = object_list; obj != nullptr; obj = obj_next)
 	{
 		CHAR_DATA *rch;
+		// Re-read from obj->carried_by before each use below, never cached across
+		// them: the cabal-item branch calls obj_from_char/obj_to_char, which move
+		// the object to a different carrier. A value read earlier in the iteration
+		// is stale from that point on.
+		CHAR_DATA *carrier;
 		char *message;
 
 		obj_next = obj->next;
@@ -1489,18 +1521,25 @@ void obj_update(void)
 		if (obj->moved)
 			obj->moved= false;
 
+		carrier = Deref(obj->carried_by);
+
 		if ((is_affected_by(obj, AFF_OBJ_BURNING)
-				&& (obj->carried_by
-					&& (obj->carried_by->in_room->sector_type == SECT_WATER
-						||  obj->carried_by->in_room->sector_type == SECT_UNDERWATER)))
+				&& (carrier
+					&& (carrier->in_room->sector_type == SECT_WATER
+						||  carrier->in_room->sector_type == SECT_UNDERWATER)))
 			|| (obj->in_room
 				&& (obj->in_room->sector_type == SECT_WATER || obj->in_room->sector_type == SECT_UNDERWATER)))
 		{
-			act("The water extinguishes $p.", obj->carried_by, obj, 0, TO_CHAR);
+			act("The water extinguishes $p.", carrier, obj, 0, TO_CHAR);
 
 			if (is_affected_obj(obj, gsn_immolate))
 				affect_strip_obj(obj, gsn_immolate);
 		}
+
+		// Held across the loop for the same reason as char_update's: free_obj
+		// clears obj->self, so the handle has to be copied before the tick that
+		// might run it.
+		Handle<OBJ_DATA> ticking = obj->self;
 
 		/* go through affects and decrement */
 		for (auto it = obj->affected.begin(); it != obj->affected.end(); )
@@ -1515,7 +1554,7 @@ void obj_update(void)
 			/* A tick can extract (free) the object — e.g. a spent crystal
 			 * crumbling to dust — which clears its affect list. Stop before
 			 * touching the now-invalidated iterator. */
-			if (!obj->valid)
+			if (Deref(ticking) != obj)
 				break;
 
 			if (paf->duration > 0)
@@ -1585,14 +1624,16 @@ void obj_update(void)
 		}
 
 		/* Check explosives */
-		if (obj && obj->pIndexData->vnum == OBJ_EXPLOSIVES && obj->carried_by)
+		carrier = Deref(obj->carried_by);
+
+		if (obj && obj->pIndexData->vnum == OBJ_EXPLOSIVES && carrier)
 		{
-			bag_explode(obj->carried_by, obj, 1);
+			bag_explode(carrier, obj, 1);
 			continue;
 		}
 
 		/* Alright. Is this a cabal item? */
-		if (isCabalItem(obj) && is_npc(obj->carried_by))
+		if (isCabalItem(obj) && is_npc(Deref(obj->carried_by)))
 		{
 			obj->timer = 0;
 			continue;
@@ -1610,30 +1651,36 @@ void obj_update(void)
 				continue;
 			}
 
-			act(message, obj->carried_by, obj, nullptr, TO_CHAR);
+			// Told to whoever is holding it now, before the handover below --
+			// these two calls are what makes `carrier` unsafe to cache across
+			// the iteration.
+			act(message, Deref(obj->carried_by), obj, nullptr, TO_CHAR);
 			obj_from_char(obj);
 			obj_to_char(obj, cguard);
 			obj->timer = 0;
 			continue;
 		}
 
-		if (obj->carried_by != nullptr)
+		carrier = Deref(obj->carried_by);
+
+		if (carrier != nullptr)
 		{
-			if (is_npc(obj->carried_by) && obj->carried_by->pIndexData->pShop != nullptr)
+			if (is_npc(carrier) && carrier->pIndexData->pShop != nullptr)
 			{
-				obj->carried_by->gold++;
+				carrier->gold++;
 			}
 			else
 			{
-				act(message, obj->carried_by, obj, nullptr, TO_CHAR);
+				act(message, carrier, obj, nullptr, TO_CHAR);
 
 				if (obj->wear_loc == WEAR_FLOAT)
-					act(message, obj->carried_by, obj, nullptr, TO_ROOM);
+					act(message, carrier, obj, nullptr, TO_ROOM);
 			}
 		}
 		else if (obj->in_room != nullptr && (rch = obj->in_room->people) != nullptr)
 		{
-			if (!(obj->in_obj && obj->in_obj->pIndexData->vnum == OBJ_VNUM_PIT && !can_wear(obj->in_obj, ITEM_TAKE)))
+			OBJ_DATA *container = Deref(obj->in_obj);
+			if (!(container && container->pIndexData->vnum == OBJ_VNUM_PIT && !can_wear(container, ITEM_TAKE)))
 			{
 				act(message, rch, obj, nullptr, TO_ROOM);
 				act(message, rch, obj, nullptr, TO_CHAR);
@@ -1710,7 +1757,7 @@ instead...(Ceran)
 void track_attack(CHAR_DATA *mob, CHAR_DATA *victim)
 {
 	char buf[MSL];
-	if (mob->in_room != victim->in_room || !can_see(mob, victim) || mob->fighting || is_affected_by(mob, AFF_NOSHOW))
+	if (mob->in_room != victim->in_room || !can_see(mob, victim) || Deref(mob->fighting) || is_affected_by(mob, AFF_NOSHOW))
 		return;
 
 	if (mob->pIndexData->attack_yell)
@@ -1735,11 +1782,11 @@ void track_update(void)
 		if (!is_npc(tch))
 			continue;
 
-		if (!tch->last_fought)
+		if (!Deref(tch->last_fought))
 		{
 			if (tch->position > POS_RESTING
 				&& number_range(1, 10) == 1
-				&& !tch->fighting
+				&& !Deref(tch->fighting)
 				&& tch->home_room
 				&& tch->in_room != tch->home_room
 				&& (tch->in_room->vnum < tch->pIndexData->restrict_low
@@ -1751,12 +1798,22 @@ void track_update(void)
 			continue;
 		}
 
-		if (tch->fighting || is_affected_by(tch, AFF_NOSHOW))
+		if (Deref(tch->fighting) || is_affected_by(tch, AFF_NOSHOW))
 			continue;
 
-		if (tch->in_room == tch->last_fought->in_room)
+		// Every Deref below re-reads the handle on purpose. Do NOT collapse
+		// them into one local: track_attack calls multi_hit and can kill the
+		// quarry outright, and smart_track/track_char move this mob into
+		// another room, which can trigger progs that do the same. Any of those
+		// can end the hunt partway through this block.
+		//
+		// A hoisted CHAR_DATA * would keep pointing at a character struct that
+		// has already gone back on the free list -- the exact failure this
+		// field stopped being a raw pointer to avoid. Re-reading costs an
+		// array index and an integer compare, and yields null instead.
+		if (tch->in_room == Deref(tch->last_fought)->in_room)
 		{
-			track_attack(tch, tch->last_fought);
+			track_attack(tch, Deref(tch->last_fought));
 			continue;
 		}
 
@@ -1764,13 +1821,13 @@ void track_update(void)
 			continue;
 
 		if (IS_SET(tch->act, ACT_SMARTTRACK))
-			smart_track(tch->last_fought, tch);
+			smart_track(Deref(tch->last_fought), tch);
 		else
-			track_char(tch->last_fought, tch);
+			track_char(Deref(tch->last_fought), tch);
 
-		track_attack(tch, tch->last_fought);
+		track_attack(tch, Deref(tch->last_fought));
 
-		if (!tch->fighting)
+		if (!Deref(tch->fighting))
 			tch->tracktimer--;
 
 		if (tch->tracktimer == 0)
@@ -1801,6 +1858,7 @@ void aggr_update(void)
 	CHAR_DATA *vch;
 	CHAR_DATA *vch_next;
 	CHAR_DATA *victim;
+	CHAR_DATA *opponent;
 	int timer;
 	char buf[MAX_STRING_LENGTH];
 
@@ -1837,13 +1895,20 @@ void aggr_update(void)
 		if (is_affected_by(wch, AFF_SLOW))
 			timer--;
 
-		if (wch->fighting &&
+		// Safe to read once and reuse, unlike the tracking loop above: nothing
+		// between this read and its last use can end the fight.
+		// update_pc_last_fight only assigns fields, and multi_hit is the final
+		// use rather than an intermediate one. The reads further down are
+		// after multi_hit, so those go back through the handle.
+		opponent = Deref(wch->fighting);
+
+		if (opponent &&
 			((!is_npc(wch) && timer >= pc_race_table[wch->race].racePulse) || (is_npc(wch) && timer >= 12)))
 		{
-			update_pc_last_fight(wch, wch->fighting);
+			update_pc_last_fight(wch, opponent);
 
-			if (is_awake(wch) && wch->in_room == wch->fighting->in_room)
-				multi_hit(wch, wch->fighting, TYPE_UNDEFINED);
+			if (is_awake(wch) && wch->in_room == opponent->in_room)
+				multi_hit(wch, opponent, TYPE_UNDEFINED);
 			else
 				stop_fighting(wch, false);
 
@@ -1853,7 +1918,7 @@ void aggr_update(void)
 		if (wch->position == POS_SLEEPING && IS_SET(wch->imm_flags, IMM_SLEEP))
 			wch->position = POS_STANDING;
 
-		if (is_affected_by(wch, AFF_RAGE) && is_awake(wch) && !wch->fighting && !(wch->desc == nullptr && !is_npc(wch)))
+		if (is_affected_by(wch, AFF_RAGE) && is_awake(wch) && !Deref(wch->fighting) && !(Deref(wch->desc) == nullptr && !is_npc(wch)))
 		{
 			for (vch = wch->in_room->people; vch != nullptr; vch = vch_next)
 			{
@@ -1899,7 +1964,7 @@ void aggr_update(void)
 			}
 		}
 
-		if (!is_npc(wch) && is_affected(wch, gsn_divine_frenzy) && is_awake(wch) && !wch->fighting)
+		if (!is_npc(wch) && is_affected(wch, gsn_divine_frenzy) && is_awake(wch) && !Deref(wch->fighting))
 		{
 			for (vch = wch->in_room->people; vch != nullptr; vch = vch_next)
 			{
@@ -1928,8 +1993,8 @@ void aggr_update(void)
 
 		if (is_affected(wch, gsn_mark_of_wrath)
 			&& is_awake(wch)
-			&& !wch->fighting
-			&& !(wch->desc == nullptr && !is_npc(wch)))
+			&& !Deref(wch->fighting)
+			&& !(Deref(wch->desc) == nullptr && !is_npc(wch)))
 		{
 			AFFECT_DATA *paf = affect_find(wch->affected, gsn_mark_of_wrath);
 
@@ -1937,7 +2002,7 @@ void aggr_update(void)
 			{
 				vch_next = vch->next_in_room;
 
-				if (paf->owner->ghost > 0)
+				if (Deref(paf->owner)->ghost > 0)
 				{
 					affect_remove(wch, paf);
 					break;		// paf is gone; nothing further reads the mark
@@ -1952,7 +2017,7 @@ void aggr_update(void)
 				if (is_safe_new(wch, vch, false))
 					continue;
 
-				if (vch == paf->owner)
+				if (vch == Deref(paf->owner))
 				{
 					sprintf(buf, "%sCatching sight of the mark upon %s's brow, you are consumed with wrath!%s\n\r",
 						get_char_color(wch, "lightred"),
@@ -1979,7 +2044,7 @@ void aggr_update(void)
 				|| IS_SET(ch->in_room->room_flags, ROOM_SAFE)
 				|| (is_npc(ch) && is_affected_by(ch, AFF_NOSHOW))
 				|| is_affected_by(ch, AFF_CALM)
-				|| ch->fighting != nullptr
+				|| Deref(ch->fighting) != nullptr
 				|| is_affected_by(ch, AFF_CHARM)
 				|| !is_awake(ch)
 				|| (IS_SET(ch->act, ACT_WIMPY) && is_awake(wch))
@@ -2465,7 +2530,7 @@ void room_affect_update(void)
 							if (is_npc(victim) && IS_SET(victim->act, ACT_SENTINEL))
 								continue;
 
-							if (!is_npc(victim) && is_safe_new(af->owner, victim, false))
+							if (!is_npc(victim) && is_safe_new(Deref(af->owner), victim, false))
 								continue;
 
 							if (victim->invis_level > LEVEL_HERO)
@@ -2522,7 +2587,7 @@ void room_affect_update(void)
 					{
 						v_next = vch->next_in_room;
 
-						if (!is_npc(vch) && is_safe_new(af->owner, vch, false))
+						if (!is_npc(vch) && is_safe_new(Deref(af->owner), vch, false))
 							continue;
 
 						send_to_char("Your lungs burn furiously, desperate for air!\n\r", vch);
@@ -2546,7 +2611,7 @@ void room_affect_update(void)
 				{
 					v_next = vch->next_in_room;
 
-					if (is_safe_new(af->owner, vch, false))
+					if (is_safe_new(Deref(af->owner), vch, false))
 						continue;
 
 					dam = dice(10, 15);
@@ -2557,7 +2622,7 @@ void room_affect_update(void)
 					}
 
 					send_to_char("Large chunks of rubble tumble down from the ceiling, crushing you!\n\r", vch);
-					damage_new(af->owner, vch, dam, TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling debris*");
+					damage_new(Deref(af->owner), vch, dam, TYPE_UNDEFINED, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the falling debris*");
 				}
 			}
 		}
@@ -2610,17 +2675,17 @@ void room_affect_update(void)
 				{
 					v_next = vch->next_in_room;
 
-					if (vch == af->owner)
+					if (vch == Deref(af->owner))
 						continue;
 
-					if (!is_npc(vch) && is_safe_new(af->owner, vch, false))
+					if (!is_npc(vch) && is_safe_new(Deref(af->owner), vch, false))
 						continue;
 
 					if (!is_npc(vch))
 					{
-						if (vch->in_room == af->owner->in_room)
+						if (vch->in_room == Deref(af->owner)->in_room)
 						{
-							sprintf(buf, "Help! I'm being drowned by %s's tidal wave!", pers(af->owner, vch));
+							sprintf(buf, "Help! I'm being drowned by %s's tidal wave!", pers(Deref(af->owner), vch));
 							do_myell(vch, buf, nullptr);
 						}
 						else
@@ -2630,7 +2695,7 @@ void room_affect_update(void)
 						}
 					}
 
-					damage_new(af->owner, vch, dice(af2->modifier, 10), gsn_tidalwave, DAM_DROWNING, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the tidal wave*");
+					damage_new(Deref(af->owner), vch, dice(af2->modifier, 10), gsn_tidalwave, DAM_DROWNING, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the tidal wave*");
 				}
 
 				if (room->sector_type != SECT_WATER)
@@ -2646,13 +2711,13 @@ void room_affect_update(void)
 					{
 						v_next = vch->next_in_room;
 
-						if (vch == af->owner)
+						if (vch == Deref(af->owner))
 							continue;
 
-						if (!is_npc(vch) && is_safe_new(af->owner, vch, false))
+						if (!is_npc(vch) && is_safe_new(Deref(af->owner), vch, false))
 							continue;
 
-						damage_new(af->owner, vch, dice(af2->modifier, 10), gsn_tidalwave, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the crashing wave*");
+						damage_new(Deref(af->owner), vch, dice(af2->modifier, 10), gsn_tidalwave, DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the crashing wave*");
 						WAIT_STATE(vch, PULSE_VIOLENCE * 2);
 					}
 				}
@@ -2679,7 +2744,7 @@ void room_affect_update(void)
 					if (is_immortal(vch))
 						continue;
 
-					if (!is_safe(vch, af->owner) && !is_affected(vch, gsn_neutralize))
+					if (!is_safe(vch, Deref(af->owner)) && !is_affected(vch, gsn_neutralize))
 					{
 						if (!is_affected(vch, gsn_noxious_fumes))
 						{
@@ -2753,7 +2818,7 @@ void room_affect_update(void)
 
 						new_affect_join(vch, &cvaf2);
 
-						damage_new(af->owner, vch, dam, af->type, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the noxious fumes*$");
+						damage_new(Deref(af->owner), vch, dam, af->type, DAM_POISON, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the noxious fumes*$");
 					}
 				}
 			}
@@ -2767,6 +2832,11 @@ void room_affect_update(void)
 		if (is_affected_area(room->area, gsn_cyclone))
 		{
 			aaf = affect_find_area(room->area->affected, gsn_cyclone);
+
+			// An area affect outlives its caster -- nothing removes it when
+			// they go -- and the winds still move objects without one. Only the
+			// damage needs somebody to attribute it to.
+			CHAR_DATA *caster = Deref(aaf->owner);
 
 			for (obj = room->contents; obj != nullptr; obj = obj->next_content)
 			{
@@ -2792,16 +2862,20 @@ void room_affect_update(void)
 					continue;
 
 				act("The violent winds blow $p in!", to_room->people, obj, 0, TO_ALL);
-				victim = get_random_ch(aaf->owner, to_room);
+
+				if (caster == nullptr)
+					continue;
+
+				victim = get_random_ch(caster, to_room);
 
 				if (!victim)
 					continue;
 
-				if (victim == aaf->owner)
+				if (victim == caster)
 					continue;
 
 				dam = dice(obj->weight + 1, 8);
-				damage_new(aaf->owner, victim, dam, skill_lookup("cyclone"), DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the flying debris*");
+				damage_new(caster, victim, dam, skill_lookup("cyclone"), DAM_BASH, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the flying debris*");
 			}
 			for (victim = room->people; victim != nullptr; victim = v_next)
 			{
@@ -2812,7 +2886,7 @@ void room_affect_update(void)
 				if (is_affected(victim, gsn_airshield))
 					chance = 0;
 				if (number_percent() >= chance || (is_npc(victim) && IS_SET(victim->act, ACT_SENTINEL)) ||
-					victim->fighting || victim->invis_level > LEVEL_HERO)
+					Deref(victim->fighting) || victim->invis_level > LEVEL_HERO)
 					continue;
 				to_room = get_random_exit(room);
 
@@ -2959,8 +3033,10 @@ void iprog_pulse_update(bool isTick)
 			}
 		}
 
+		CHAR_DATA *carrier = Deref(obj->carried_by);
+
 		if ((obj->in_room != nullptr && obj->in_room->area->nplayer > 0)
-		|| (obj->carried_by && obj->carried_by->in_room && obj->carried_by->in_room->area->nplayer > 0))
+		|| (carrier && carrier->in_room && carrier->in_room->area->nplayer > 0))
 		{
 			if (IS_SET(obj->progtypes, IPROG_PULSE))
 				(obj->pIndexData->iprogs->pulse_prog)(obj, isTick);
@@ -2976,7 +3052,7 @@ bool do_mob_cast(CHAR_DATA *ch)
 	short i, sn, rnd, in_room = 0, room_occupant = 0;
 	CHAR_DATA *vch, *victim;
 
-	if (!is_npc(ch) || !ch->fighting || ch->pIndexData->cast_spell[0] == nullptr)
+	if (!is_npc(ch) || !Deref(ch->fighting) || ch->pIndexData->cast_spell[0] == nullptr)
 		return false;
 
 	for (;;)
@@ -2991,14 +3067,14 @@ bool do_mob_cast(CHAR_DATA *ch)
 	if (sn < 1)
 		return false;
 
-	victim = ch->fighting;
+	victim = Deref(ch->fighting);
 	// Share the wealth.
 	//
 	if (skill_table[sn].target == TAR_CHAR_OFFENSIVE)
 	{
 		for (victim = ch->in_room->people; victim != nullptr; victim = victim->next_in_room)
 		{
-			if (victim && !is_npc(victim) && victim->fighting && victim->fighting == ch)
+			if (victim && !is_npc(victim) && Deref(victim->fighting) == ch)
 				in_room++;
 		}
 
@@ -3006,14 +3082,14 @@ bool do_mob_cast(CHAR_DATA *ch)
 
 		for (vch = ch->in_room->people; vch != nullptr; vch = vch->next_in_room)
 		{
-			if (!is_npc(vch) && vch->fighting == ch)
+			if (!is_npc(vch) && Deref(vch->fighting) == ch)
 				room_occupant++;
 
 			if (rnd == room_occupant)
 				break;
 		}
 
-		victim = vch != nullptr ? vch : ch->fighting;
+		victim = vch != nullptr ? vch : Deref(ch->fighting);
 	}
 
 	if (skill_table[sn].target == TAR_CHAR_DEFENSIVE)

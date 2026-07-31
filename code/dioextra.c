@@ -40,6 +40,7 @@
 #include <iterator>
 #include <filesystem>
 #include "merc.h"
+#include "entity/handles.h"
 #include "dioextra.h"
 #include "handler.h"
 #include "stdlibs/cfilesystem.h"
@@ -154,21 +155,23 @@ void do_ghost(CHAR_DATA *ch, char *argument)
 	{
 		for (d = descriptor_list; d; d = d->next)
 		{
+			CHAR_DATA *wch = Deref(d->character);
+
 			if (d->connected == CON_PLAYING
-				&& d->character != ch
-				&& d->character->in_room != nullptr
-				&& can_see(ch, d->character))
+				&& wch != ch
+				&& wch->in_room != nullptr
+				&& can_see(ch, wch))
 			{
 				if (!str_cmp(arg2, "yes"))
 				{
-					d->character->ghost = 15;
-					send_to_char("You have turned into an invincible ghost for several minutes.\n\r", d->character);
+					wch->ghost = 15;
+					send_to_char("You have turned into an invincible ghost for several minutes.\n\r", wch);
 				}
 
 				if (!str_cmp(arg2, "no"))
 				{
-					d->character->ghost = 0;
-					send_to_char("You are no longer an invincible ghost.\n\r", d->character);
+					wch->ghost = 0;
+					send_to_char("You are no longer an invincible ghost.\n\r", wch);
 				}
 			}
 		}
@@ -180,22 +183,24 @@ void do_ghost(CHAR_DATA *ch, char *argument)
 	{
 		for (d = descriptor_list; d; d = d->next)
 		{
-			if (d->connected == CON_PLAYING 
-				&& d->character != ch
-				&& d->character->in_room != nullptr
-				&& can_see(ch, d->character)
-				&& d->character->in_room->area == ch->in_room->area)
+			CHAR_DATA *wch = Deref(d->character);
+
+			if (d->connected == CON_PLAYING
+				&& wch != ch
+				&& wch->in_room != nullptr
+				&& can_see(ch, wch)
+				&& wch->in_room->area == ch->in_room->area)
 			{
 				if (!str_cmp(arg2, "yes"))
 				{
-					d->character->ghost = 15;
-					send_to_char("You have turned into an invincible ghost for a several minutes.\n\r", d->character);
+					wch->ghost = 15;
+					send_to_char("You have turned into an invincible ghost for a several minutes.\n\r", wch);
 				}
 
 				if (!str_cmp(arg2, "no"))
 				{
-					d->character->ghost = 0;
-					send_to_char("You are no longer an invincible ghost.\n\r", d->character);
+					wch->ghost = 0;
+					send_to_char("You are no longer an invincible ghost.\n\r", wch);
 				}
 			}
 		}
@@ -535,20 +540,22 @@ void do_ccb(CHAR_DATA *ch, char *argument)
 	{
 		if (d->connected == CON_PLAYING)
 		{
-			if ((d->character != ch
-					&& !IS_SET(d->character->comm, COMM_NOCABAL)
-					&& d->character->cabal
-					&& d->character->cabal == cabal)
-				|| (IS_SET(d->character->comm, COMM_ALL_CABALS)
-					&& d->character != ch))
+			CHAR_DATA *wch = Deref(d->character);
+
+			if ((wch != ch
+					&& !IS_SET(wch->comm, COMM_NOCABAL)
+					&& wch->cabal
+					&& wch->cabal == cabal)
+				|| (IS_SET(wch->comm, COMM_ALL_CABALS)
+					&& wch != ch))
 			{
 				buffer = fmt::format("{}{}: {}{}{}\n\r",
 					cabal_table[cabal].who_name,
-					pers(ch, d->character),
-					get_char_color(d->character, "channels"),
+					pers(ch, wch),
+					get_char_color(wch, "channels"),
 					arg2,
 					END_COLOR(ch));
-				send_to_char(buffer.c_str(), d->character);
+				send_to_char(buffer.c_str(), wch);
 			}
 		}
 	}
@@ -894,11 +901,11 @@ void report_cabal_items(CHAR_DATA *ch, char *argument)
 			if (obj->pIndexData->cabal != guardian->cabal)
 				continue;
 
-			if (obj->carried_by != nullptr)
+			if (CHAR_DATA *carrier = Deref(obj->carried_by))
 			{
 				sprintf(pbuf, "%s is carried by %s.",
 					obj->short_descr,
-					is_npc(obj->carried_by) ? obj->carried_by->short_descr : obj->carried_by->name);
+					is_npc(carrier) ? carrier->short_descr : carrier->name);
 				break;
 			}
 		}
@@ -1419,10 +1426,10 @@ void update_pc_last_fight(CHAR_DATA *ch, CHAR_DATA *ch2)
 		return;
 
 	ch->last_fight_time = current_time;
-	ch->last_fight_name = ch2->true_name;
+	ch->last_fight_opponent = ch2->self;
 
 	ch2->last_fight_time = current_time;
-	ch2->last_fight_name = ch->true_name;
+	ch2->last_fight_opponent = ch->self;
 }
 
 /// Displays a list of members in a specified cabal and their last login times.
@@ -1606,7 +1613,7 @@ bool auto_check_multi(DESCRIPTOR_DATA *d_check, char *host)
 {
 	for (DESCRIPTOR_DATA *d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d == d_check || d->character == nullptr)
+		if (d == d_check || Deref(d->character) == nullptr)
 			continue;
 
 		if (!str_cmp(host, d->host))
@@ -1652,20 +1659,20 @@ void do_pload(CHAR_DATA *ch, char *argument)
 	if (!CFileSystem::Copy(ploadSource, ploadDest))
 		RS.Logger.Warn("Failed to copy [{}] to [{}]", ploadSource, ploadDest);
 
-	d->character->desc = nullptr;
-	d->character->next = char_list;
+	victim = Deref(d->character);
 
-	char_list = d->character;
+	victim->desc = nullptr;
+	victim->next = char_list;
+
+	char_list = victim;
 
 	d->outsize = 2000;
 	d->outbuf = new char[d->outsize];
 	d->connected = CON_PLAYING;
 
-	reset_char(d->character);
+	reset_char(victim);
 
-	victim = d->character;
-
-	d->character->pcdata->host = palloc_string("PLOAD");
+	victim->pcdata->host = palloc_string("PLOAD");
 
 	interpret(ch, argument);
 
@@ -1712,10 +1719,10 @@ void do_damage(CHAR_DATA *ch, char *argument)
 
 	damage_new(ch, victim, dam, TYPE_UNDEFINED, DAM_OTHER, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, argument);
 
-	if (ch->fighting == victim)
+	if (Deref(ch->fighting) == victim)
 		stop_fighting(ch, false);
 
-	if (victim->fighting == ch)
+	if (Deref(victim->fighting) == ch)
 		stop_fighting(victim, false);
 }
 
@@ -1725,11 +1732,13 @@ void zone_echo(AREA_DATA *area, char *echo)
 
 	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && d->character->in_room != nullptr && d->character->in_room->area == area)
+		CHAR_DATA *wch = Deref(d->character);
+
+		if (d->connected == CON_PLAYING && wch->in_room != nullptr && wch->in_room->area == area)
 		{
-			colorconv(buffer, echo, d->character);
-			send_to_char(buffer, d->character);
-			send_to_char("\n\r", d->character);
+			colorconv(buffer, echo, wch);
+			send_to_char(buffer, wch);
+			send_to_char("\n\r", wch);
 		}
 	}
 }

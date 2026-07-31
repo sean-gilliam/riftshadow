@@ -39,6 +39,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "merc.h"
+#include "entity/handles.h"
 #include "act_comm.h"
 #include "rift.h"
 #include "recycle.h"
@@ -336,26 +337,30 @@ void do_cb(CHAR_DATA *ch, char *argument)
 
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && d->character != ch && ((is_same_cabal(ch, d->character) && !IS_SET(d->character->comm, COMM_NOCABAL) && !IS_SET(d->character->in_room->room_flags, ROOM_SILENCE)) || IS_SET(d->character->comm, COMM_ALL_CABALS)))
+		// Read once: this loop only formats and sends, and nothing in it can
+		// extract a listener.
+		CHAR_DATA *listener = Deref(d->character);
+
+		if (d->connected == CON_PLAYING && listener != ch && ((is_same_cabal(ch, listener) && !IS_SET(listener->comm, COMM_NOCABAL) && !IS_SET(listener->in_room->room_flags, ROOM_SILENCE)) || IS_SET(listener->comm, COMM_ALL_CABALS)))
 		{
-			if (IS_SET(d->character->comm, COMM_ANSI))
+			if (IS_SET(listener->comm, COMM_ANSI))
 			{
 				sprintf(buf, "%s%s: %s%s%s\n\r",
 						cabal_table[ch->cabal].who_name,
-						!is_npc(ch) && can_see(d->character, ch) ? ch->true_name : pers(ch, d->character),
-						get_char_color(d->character, "channels"),
+						!is_npc(ch) && can_see(listener, ch) ? ch->true_name : pers(ch, listener),
+						get_char_color(listener, "channels"),
 						argument,
-						END_COLOR(d->character));
+						END_COLOR(listener));
 			}
 			else
 			{
 				sprintf(buf, "%s%s: %s\n\r",
 						cabal_table[ch->cabal].who_name,
-						!is_npc(ch) && can_see(d->character, ch) ? ch->true_name : pers(ch, d->character),
+						!is_npc(ch) && can_see(listener, ch) ? ch->true_name : pers(ch, listener),
 						argument);
 			}
 
-			send_to_char(buf, d->character);
+			send_to_char(buf, listener);
 		}
 	}
 }
@@ -423,10 +428,12 @@ void do_newbie(CHAR_DATA *ch, char *argument)
 
 	for (auto wch = char_list; wch != nullptr; wch = wch->next)
 	{
-		if (is_npc(wch) && wch->desc == nullptr)
+		DESCRIPTOR_DATA *connection = Deref(wch->desc);
+
+		if (is_npc(wch) && connection == nullptr)
 			continue;
 
-		if ((wch->level <= 25 && !IS_SET(wch->comm, COMM_NONEWBIE)) || is_immortal(wch) || is_heroimm(wch) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(wch->desc->original)))
+		if ((wch->level <= 25 && !IS_SET(wch->comm, COMM_NONEWBIE)) || is_immortal(wch) || is_heroimm(wch) || (is_npc(wch) && connection != nullptr && is_immortal(Deref(connection->original))))
 		{
 			if (IS_SET(wch->comm, COMM_ANSI))
 			{
@@ -491,10 +498,12 @@ void do_builder(CHAR_DATA *ch, char *argument)
 
 	for (auto wch = char_list; wch != nullptr; wch = wch->next)
 	{
-		if (is_npc(wch) && wch->desc == nullptr)
+		DESCRIPTOR_DATA *connection = Deref(wch->desc);
+
+		if (is_npc(wch) && connection == nullptr)
 			continue;
 
-		if (is_immortal(wch) || IS_SET(wch->comm, COMM_BUILDER) || is_heroimm(wch) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(wch->desc->original)))
+		if (is_immortal(wch) || IS_SET(wch->comm, COMM_BUILDER) || is_heroimm(wch) || (is_npc(wch) && connection != nullptr && is_immortal(Deref(connection->original))))
 		{
 			if (IS_SET(wch->comm, COMM_ANSI))
 			{
@@ -580,10 +589,12 @@ void do_immtalk(CHAR_DATA *ch, char *argument)
 
 	for (auto wch = char_list; wch != nullptr; wch = wch->next)
 	{
-		if (is_npc(wch) && wch->desc == nullptr)
+		DESCRIPTOR_DATA *connection = Deref(wch->desc);
+
+		if (is_npc(wch) && connection == nullptr)
 			continue;
 
-		if ((is_immortal(wch) || IS_SET(wch->comm, COMM_IMMORTAL) || (is_npc(wch) && (wch->desc != nullptr) && is_immortal(wch->desc->original))) && get_trust(wch) >= std::max(level, 52))
+		if ((is_immortal(wch) || IS_SET(wch->comm, COMM_IMMORTAL) || (is_npc(wch) && connection != nullptr && is_immortal(Deref(connection->original)))) && get_trust(wch) >= std::max(level, 52))
 		{
 			if (IS_SET(wch->comm, COMM_ANSI))
 			{
@@ -1121,9 +1132,9 @@ void do_pray(CHAR_DATA *ch, char *argument)
 
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
-		auto victim = d->original ? d->original : d->character;
+		auto victim = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 
-		if (d->connected == CON_PLAYING && d->character != ch && !IS_SET(victim->comm, COMM_SHOUTSOFF) && !IS_SET(victim->comm, COMM_QUIET) && victim->level >= 52)
+		if (d->connected == CON_PLAYING && Deref(d->character) != ch && !IS_SET(victim->comm, COMM_SHOUTSOFF) && !IS_SET(victim->comm, COMM_QUIET) && victim->level >= 52)
 		{
 			sprintf(buf, "%s%s [%d] is PRAYing for: %s%s\n\r",
 					get_char_color(victim, "prays"),
@@ -1131,7 +1142,7 @@ void do_pray(CHAR_DATA *ch, char *argument)
 					ch->in_room->vnum,
 					argument,
 					END_COLOR(victim));
-			send_to_char(buf, d->character);
+			send_to_char(buf, Deref(d->character));
 		}
 	}
 }
@@ -1220,7 +1231,7 @@ void do_tell(CHAR_DATA *ch, char *argument)
 	}
 
 	char buf[MAX_STRING_LENGTH];
-	if (victim->desc == nullptr && !is_npc(victim))
+	if (Deref(victim->desc) == nullptr && !is_npc(victim))
 	{
 		act("$N seems to have lost consciousness...try again later.", ch, nullptr, victim, TO_CHAR);
 		sprintf(buf, "%s tells you '%s'\n\r", pers(ch, victim), argument);
@@ -1268,7 +1279,7 @@ void do_tell(CHAR_DATA *ch, char *argument)
 	if (is_affected(victim, gsn_word_of_command) && strstr(argument, victim->pcdata->command[0]))
 		command_execute(victim);
 
-	victim->reply = ch;
+	victim->reply = ch->self;
 
 	if (deaf)
 		free_pstring(argument);
@@ -1285,7 +1296,7 @@ void do_noreply(CHAR_DATA *ch, char *argument)
 
 	for (auto vch = char_list; vch; vch = vch->next)
 	{
-		if (!is_npc(vch) && vch->reply == ch)
+		if (!is_npc(vch) && Deref(vch->reply) == ch)
 			vch->reply = nullptr;
 	}
 }
@@ -1298,7 +1309,7 @@ void do_reply(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	auto victim = ch->reply;
+	auto victim = Deref(ch->reply);
 	if (victim == nullptr)
 	{
 		send_to_char("They aren't here.\n\r", ch);
@@ -1306,7 +1317,7 @@ void do_reply(CHAR_DATA *ch, char *argument)
 	}
 
 	char buf[MAX_STRING_LENGTH];
-	if (victim->desc == nullptr && !is_npc(victim) && !is_switched(victim) && victim->pcdata)
+	if (Deref(victim->desc) == nullptr && !is_npc(victim) && !is_switched(victim) && victim->pcdata)
 	{
 		act("$N seems to have lost consciousness...try again later.", ch, nullptr, victim, TO_CHAR);
 		sprintf(buf, "%s tells you '%s'\n\r", pers(ch, victim), argument);
@@ -1372,7 +1383,7 @@ void do_reply(CHAR_DATA *ch, char *argument)
 	if (IS_SET(victim->progtypes, MPROG_SPEECH) && victim != ch)
 		victim->pIndexData->mprogs->speech_prog(victim, ch, argument);
 
-	victim->reply = ch;
+	victim->reply = ch->self;
 
 	if (deaf)
 		free_pstring(argument);
@@ -1452,20 +1463,24 @@ void do_yell(CHAR_DATA *ch, char *argument)
 
 	for (auto d = descriptor_list; d != nullptr; d = d->next)
 	{
-		if (d->connected == CON_PLAYING && d->character != ch && d->character->in_room != nullptr && d->character->in_room->area == ch->in_room->area && !IS_SET(d->character->comm, COMM_QUIET))
+		// Read once: command_execute below can extract the listener, but it is
+		// the last thing this iteration does with it.
+		CHAR_DATA *listener = Deref(d->character);
+
+		if (d->connected == CON_PLAYING && listener != ch && listener->in_room != nullptr && listener->in_room->area == ch->in_room->area && !IS_SET(listener->comm, COMM_QUIET))
 		{
-			if (IS_SET(d->character->in_room->room_flags, ROOM_SILENCE))
+			if (IS_SET(listener->in_room->room_flags, ROOM_SILENCE))
 				continue;
 
 			/* Can't hear yells while asleep, MORGLUM */
-			if (!is_awake(d->character))
+			if (!is_awake(listener))
 				continue;
 
-			sprintf(buf, "$n yells '%s$t%s'", get_char_color(d->character, "yells"), END_COLOR(d->character));
-			act_new(buf, ch, argument, d->character, TO_VICT, POS_SLEEPING);
+			sprintf(buf, "$n yells '%s$t%s'", get_char_color(listener, "yells"), END_COLOR(listener));
+			act_new(buf, ch, argument, listener, TO_VICT, POS_SLEEPING);
 
-			if (is_affected(d->character, gsn_word_of_command) && strstr(argument, d->character->pcdata->command[0]))
-				command_execute(d->character);
+			if (is_affected(listener, gsn_word_of_command) && strstr(argument, listener->pcdata->command[0]))
+				command_execute(listener);
 		}
 	}
 
@@ -1481,13 +1496,13 @@ void do_myell(CHAR_DATA *ch, char *argument, CHAR_DATA *attacker)
 		for (d = descriptor_list; d; d = d->next)
 		{
 			if (d->connected == CON_PLAYING
-				&&  d->character->in_room != nullptr && ch->in_room != nullptr
-				&&  d->character->in_room->area == ch->in_room->area
-				&&  d->character != ch
-				&& !IS_SET(d->character->in_room->room_flags, ROOM_SILENCE))
+				&&  Deref(d->character)->in_room != nullptr && ch->in_room != nullptr
+				&&  Deref(d->character)->in_room->area == ch->in_room->area
+				&&  Deref(d->character) != ch
+				&& !IS_SET(Deref(d->character)->in_room->room_flags, ROOM_SILENCE))
 			{
-					send_to_char(form_table[ch->pcdata->shifted].yell,d->character);
-					send_to_char("\n\r",d->character);
+					send_to_char(form_table[ch->pcdata->shifted].yell,Deref(d->character));
+					send_to_char("\n\r",Deref(d->character));
 			}
 		}
 
@@ -1572,7 +1587,7 @@ void do_pmote(CHAR_DATA *ch, char *argument)
 	char last[MAX_INPUT_LENGTH];
 	for (auto vch = ch->in_room->people; vch != nullptr; vch = vch->next_in_room)
 	{
-		if (vch->desc == nullptr || vch == ch)
+		if (Deref(vch->desc) == nullptr || vch == ch)
 			continue;
 
 		letter = strstr(argument, vch->name);
@@ -1791,7 +1806,7 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 		{
 			if (isCabalItem(obj))
 			{
-				if (obj->carried_by != nullptr && obj->carried_by == ch)
+				if (obj->carried_by == ch->self)
 				{
 					act("You cannot quit with cabal items in your inventory!", ch, 0, 0, TO_CHAR);
 					return;
@@ -1846,12 +1861,12 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 		obj_next = obj->next;
 		if (isCabalItem(obj))
 		{
-			if (obj->carried_by != nullptr && obj->carried_by == ch)
+			if (obj->carried_by == ch->self)
 				extract_obj(obj);
 		}
 		else if (obj->pIndexData->limtotal != 0 && ch->level < 10)
 		{
-			if (obj->carried_by == ch)
+			if (obj->carried_by == ch->self)
 				extract_obj(obj);
 		}
 	}
@@ -1861,9 +1876,6 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 	for (auto wch = char_list; wch != nullptr; wch = wch_next)
 	{
 		wch_next = wch->next;
-
-		if (wch->defending != nullptr && wch->defending == ch)
-			wch->defending = nullptr;
 
 		if (is_affected(wch, gsn_empathy))
 		{
@@ -1877,14 +1889,14 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 				}
 			}
 
-			if (laf->owner == ch)
+			if (Deref(laf->owner) == ch)
 				affect_strip(wch, gsn_empathy);
 		}
 
 		if (!is_npc(wch))
 			continue;
 
-		if (is_npc(wch) && is_affected_by(wch, AFF_CHARM) && wch->master == ch && IS_SET(wch->act, ACT_UNDEAD))
+		if (is_npc(wch) && is_affected_by(wch, AFF_CHARM) && Deref(wch->master) == ch && IS_SET(wch->act, ACT_UNDEAD))
 		{
 			extract_char(wch, true);
 			continue;
@@ -1899,7 +1911,7 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 
 	save_char_obj(ch);
 	auto id = ch->id;
-	auto d = ch->desc;
+	auto d = Deref(ch->desc);
 
 	extract_char(ch, true);
 
@@ -1909,7 +1921,7 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 	/* toast evil cheating bastards */
 	for (d = descriptor_list; d != nullptr; d = d->next)
 	{
-		auto tch = d->original ? d->original : d->character;
+		auto tch = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 		if (tch && tch->id == id)
 		{
 			extract_char(tch, true);
@@ -1948,15 +1960,17 @@ void do_follow(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (is_affected_by(ch, AFF_CHARM) && ch->master != nullptr)
+	CHAR_DATA *master = Deref(ch->master);
+
+	if (is_affected_by(ch, AFF_CHARM) && master != nullptr)
 	{
-		act("But you'd rather follow $N!", ch, nullptr, ch->master, TO_CHAR);
+		act("But you'd rather follow $N!", ch, nullptr, master, TO_CHAR);
 		return;
 	}
 
 	if (victim == ch)
 	{
-		if (ch->master == nullptr)
+		if (master == nullptr)
 		{
 			send_to_char("You already follow yourself.\n\r", ch);
 			return;
@@ -1988,7 +2002,7 @@ void do_follow(CHAR_DATA *ch, char *argument)
 
 	REMOVE_BIT(ch->act, PLR_NOFOLLOW);
 
-	if (ch->master != nullptr)
+	if (Deref(ch->master) != nullptr)
 		stop_follower(ch);
 
 	add_follower(ch, victim);
@@ -1996,13 +2010,13 @@ void do_follow(CHAR_DATA *ch, char *argument)
 
 void add_follower(CHAR_DATA *ch, CHAR_DATA *master)
 {
-	if (ch->master != nullptr)
+	if (Deref(ch->master) != nullptr)
 	{
 		RS.Logger.Debug("Add_follower: non-nullptr master.");
 		return;
 	}
 
-	ch->master = master;
+	ch->master = master->self;
 	ch->leader = nullptr;
 
 	auto chance = get_skill(ch, gsn_trail);
@@ -2040,7 +2054,11 @@ void add_follower(CHAR_DATA *ch, CHAR_DATA *master)
 
 void stop_follower(CHAR_DATA *ch)
 {
-	if (ch->master == nullptr)
+	CHAR_DATA *master;
+
+	master = Deref(ch->master);
+
+	if (master == nullptr)
 	{
 		RS.Logger.Debug("Stop_follower: nullptr master.");
 		return;
@@ -2052,16 +2070,17 @@ void stop_follower(CHAR_DATA *ch)
 		affect_strip(ch, gsn_charm_person);
 	}
 
-	if (can_see(ch->master, ch) && ch->in_room != nullptr && !(is_npc(ch) && ch->pIndexData->vnum == MOB_VNUM_ANCHOR))
+	if (can_see(master, ch) && ch->in_room != nullptr && !(is_npc(ch) && ch->pIndexData->vnum == MOB_VNUM_ANCHOR))
 	{
-		act("$n stops following you.", ch, nullptr, ch->master, TO_VICT);
-		act("You stop following $N.", ch, nullptr, ch->master, TO_CHAR);
+		act("$n stops following you.", ch, nullptr, master, TO_VICT);
+		act("You stop following $N.", ch, nullptr, master, TO_CHAR);
 
 		if (is_affected(ch, gsn_trail))
 			affect_strip(ch, gsn_trail);
 	}
-	if (ch->master->pet == ch)
-		ch->master->pet = nullptr;
+
+	if (Deref(master->pet) == ch)
+		master->pet = nullptr;
 
 	check_leadership_affect(ch);
 	ch->master = nullptr;
@@ -2071,7 +2090,7 @@ void stop_follower(CHAR_DATA *ch)
 /* nukes charmed monsters and pets */
 void nuke_pets(CHAR_DATA *ch)
 {
-	auto pet = ch->pet;
+	auto pet = Deref(ch->pet);
 	if (pet != nullptr)
 	{
 		stop_follower(pet);
@@ -2092,10 +2111,12 @@ void die_follower(CHAR_DATA *ch)
 		return;
 	}
 
-	if (ch->master != nullptr)
+	CHAR_DATA *master = Deref(ch->master);
+
+	if (master != nullptr)
 	{
-		if (ch->master->pet == ch)
-			ch->master->pet = nullptr;
+		if (Deref(master->pet) == ch)
+			master->pet = nullptr;
 
 		stop_follower(ch);
 	}
@@ -2113,7 +2134,7 @@ void die_follower(CHAR_DATA *ch)
 		}*/
 		if (is_npc(fch) && (is_affected(fch, gsn_animate_dead) || is_affected_by(fch, AFF_CHARM)))
 		{
-			if (fch->master == ch)
+			if (Deref(fch->master) == ch)
 			{
 				REMOVE_BIT(fch->affected_by, AFF_CHARM);
 				affect_strip(fch, gsn_animate_dead);
@@ -2123,11 +2144,11 @@ void die_follower(CHAR_DATA *ch)
 		}
 		else
 		{
-			if (fch->master == ch && !is_affected(fch, gsn_trail))
+			if (Deref(fch->master) == ch && !is_affected(fch, gsn_trail))
 				stop_follower(fch);
 
-			if (fch->leader == ch && !is_affected(fch, gsn_trail))
-				fch->leader = fch;
+			if (Deref(fch->leader) == ch && !is_affected(fch, gsn_trail))
+				fch->leader = fch->self;
 		}
 	}
 }
@@ -2167,7 +2188,7 @@ void do_order(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (!is_affected_by(victim, AFF_CHARM) || victim->master != ch || (is_immortal(victim) && victim->trust >= ch->trust))
+		if (!is_affected_by(victim, AFF_CHARM) || Deref(victim->master) != ch || (is_immortal(victim) && victim->trust >= ch->trust))
 		{
 			send_to_char("Do it yourself!\n\r", ch);
 			return;
@@ -2194,7 +2215,7 @@ void do_order(CHAR_DATA *ch, char *argument)
 	{
 		och_next = och->next_in_room;
 
-		if (is_affected_by(och, AFF_CHARM) && och->master == ch && (fAll || och == victim))
+		if (is_affected_by(och, AFF_CHARM) && Deref(och->master) == ch && (fAll || och == victim))
 		{
 			if (is_npc(och) && och->pIndexData->vnum == ACADEMY_PET)
 				continue;
@@ -2233,7 +2254,8 @@ void do_group(CHAR_DATA *ch, char *argument)
 	{
 		std::string buffer;
 		char buf2[MAX_STRING_LENGTH];
-		auto leader = ch->leader != nullptr ? ch->leader : ch;
+		auto chLeader = Deref(ch->leader);
+		auto leader = chLeader != nullptr ? chLeader : ch;
 
 		buffer = fmt::format("{}'s group:\n\r", pers(leader, ch));
 		send_to_char(buffer.c_str(), ch);
@@ -2284,13 +2306,15 @@ void do_group(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->master != nullptr || (ch->leader != nullptr && ch->leader != ch))
+	auto leader = Deref(ch->leader);
+
+	if (Deref(ch->master) != nullptr || (leader != nullptr && leader != ch))
 	{
 		send_to_char("But you are following someone else!\n\r", ch);
 		return;
 	}
 
-	if (victim->master != ch && ch != victim)
+	if (Deref(victim->master) != ch && ch != victim)
 	{
 		act_new("$N isn't following you.", ch, nullptr, victim, TO_CHAR, POS_SLEEPING);
 		return;
@@ -2318,7 +2342,7 @@ void do_group(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	victim->leader = ch;
+	victim->leader = ch->self;
 	act_new("$N joins $n's group.", ch, nullptr, victim, TO_NOTVICT, POS_RESTING);
 	act_new("You join $n's group.", ch, nullptr, victim, TO_VICT, POS_SLEEPING);
 	act_new("$N joins your group.", ch, nullptr, victim, TO_CHAR, POS_SLEEPING);
@@ -2330,7 +2354,7 @@ void do_group(CHAR_DATA *ch, char *argument)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_traitors_luck;
-		af.owner = ch;
+		af.owner = ch->self;
 		af.level = ch->level;
 		af.duration = -1;
 		SET_BIT(af.bitvector, AFF_PERMANENT);
@@ -2346,7 +2370,7 @@ void do_group(CHAR_DATA *ch, char *argument)
 		af.where = TO_AFFECTS;
 		af.aftype = AFT_INVIS;
 		af.type = gsn_traitors_luck;
-		af.owner = victim;
+		af.owner = victim->self;
 		af.level = ch->level;
 		af.duration = -1;
 		SET_BIT(af.bitvector, AFF_PERMANENT);
@@ -2637,11 +2661,11 @@ bool is_same_group(CHAR_DATA *ach, CHAR_DATA *bch)
 	/* if ( ( ach->level - bch->level > 8 || ach->level - bch->level < -8 ) && !is_npc(ach) )
 		return false;*/
 
-	if (ach->leader != nullptr)
-		ach = ach->leader;
+	if (Deref(ach->leader) != nullptr)
+		ach = Deref(ach->leader);
 
-	if (bch->leader != nullptr)
-		bch = bch->leader;
+	if (Deref(bch->leader) != nullptr)
+		bch = Deref(bch->leader);
 
 	return ach == bch;
 }
@@ -2664,7 +2688,7 @@ void do_release(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!is_affected_by(victim, AFF_CHARM) || victim->master != ch)
+	if (!is_affected_by(victim, AFF_CHARM) || Deref(victim->master) != ch)
 	{
 		send_to_char("They aren't under your control.\n\r", ch);
 		return;
@@ -2727,8 +2751,8 @@ void perm_death_log(CHAR_DATA *ch, int deltype)
 
 void temp_death_log(CHAR_DATA *killer, CHAR_DATA *dead)
 {
-	if (is_npc(killer) && (killer->master != nullptr))
-		killer = killer->master;
+	if (is_npc(killer) && (Deref(killer->master) != nullptr))
+		killer = Deref(killer->master);
 
 	if (is_npc(dead) || is_npc(killer))
 		return;
@@ -2771,7 +2795,7 @@ void mob_death_log(CHAR_DATA *killer, CHAR_DATA *dead)
 /* type 0 = create, 1 = login, 2 = logout */
 void login_log(CHAR_DATA *ch, int type)
 {
-	if (!ch->pcdata->host && !ch->desc)
+	if (!ch->pcdata->host && !Deref(ch->desc))
 		return;
 
 	if (IS_SET(ch->comm, COMM_NOSOCKET))
@@ -2779,7 +2803,7 @@ void login_log(CHAR_DATA *ch, int type)
 
 	Login login;
 	login.name = ch->true_name;
-	login.site = ch->pcdata->host ? ch->pcdata->host : ch->desc->host;
+	login.site = ch->pcdata->host ? ch->pcdata->host : Deref(ch->desc)->host;
 	login.time = log_time();
 	login.ctime = current_time;
 	login.played = type == 2 ? (int)((current_time - ch->logon) / 60) : -1;

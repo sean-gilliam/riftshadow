@@ -47,7 +47,7 @@ void string_edit(CHAR_DATA *ch, char **pString)
 	else
 		**pString = '\0';
 
-	ch->desc->pString = pString;
+	Deref(ch->desc)->pString = pString;
 }
 
 /*****************************************************************************
@@ -70,7 +70,7 @@ void string_append(CHAR_DATA *ch, char **pString)
 	if (*(*pString + strlen(*pString) - 1) != '\r')
 		send_to_char("\n\r", ch);
 
-	ch->desc->pString = pString;
+	Deref(ch->desc)->pString = pString;
 }
 
 /*****************************************************************************
@@ -108,6 +108,9 @@ char *string_replace(char *orig, char *old, char *newstr)
  ****************************************************************************/
 void string_add(CHAR_DATA *ch, char *argument)
 {
+	// This whole function edits one connection's OLC string buffer; nothing in
+	// it can close the socket, so the connection is read once.
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
 	char buf[MAX_STRING_LENGTH];
 	char obuf[MSL * 2];
 	int len = 0;
@@ -130,14 +133,14 @@ void string_add(CHAR_DATA *ch, char *argument)
 		if (!str_cmp(arg1, ".c"))
 		{
 			send_to_char("String cleared.\n\r", ch);
-			**ch->desc->pString = '\0';
+			**connection->pString = '\0';
 			return;
 		}
 
 		if (!str_cmp(arg1, ".s"))
 		{
 			send_to_char("String so far:\n\r", ch);
-			send_to_char(*ch->desc->pString, ch);
+			send_to_char(*connection->pString, ch);
 			return;
 		}
 
@@ -150,7 +153,7 @@ void string_add(CHAR_DATA *ch, char *argument)
 			}
 
 			smash_tilde(arg3); /* Just to be sure -- Hugin */
-			*ch->desc->pString = string_replace(*ch->desc->pString, arg2, arg3);
+			*connection->pString = string_replace(*connection->pString, arg2, arg3);
 
 			auto buffer = fmt::format("'{}' replaced with '{}'.\n\r", arg2, arg3);
 			send_to_char(buffer.c_str(), ch);
@@ -159,20 +162,20 @@ void string_add(CHAR_DATA *ch, char *argument)
 
 		if (!str_cmp(arg1, ".f"))
 		{
-			*ch->desc->pString = format_string(*ch->desc->pString);
+			*connection->pString = format_string(*connection->pString);
 			send_to_char("String formatted.\n\r", ch);
 			return;
 		}
 
 		if (!str_cmp(arg1, ".d"))
 		{
-			if (**ch->desc->pString == '\0')
+			if (**connection->pString == '\0')
 			{
 				send_to_char("No lines left to delete.\n\r", ch);
 				return;
 			}
 
-			strcpy(obuf, *ch->desc->pString);
+			strcpy(obuf, *connection->pString);
 
 			for (len = strlen(obuf); len > 0; len--)
 			{
@@ -188,16 +191,16 @@ void string_add(CHAR_DATA *ch, char *argument)
 					else
 					{
 						obuf[len + 1] = '\0';
-						free_pstring(*ch->desc->pString);
-						*ch->desc->pString = palloc_string(obuf);
+						free_pstring(*connection->pString);
+						*connection->pString = palloc_string(obuf);
 						return send_to_char("Line deleted.\n\r", ch);
 					}
 				}
 			}
 
 			obuf[0] = '\0';
-			free_pstring(*ch->desc->pString);
-			*ch->desc->pString = palloc_string(obuf);
+			free_pstring(*connection->pString);
+			*connection->pString = palloc_string(obuf);
 
 			send_to_char("Line Deleted.\n\r", ch);
 			return;
@@ -223,11 +226,11 @@ void string_add(CHAR_DATA *ch, char *argument)
 
 	if (*argument == '~' || *argument == '@')
 	{
-		ch->desc->pString = nullptr;
+		connection->pString = nullptr;
 		return;
 	}
 
-	strcpy(buf, *ch->desc->pString);
+	strcpy(buf, *connection->pString);
 
 	/*
 	 * Truncate strings to MAX_STRING_LENGTH.
@@ -238,7 +241,7 @@ void string_add(CHAR_DATA *ch, char *argument)
 		send_to_char("String too long, last line skipped.\n\r", ch);
 
 		/* Force character out of editing mode. */
-		ch->desc->pString = nullptr;
+		connection->pString = nullptr;
 		return;
 	}
 
@@ -250,8 +253,8 @@ void string_add(CHAR_DATA *ch, char *argument)
 
 	strcat(buf, argument);
 	strcat(buf, "\n\r");
-	free_pstring(*ch->desc->pString);
-	*ch->desc->pString = palloc_string(buf);
+	free_pstring(*connection->pString);
+	*connection->pString = palloc_string(buf);
 }
 
 /*

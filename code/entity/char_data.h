@@ -14,6 +14,7 @@
 #include "gen_data.h"					// GEN_DATA held by unique_ptr in ch->gen_data
 #include "mem_data.h"					// MEM_DATA held by value in ch->memory
 #include "affect_data.h"				// AFFECT_DATA held by value in ch->affected
+#include "../stdlibs/handle.h"			// self, and the handle-typed cross-references
 
 //
 // One character (PC or NPC).
@@ -25,35 +26,92 @@ extern CProficiencies prof_none; //empty proficiencies for jackasses who are goi
 class	char_data
 {
 public:
+	// A handle naming this character, issued by new_char and retired by
+	// free_char. It is how another entity refers to this one without risking a
+	// pointer into a recycled slot; null for a character that never came from
+	// new_char.
+	Handle<CHAR_DATA> self;
 	CHAR_DATA *next;
 	CHAR_DATA *next_in_room;
-	CHAR_DATA *master;
-	CHAR_DATA *leader;
-	CHAR_DATA *fighting;
-	CHAR_DATA *reply;
-	CHAR_DATA *pet;
-	CHAR_DATA *last_fought;
+	// The follower graph. All non-owning, and any of the three can be
+	// extracted independently of the others, so they are handles rather than
+	// pointers. The sweeps in stop_follower/die_follower stay: they run mostly
+	// for reasons nobody died of -- setting nofollow, switching who you
+	// follow, a spell breaking a group -- so they are about who follows whom,
+	// not about lifetime.
+	//
+	// Two deliberate rules live here. A follower whose leader is shed becomes
+	// its OWN leader, so a handle to self is normal and must keep resolving.
+	// And a follower affected by gsn_trail is exempt from the sweep on
+	// purpose: the point of the skill is that the target cannot shake them.
+	Handle<CHAR_DATA> master;
+	Handle<CHAR_DATA> leader;
+	// The character this one is in combat with. Non-owning, and the opponent
+	// can be extracted independently, so it is a handle rather than a pointer.
+	// stop_fighting clears it for both sides -- that is about the fight
+	// ending, not about lifetime; almost every caller leaves both characters
+	// alive.
+	Handle<CHAR_DATA> fighting;
+	// Who `reply` answers. Non-owning, and the other party can be extracted
+	// independently, so it is a handle rather than a pointer. The clears
+	// outside extract_char -- do_noreply, and cloaking with invis/incog -- are
+	// a player closing the channel, not a lifetime event.
+	Handle<CHAR_DATA> reply;
+	// The charmed pet this character owns. Non-owning -- nuke_pets extracts it
+	// rather than this field doing so -- and cleared by stop_follower when the
+	// pet is dismissed, which leaves both alive.
+	Handle<CHAR_DATA> pet;
+	// The character this mob is hunting. Non-owning, and the quarry can be
+	// extracted independently, so it is a handle rather than a pointer. The
+	// clears outside extract_char are a mob giving up the hunt -- losing the
+	// trail, a peace command -- which is about intent, not lifetime.
+	Handle<CHAR_DATA> last_fought;
 	int tracktimer;
 	time_t last_fight_time;
-	char * last_fight_name;
-	CHAR_DATA *hunting;
-	CHAR_DATA *defending;
+	// The player this one last fought, for the lost-link wiznet and do_stat.
+	// This used to be a `char *` aliasing the opponent's own true_name buffer
+	// and compared by pointer identity, which meant it went stale whenever that
+	// buffer was released -- on death, but also on a rename, which no scrub
+	// could catch because the buffer was no longer anyone's name. Naming the
+	// character instead of their name allocation removes both problems.
+	Handle<CHAR_DATA> last_fight_opponent;
+	// The character this mob is stalking -- set by the face sucker's greet prog
+	// and by the sorcerer's aerial anchor. Non-owning, and the quarry can be
+	// extracted independently, so it is a handle rather than a pointer. Nothing
+	// clears it anywhere, on death or otherwise, so before it was a handle a
+	// dead quarry's stalker was inherited by whoever took its address next.
+	Handle<CHAR_DATA> hunting;
+	// The character this one is guarding, and the one it is analyzing. Both
+	// non-owning, both able to outlive their target, so both are handles.
+	// Nothing scrubs either on extract -- `defending` is cleared only when a
+	// player quits or stops defending, `analyzePC` never -- so before these
+	// were handles they simply dangled on any other death.
+	Handle<CHAR_DATA> defending;
 	std::list<MEM_DATA> memory;
 	GAME_FUN *game_fun;
 	MOB_INDEX_DATA *pIndexData;
-	DESCRIPTOR_DATA *desc;
+	// The connection driving this character, if any -- null for a mob, and for
+	// a player who has gone link-dead. Non-owning, and the socket can be closed
+	// and its struct recycled while the body stays in the world, so it is a
+	// handle rather than a pointer. The only clear on a lifetime path is
+	// close_socket's, and it is guarded: when an immortal is switched at
+	// shutdown, close_socket frees the immortal and the descriptor but never
+	// touches the mob, which before this was a handle left the mob holding a
+	// descriptor the next connection would be handed.
+	Handle<DESCRIPTOR_DATA> desc;
 	std::list<AFFECT_DATA> affected;
 	NOTE_DATA *pnote;
 	OBJ_DATA *carrying;
-	OBJ_DATA *on;
+	// The furniture this character is sitting/resting/sleeping on. Non-owning,
+	// and the object can be destroyed independently, so it is a handle rather
+	// than a pointer. Cleared outright when the character or the object leaves
+	// the room -- that is about position, not lifetime.
+	Handle<OBJ_DATA> on;
 	ROOM_INDEX_DATA *in_room;
 	ROOM_INDEX_DATA *was_in_room;
 	AREA_DATA *zone;
 	std::unique_ptr<PC_DATA> pcdata;
 	std::unique_ptr<GEN_DATA> gen_data;
-	PATHFIND_DATA *path;	// For smart pathfinding/tracking.  Mob only.
-	PATHFIND_DATA *best;	// Stores best direction thus far.  Mob only.
-	bool valid;
 	char *name;
 	char *true_name;
 	long id;
@@ -164,7 +222,7 @@ public:
 	short legs;
 	short balance;
 	short batter;
-	CHAR_DATA *analyzePC;
+	Handle<CHAR_DATA> analyzePC;
 	int analyze;
 	short pulseTimer;					// counter for racial combat pulse
 	char *backup_true_name;				// Dev's SUPAR CLEVAR CORRUPTION FIX!!!

@@ -23,7 +23,6 @@ struct exit_data
 	EXIT_DATA *next;					// OLC
 	int orig_door;						// OLC
 	RUNE_DATA *rune;
-	bool has_rune;
 };
 
 #endif /* ENTITY_EXIT_DATA_H */

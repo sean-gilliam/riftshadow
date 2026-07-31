@@ -25,7 +25,6 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	int dir = 0;
 	EXIT_DATA *pexit = nullptr;
-	RUNE_DATA *rune;
 
 	 // it's been casted, so we don't get the dir handed straight to us (this is pre TAR_DIR)
 	if (target != RUNE_DOOR)
@@ -50,34 +49,48 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	// allocate temporary rune, it'll be discarded after apply_rune anyway
-	// (sizeof(*rune), not sizeof(rune): the latter is the pointer's 8 bytes, which
-	// left every field write below running off the end of the allocation)
-	rune = (RUNE_DATA *)talloc_struct(sizeof(*rune));
-
 	// if it's not RUNE_DOOR then it's been casted, not runed, so it's immediate
 	if (target != RUNE_DOOR)
 	{
-		rune->level = level;
-		rune->placed_on = pexit;
-		rune->target_type = RUNE_TO_PORTAL; // grep for this too
-		rune->owner = ch;
-		rune->trigger_type = RUNE_TRIGGER_EXIT; // grep for rune trigger types if you need to
-		rune->type = sn;
-		rune->duration = level / 10;
-		rune->end_fun = nullptr;
-		rune->function = trigger_stasis_wall; // this is what's called when the rune is triggered
-		apply_rune(rune);					  // this will create a new copy of the talloced rune
+		// apply_rune copies this into a rune of its own, so the template only
+		// has to outlive the call.
+		RUNE_DATA rune = {};
+
+		rune.level = level;
+		rune.placed_on = pexit;
+		rune.target_type = RUNE_TO_PORTAL; // grep for this too
+		rune.owner = ch->self;
+		rune.trigger_type = RUNE_TRIGGER_EXIT; // grep for rune trigger types if you need to
+		rune.type = sn;
+		rune.duration = level / 10;
+		rune.end_fun = nullptr;
+		rune.function = trigger_stasis_wall; // this is what's called when the rune is triggered
+		apply_rune(&rune);
 
 		act("$n gestures and an immovable barrier snaps into existence to the $t!", ch, direction_table[dir].name, 0, TO_ROOM);
 		act("You gesture and a stasis wall forms to the $t!", ch, direction_table[dir].name, 0, TO_CHAR);
 		return;
 	}
 
+	// The drawn rune has to survive nine ticks on the queue before draw_rune
+	// finalises it, so it cannot live in the temp-struct pool: talloc_struct
+	// bumps a pointer through a fixed buffer and wraps back to the start
+	// without regard for anything still holding what it hands out. Nine ticks
+	// is ample for another caller -- act_info.c allocates from that pool on a
+	// plain `look` -- to come round and write over the rune while the queue
+	// entry still names it.
+	//
+	// new_rune gives it a lifetime instead, and draw_rune ends that lifetime on
+	// every path out. The one hole left is a queue entry cancelled rather than
+	// run (DeleteQueuedEventsInvolving, which extract_char calls for NPCs):
+	// that leaks the struct, because the queue cancels with a tombstone and has
+	// no hook to run on the way. A leaked rune is the better failure.
+	RUNE_DATA *rune = new_rune();
+
 	rune->level = level;
 	rune->placed_on = (ROOM_INDEX_DATA *)ch->in_room;
 	rune->target_type = RUNE_TO_ROOM;
-	rune->owner = ch;
+	rune->owner = ch->self;
 	rune->trigger_type = RUNE_TRIGGER_ENTRY;
 	rune->type = sn;
 	rune->duration = level / 10;
@@ -91,16 +104,16 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		usually make sure the lag on the rune
 		is at least as long as the lag on the draw_rune queue
 	*/
-	RS.Queue.AddToQueue(9, "spell_stasis_wall", "draw_rune_queue", draw_rune_queue, rune, rune->owner); 
+	RS.Queue.AddToQueue(9, "spell_stasis_wall", "draw_rune_queue", draw_rune_queue, rune, ch);
 }
 
 bool trigger_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 {
 	RUNE_DATA *rune = (RUNE_DATA *)vo;
-	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = rune->owner;
+	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = Deref(rune->owner);
 	int dir = (int)*(int *)vo3;
 
-	if (!rune->owner)
+	if (ch == nullptr)
 		return false;
 
 	if (is_safe_new(ch, victim, false))
@@ -115,11 +128,18 @@ bool trigger_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 bool activate_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 {
 	RUNE_DATA *rune = (RUNE_DATA *)vo, new_rune;
-	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = rune->owner;
+	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = Deref(rune->owner);
 	int dir = reverse_d((int)*(int *)vo3);
+
+	// The owner check has to come first: it used to sit below a line that
+	// already read ch->in_room, so a rune outliving its caster dereferenced
+	// null before ever reaching the guard written for exactly that case.
+	if (ch == nullptr || ch == victim || dir != rune->extra)
+		return false;
+
 	EXIT_DATA *pexit = ch->in_room->exit[dir];
 
-	if (!rune->owner || rune->owner == victim || dir != rune->extra || !pexit)
+	if (pexit == nullptr)
 		return false;
 
 	if (is_safe_new(ch, victim, false))
@@ -142,14 +162,28 @@ bool activate_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 	return false;
 }
 
+// Consumes the rune spell_stasis_wall queued. Every path out of here frees it,
+// including the ones that decide the draw failed: the queue held the only
+// reference, and apply_rune takes a copy rather than the struct itself.
 void draw_rune(void *vo, void *vo2)
 {
 	RUNE_DATA *rune = (RUNE_DATA *)vo;
-	CHAR_DATA *ch = rune->owner;
+	CHAR_DATA *ch = Deref(rune->owner);
+
+	// Nine ticks pass between the queue entry being made and this running, and
+	// extract_char only cancels pending events for NPCs -- so the caster may
+	// simply be gone by now.
+	if (ch == nullptr)
+	{
+		free_rune(rune);
+		return;
+	}
+
 	if (ch->in_room->vnum != rune->drawn_in)
 	{
 		send_to_char("A backlash of energy whips through you as your uncompleted rune overloads!\n\r", ch);
 		damage_new(ch, ch, dice(rune->level, 4), TYPE_UNDEFINED, DAM_ENERGY, true, HIT_UNBLOCKABLE, 0, 1, "mana surge");
+		free_rune(rune);
 		return;
 	}
 
@@ -157,11 +191,13 @@ void draw_rune(void *vo, void *vo2)
 	{
 		act("The rune flares brightly before vanishing!", ch, 0, 0, TO_ROOM);
 		send_to_char("The improperly scribed rune flares brightly before vanishing!\n\r", ch);
+		free_rune(rune);
 		return;
 	}
 
 	act("The rune flares $t!", ch, skill_table[rune->type].msg_off, 0, TO_ALL);
 	apply_rune(rune);
+	free_rune(rune);
 }
 
 void draw_rune_queue(RUNE_DATA *rune, CHAR_DATA *ch)
@@ -177,7 +213,7 @@ void do_rune(CHAR_DATA *ch, char *argument)
 	void *vo;
 	int mana, where, sn, target = 0;
 
-	if (is_npc(ch) && ch->desc == nullptr)
+	if (is_npc(ch) && Deref(ch->desc) == nullptr)
 		return;
 
 	if (ch->Class()->ctype != CLASS_CASTER && !is_immortal(ch))
@@ -380,49 +416,53 @@ RUNE_DATA *find_rune(void *vo, int target_type, int trigger_type, RUNE_DATA *run
 	return nullptr;
 }
 
-void extract_rune(RUNE_DATA *rune)
+/*
+ * The head of the per-container rune chain, as a pointer to the field itself so
+ * a caller can rewrite it. `placed_on` is a void * discriminated by
+ * target_type, and this is the only place that has to know that.
+ */
+static RUNE_DATA **rune_container_head(RUNE_DATA *rune)
 {
-	OBJ_DATA *obj;
-	EXIT_DATA *exit;
-	ROOM_INDEX_DATA *room;
-	RUNE_DATA *rune_prev;
-
 	switch (rune->target_type)
 	{
 		case RUNE_TO_WEAPON:
 		case RUNE_TO_ARMOR:
-			obj = (OBJ_DATA *)rune->placed_on;
-
-			if (obj->has_rune && rune->next_content)
-			{
-				obj->rune = rune->next_content;
-				break;
-			}
-
-			obj->has_rune = false;
-			break;
+			return &((OBJ_DATA *)rune->placed_on)->rune;
 		case RUNE_TO_PORTAL:
-			exit = (EXIT_DATA *)rune->placed_on;
-
-			if (exit->has_rune && rune->next_content)
-			{
-				exit->rune = rune->next_content;
-				break;
-			}
-
-			exit->has_rune = false;
-			break;
+			return &((EXIT_DATA *)rune->placed_on)->rune;
 		case RUNE_TO_ROOM:
-			room = (ROOM_INDEX_DATA *)rune->placed_on;
+			return &((ROOM_INDEX_DATA *)rune->placed_on)->rune;
+	}
 
-			if (room->has_rune && rune->next_content)
+	return nullptr;
+}
+
+void extract_rune(RUNE_DATA *rune)
+{
+	RUNE_DATA *rune_prev;
+
+	// Unlink from the container's chain. Every rune is on two lists and this is
+	// the one keyed by what it was placed on, so a rune that stays linked here
+	// after free_rune has recycled it is a chain find_rune will walk into.
+	RUNE_DATA **head = rune_container_head(rune);
+
+	if (head != nullptr)
+	{
+		if (*head == rune)
+		{
+			*head = rune->next_content;
+		}
+		else
+		{
+			for (rune_prev = *head; rune_prev != nullptr; rune_prev = rune_prev->next_content)
 			{
-				room->rune = rune->next_content;
-				break;
+				if (rune_prev->next_content == rune)
+				{
+					rune_prev->next_content = rune->next_content;
+					break;
+				}
 			}
-
-			room->has_rune = false;
-			break;
+		}
 	}
 
 	if (rune_list == rune)
@@ -460,30 +500,18 @@ void apply_rune(RUNE_DATA *rune)
 		case RUNE_TO_WEAPON:
 		case RUNE_TO_ARMOR:
 			obj = (OBJ_DATA *)rune_new->placed_on;
-
-			if (obj->has_rune)
-				rune_new->next_content = obj->rune;
-
+			rune_new->next_content = obj->rune;
 			obj->rune = rune_new;
-			obj->has_rune = true;
 			break;
 		case RUNE_TO_PORTAL:
 			pexit = (EXIT_DATA *)rune_new->placed_on;
-
-			if (pexit->has_rune)
-				rune_new->next_content = pexit->rune;
-
+			rune_new->next_content = pexit->rune;
 			pexit->rune = rune_new;
-			pexit->has_rune = true;
 			break;
 		case RUNE_TO_ROOM:
 			room = (ROOM_INDEX_DATA *)rune_new->placed_on;
-
-			if (room->has_rune)
-				rune_new->next_content = room->rune;
-
+			rune_new->next_content = room->rune;
 			room->rune = rune_new;
-			room->has_rune = true;
 			break;
 	}
 }
