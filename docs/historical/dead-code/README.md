@@ -84,6 +84,18 @@ long after `merc.h` has `#undef`'d its way back to 4608. A buffer sized between 
 would have been 512 bytes short; none was. With `file.h` archived the guard has been collapsed to a
 plain `#define`, as was done for `WIZ_LINKS`.
 
+## Added later: `exception.h` (2026-08-01)
+
+Six lines, zero includers, and half of them commented out — `class Exception`'s only body built a
+formatted message and then didn't report it (`// bug(ebug);`). It surfaced only because it was the
+**last remaining consumer of the refcounted string type**, whose implementation was deleted the same
+day; `MUNCH_VARARG`, the varargs macro it used, went with that implementation.
+
+`rift.h` carried the matching `#define throwbug(...) throw Exception(...)`, which had **no uses** —
+and could not have had any, since nothing included the header that declares `Exception`. It was
+removed alongside. `ERROR_TRAP()` / `CATCH_ERRORS()` in `rift.h` are unrelated and still live: they
+catch `const char *` and `...`, never this class.
+
 ## What was *not* archived
 
 - **`code/direction.h`** — `MAX_EXIT`, `MAX_TRACKS`, and the `Directions` enum were rescued out of
