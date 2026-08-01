@@ -10,7 +10,7 @@
 #include "quest.h"
 #include "comm.h"
 #include "fight.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "magic.h"
 #include "interp.h"
 #include "recycle.h"

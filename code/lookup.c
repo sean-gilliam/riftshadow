@@ -39,7 +39,6 @@
 #include "merc.h"
 #include "lookup.h"
 #include "tables.h"
-#include "newmem.h"
 #include "db.h"
 #include "material.h"
 #include "direction.h"

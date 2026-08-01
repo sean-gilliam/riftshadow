@@ -53,7 +53,7 @@
 #include "mprog.h"
 #include "rprog.h"
 #include "aprog.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "magic.h"
 #include "interp.h"
 

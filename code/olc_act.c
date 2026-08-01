@@ -52,7 +52,7 @@
 #include "mem.h"
 #include "direction.h"
 #include "interp.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "magic.h"
 #include "./include/spdlog/fmt/bundled/format.h"
 #include "./include/spdlog/fmt/bundled/printf.h"

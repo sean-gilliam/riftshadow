@@ -25,7 +25,7 @@
 #include "../lookup.h"
 #include "../tables.h"
 #include "../skills.h"
-#include "../newmem.h"
+#include "../pstring.h"
 #include "../interp.h"
 #include "../act_info.h"
 #include "../act_obj.h"

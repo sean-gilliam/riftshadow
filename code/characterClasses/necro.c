@@ -22,7 +22,7 @@
 #include "../utility.h"
 #include "../skills.h"
 #include "../devextra.h"
-#include "../newmem.h"
+#include "../pstring.h"
 
 void spell_dark_vessel(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {

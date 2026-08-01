@@ -43,7 +43,7 @@
 #include "entity/handles.h"
 #include "weather_enums.h"
 #include "direction.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "act_wiz.h"
 #include "interp.h"
 #include "tables.h"

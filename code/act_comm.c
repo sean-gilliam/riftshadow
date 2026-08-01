@@ -51,7 +51,7 @@
 #include "characterClasses/warrior.h"
 #include "save.h"
 #include "act_info.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "act_wiz.h"
 #include "interp.h"
 #include "fight.h"

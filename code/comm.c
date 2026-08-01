@@ -68,7 +68,7 @@
 #include "save.h"
 #include "dioextra.h"
 #include "mspec.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "handler.h"
 #include "./repositories/playerrepository.h"
 #include "characterClasses/sorcerer.h"

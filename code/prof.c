@@ -15,7 +15,7 @@
 #include "devextra.h"
 #include "interp.h"
 #include "update.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "act_info.h"
 #include "./include/spdlog/fmt/bundled/format.h"
 #include "./include/spdlog/fmt/bundled/printf.h"

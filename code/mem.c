@@ -26,7 +26,7 @@
 #include "mem.h"
 #include "db.h"
 #include "handler.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "recycle.h"
 #include "misc.h"
 

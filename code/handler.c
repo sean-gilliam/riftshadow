@@ -51,7 +51,7 @@
 #include "characterClasses/warrior.h"
 #include "fight.h"
 #include "skill.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "interp.h"
 #include "db.h"

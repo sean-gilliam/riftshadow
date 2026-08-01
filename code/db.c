@@ -55,7 +55,7 @@
 #include "olc.h"
 #include "spec.h"
 #include "act_comm.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "act_wiz.h"
 #include "devextra.h"

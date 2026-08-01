@@ -38,7 +38,7 @@
 #include <time.h>
 #include "merc.h"
 #include "alias.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "interp.h"
 #include "db.h"

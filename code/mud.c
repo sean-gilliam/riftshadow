@@ -6,7 +6,7 @@
 #include "mud.h"
 #include "merc.h"
 #include "rift.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "direction.h"
 #include "update.h"
 #include "dioextra.h"

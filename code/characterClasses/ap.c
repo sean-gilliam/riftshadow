@@ -19,7 +19,7 @@
 #include "../act_ente.h"
 #include "../act_info.h"
 #include "../act_move.h"
-#include "../newmem.h"
+#include "../pstring.h"
 #include "../comm.h"
 #include "../act_comm.h"
 #include "../act_info.h"

@@ -36,7 +36,7 @@
 #include "utility.h"
 #include "characterClasses/sorcerer.h"
 #include "comm.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "fight.h"
 #include "skills.h"
 #include "update.h"

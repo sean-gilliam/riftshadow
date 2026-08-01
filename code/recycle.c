@@ -48,7 +48,7 @@
 #include "db.h"
 #include "entity/handles.h"
 #include "handler.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "misc.h"
 #include "utility.h"
 #include "direction.h"

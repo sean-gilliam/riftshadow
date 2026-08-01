@@ -57,7 +57,7 @@
 #include "chardef.h"
 #include "const.h"
 #include "utility.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "direction.h"
 #include "./include/spdlog/fmt/bundled/format.h"
 

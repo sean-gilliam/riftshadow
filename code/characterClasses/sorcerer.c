@@ -28,7 +28,7 @@
 #include "../act_comm.h"
 #include "../act_move.h"
 #include "../fight.h"
-#include "../newmem.h"
+#include "../pstring.h"
 #include "../devextra.h"
 #include "../dioextra.h"
 #include "../act_move.h"

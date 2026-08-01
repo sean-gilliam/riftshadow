@@ -54,7 +54,7 @@
 #include "comm.h"
 #include "misc.h"
 #include "interp.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "skills.h"
 #include "./include/spdlog/fmt/bundled/format.h"
 

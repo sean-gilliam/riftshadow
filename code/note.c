@@ -45,7 +45,7 @@
 #include "handler.h"
 #include "recycle.h"
 #include "tables.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "interp.h"
 #include "db.h"

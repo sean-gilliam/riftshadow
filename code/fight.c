@@ -62,7 +62,7 @@
 #include "characterClasses/paladin.h"
 #include "act_obj.h"
 #include "act_info.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "dioextra.h"
 #include "comm.h"
 #include "act_wiz.h"

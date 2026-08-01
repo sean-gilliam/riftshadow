@@ -21,7 +21,7 @@
 #include "act_obj.h"
 #include "material.h"
 #include "utility.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "handler.h"
 #include "devextra.h"
 #include "act_comm.h"

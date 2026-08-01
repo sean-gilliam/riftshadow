@@ -60,7 +60,7 @@
 #include "characterClasses/sorcerer.h"
 #include "mprog.h"
 #include "direction.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "act_info.h"
 #include "comm.h"
 #include "./repositories/inductionrepository.h"

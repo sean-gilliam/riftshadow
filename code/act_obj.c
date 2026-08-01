@@ -54,7 +54,7 @@
 #include "dioextra.h"
 #include "characterClasses/paladin.h"
 #include "fight.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "update.h"
 #include "interp.h"

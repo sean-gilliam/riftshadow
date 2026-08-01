@@ -20,7 +20,7 @@
 #include "act_move.h"
 #include "fight.h"
 #include "act_info.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "handler.h"
 #include "effects.h"
 #include "comm.h"

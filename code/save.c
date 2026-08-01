@@ -8,7 +8,7 @@
 #include "merc.h"
 #include "entity/handles.h"
 #include "save.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "recycle.h"
 #include "lookup.h"
 #include "tables.h"

@@ -85,7 +85,7 @@ set(RIFT_SOURCE config.cpp
 	string.c
 	mspec.c
 	ispec.c
-	newmem.c
+	pstring.c
 	mud.c
 	characterClasses/class.c
 	prof.c
