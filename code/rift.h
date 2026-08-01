@@ -21,11 +21,7 @@ class CMud;
 #endif
 
 extern CMud RS;
-extern RString EmptyString;
 void bug(const char *bugstr, ...); //wraps onto RS.Bug
-
-//the following is for typecasting rstrings when the func is weak typing
-#define RSTR	const char *
 
 //
 // Data files used by the server.
