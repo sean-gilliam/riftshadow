@@ -10,6 +10,8 @@
  *
  */
 
+#include <string>
+
 #include "rift.h"
 #include "stdlibs/clogger.h"
 #include "stdlibs/dbsession.h"
@@ -83,10 +85,10 @@ public:
 //	CClass				Classes;
 //	CCommand			Commands;
 	
-	RString				greeting_screen;
-	RString				motd;
-	RString				base_directory;
-	RString				player_dir;
+	std::string			greeting_screen;
+	std::string			motd;
+	std::string			base_directory;
+	std::string			player_dir;
 	
 	int					game_port;
 	int					build_port;
