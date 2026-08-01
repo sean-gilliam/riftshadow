@@ -6,21 +6,20 @@
 
 char *palloc_string(const char *str)
 {
-	char *tstr;
-	int slen = strlen(str) + 1;
-	if(str == nullptr)
+	if (str == nullptr)
 	{
 		RS.Logger.Warn("Bad code form that'll lead to free_pstr() crashes: attempting to palloc_string a nullptr.");
 		return nullptr;
 	}
+
+	int slen = strlen(str) + 1;
+
 	nAllocString++;
-	tstr = new char[slen];
-	if(!tstr)
-	{
-		RS.Logger.Warn("Unable to allocate pstring.");
-		return nullptr;
-	}
-	strcpy(tstr,str);
+
+	char *tstr = new char[slen];
+
+	strcpy(tstr, str);
+
 	return tstr;
 }
 
