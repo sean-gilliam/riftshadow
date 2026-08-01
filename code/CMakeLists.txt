@@ -2,7 +2,6 @@ project(riftshadow_src)
 
 set(RIFT_SOURCE config.cpp
 	strings.c
-	file.c
 	cdirectory.c
 	cfilesystem.c
 	clogger.c
@@ -105,7 +104,6 @@ set(RIFT_WERROR_SOURCES
 	cfilesystem.c
 	clogger.c
 	dbsession.c
-	file.c
 	repositories/banrepository.c
 	repositories/theftrepository.c
 	repositories/inductionrepository.c

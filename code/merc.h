@@ -118,12 +118,7 @@ int remove();
 //
 
 
-#ifdef MAX_STRING_LENGTH
-#undef MAX_STRING_LENGTH
 #define MAX_STRING_LENGTH			4608
-#else
-#define MAX_STRING_LENGTH			4608
-#endif
 
 #define PAGELEN						20
 #define MSL							MAX_STRING_LENGTH
