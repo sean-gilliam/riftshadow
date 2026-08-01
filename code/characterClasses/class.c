@@ -24,14 +24,14 @@ void CClass::LoadClassTable()
 			lastp->next = stackcopy;
 
 		stackcopy->index = i++;
-		stackcopy->name.SetBuffer(row.name.c_str());
-		stackcopy->who_name.SetBuffer(row.who_name.c_str());
+		stackcopy->name = row.name;
+		stackcopy->who_name = row.who_name;
 		stackcopy->attr_prime = row.attr_prime;
 		stackcopy->align = row.align;
 		stackcopy->weapon = row.weapon;
 		stackcopy->gainconst = row.gainconst;
-		stackcopy->base_group.SetBuffer(row.base_group.c_str());
-		stackcopy->default_group.SetBuffer(row.default_group.c_str());
+		stackcopy->base_group = row.base_group;
+		stackcopy->default_group = row.default_group;
 		stackcopy->ctype = row.ctype;
 		stackcopy->status = row.status;
 		stackcopy->next = nullptr;
@@ -67,12 +67,28 @@ CClass * CClass::operator[](int nIndex)
 	//return (CClass *)((char*)first + (nIndex) * sizeof(CClass));
 }
 
+/// Case-insensitive match over the shorter of the two strings: a query shorter
+/// than the class name matches as a prefix, and one that is longer still matches
+/// once the class name runs out. An empty query therefore matches the first
+/// class. Kept exactly as it behaved when name was a refcounted string type.
+static bool class_name_matches(const std::string &className, const char *query)
+{
+	const char *mystr = className.c_str();
+
+	for (; *query && *mystr; query++, mystr++)
+	{
+		if (UPCHAR(*query) != UPCHAR(*mystr))
+			return false;
+	}
+
+	return true;
+}
+
 int CClass::Lookup (const char *name)
 {
-	int nclass;
 	CClass *aclass;
 	for (aclass = first; aclass; aclass = aclass->next)
-		if (aclass->name.PrefixMatch(name))
+		if (class_name_matches(aclass->name, name))
 			return aclass->index;
 
 	return -1;

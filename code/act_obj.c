@@ -4593,7 +4593,7 @@ bool is_restricted(CHAR_DATA *ch, OBJ_DATA *obj)
 
 		if (restrict_table[i].type == RESTRICT_CLASS)
 		{
-			if (str_cmp(ch->Class()->name, restrict_table[i].value))
+			if (str_cmp(ch->Class()->name.c_str(), restrict_table[i].value))
 				return true;
 		}
 

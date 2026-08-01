@@ -378,7 +378,7 @@ void greet_prog_cimar_sorcgm(CHAR_DATA *mob, CHAR_DATA *ch)
 	if (!can_see(mob, ch))
 		return;
 
-	if (str_cmp(ch->Class()->name, "sorcerer"))
+	if (str_cmp(ch->Class()->name.c_str(), "sorcerer"))
 		return;
 
 	if (!can_do_quest(ch, TALISMANIC_QUEST))
@@ -426,7 +426,7 @@ void speech_prog_ilopheth_shack(ROOM_INDEX_DATA *room, CHAR_DATA *ch, char *spee
 	if (ch->in_room != room)
 		return;
 
-	if (str_cmp(ch->Class()->name, "sorcerer"))
+	if (str_cmp(ch->Class()->name.c_str(), "sorcerer"))
 		return;
 
 	if (!can_do_quest(ch, TALISMANIC_QUEST))

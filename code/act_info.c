@@ -2458,7 +2458,7 @@ void do_score(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "Race: %s  Sex: %s  Class: %s\n\r",
 		race_table[ch->race].name,
 		sex_table[ch->sex].name,
-		is_npc(ch) ? "mobile" : ch->Class()->name);
+		is_npc(ch) ? "mobile" : ch->Class()->name.c_str());
 	send_to_char(buf, ch);
 
 	if (get_trust(ch) != ch->level)
@@ -2986,7 +2986,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 			found = true;
 
 			/* work out the printing */
-			class_name = wch->Class()->who_name;
+			class_name = wch->Class()->who_name.c_str();
 			switch (wch->level)
 			{
 				case MAX_LEVEL - 0:
@@ -3411,7 +3411,7 @@ void do_who(CHAR_DATA *ch, char *argument)
 				imm_lvl = "Avatar ";
 				break;
 			default:
-				class_name = wch->Class()->who_name;
+				class_name = wch->Class()->who_name.c_str();
 				imm_lvl = "";
 				break;
 		}

@@ -1098,7 +1098,7 @@ void spell_unholy_communion(int sn, int level, CHAR_DATA *ch, void *vo, int targ
 {
 	AFFECT_DATA af;
 
-	if (str_cmp(ch->Class()->name, "anti-paladin"))
+	if (str_cmp(ch->Class()->name.c_str(), "anti-paladin"))
 	{
 		send_to_char("Only anti-paladins may call upon the demonic powers in this manner.\n\r", ch);
 		return;
@@ -1169,7 +1169,7 @@ void check_unholy_communion(CHAR_DATA *ch, char *argument)
 	if (af->aftype == AFT_TIMER)
 		return;
 
-	if (str_cmp(ch->Class()->name, "anti-paladin"))
+	if (str_cmp(ch->Class()->name.c_str(), "anti-paladin"))
 		return;
 
 	said = palloc_string(lowstring(argument));

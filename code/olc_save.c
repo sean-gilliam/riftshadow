@@ -214,7 +214,7 @@ void save_mobile(FILE *fp, MOB_INDEX_DATA *pMobIndex)
 
 	if (pMobIndex->Class()->GetIndex() != CLASS_NONE)
 	{
-		fprintf(fp, "CLASS %s ", (RSTR)pMobIndex->Class()->name);
+		fprintf(fp, "CLASS %s ", pMobIndex->Class()->name.c_str());
 
 		switch (pMobIndex->Class()->GetIndex())
 		{

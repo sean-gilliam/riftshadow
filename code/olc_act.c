@@ -5624,7 +5624,7 @@ bool medit_show(CHAR_DATA *ch, char *argument)
 
 	if (pMob->Class()->GetIndex() != CLASS_NONE)
 	{
-		sprintf(buf, "Class:       [%s]\n\r", (RSTR)pMob->Class()->name);
+		sprintf(buf, "Class:       [%s]\n\r", pMob->Class()->name.c_str());
 		send_to_char(buf, ch);
 
 		if (pMob->Class()->GetIndex() == CLASS_WARRIOR)

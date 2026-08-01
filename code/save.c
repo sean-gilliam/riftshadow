@@ -157,7 +157,7 @@ void save_char_obj(CHAR_DATA *ch)
 			if (is_npc(search)
 				&& Deref(search->master) == ch
 				&& (IS_SET(search->act, ACT_UNDEAD)
-					|| (!strcmp(ch->Class()->name, "necromancer") && !IS_SET(search->act, ACT_PET)))
+					|| (!strcmp(ch->Class()->name.c_str(), "necromancer") && !IS_SET(search->act, ACT_PET)))
 				/*  && search->in_room->vnum==ch->in_room->vnum */
 				&& is_affected_by(search, AFF_CHARM))
 			{
@@ -289,7 +289,7 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 
 	fprintf(fp, "Sex  %d\n", ch->sex);
 	fprintf(fp, "Beauty %d\n", ch->pcdata->beauty);
-	fprintf(fp, "Cla  %s~\n", (RSTR)ch->Class()->name);
+	fprintf(fp, "Cla  %s~\n", ch->Class()->name.c_str());
 	fprintf(fp, "Levl %d\n", ch->level);
 
 	if (ch->trust != 0)
@@ -1140,8 +1140,8 @@ bool load_char_obj(DESCRIPTOR_DATA *d, char *name)
 
 	if (found && ch->version < 2) /* need to add the new skills */
 	{
-		group_add(ch, ch->Class()->base_group, false);
-		group_add(ch, ch->Class()->default_group, true);
+		group_add(ch, ch->Class()->base_group.c_str(), false);
+		group_add(ch, ch->Class()->default_group.c_str(), true);
 		ch->pcdata->learned[gsn_recall] = 50;
 	}
 

@@ -2026,7 +2026,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				if (CClass::GetClass(classind)->status == CLASS_CLOSED)
 					continue;
 
-				sprintf(buf, "%-15s ( no extra xp)", (RSTR)tClass->name);
+				sprintf(buf, "%-15s ( no extra xp)", tClass->name.c_str());
 				write_to_buffer(d, buf, 0);
 
 				if (++col == 2)
@@ -2048,7 +2048,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			{
 				if (pc_race_table[ch->race].classes[iClass] == 1 && CClass::GetClass(iClass)->status == CLASS_OPEN)
 				{
-					strcat(buf, (RSTR)CClass::GetClass(iClass)->name);
+					strcat(buf, CClass::GetClass(iClass)->name.c_str());
 					strcat(buf, " ");
 				}
 			}
@@ -2088,7 +2088,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				{
 					if (pc_race_table[ch->race].classes[iClass] == 1 && CClass::GetClass(iClass)->status == CLASS_OPEN)
 					{
-						strcat(buf, (RSTR)CClass::GetClass(iClass)->name);
+						strcat(buf, CClass::GetClass(iClass)->name.c_str());
 						strcat(buf, " ");
 					}
 				}

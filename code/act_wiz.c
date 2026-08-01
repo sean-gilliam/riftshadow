@@ -2588,7 +2588,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		race_table[victim->race].name,
 		sex_table[victim->sex].name,
 		!victim->in_room ? 0 : victim->in_room->vnum,
-		(RSTR)victim->Class()->name);
+		victim->Class()->name.c_str());
 	send_to_char(buf, ch);
 
 	sprintf(buf, "HP:     %-5d/%-5d Mana:   %-5d/%-5d Move:   %-5d/%-5dHit:  %-9d Dam:   %-11d\n\r",
@@ -5199,7 +5199,7 @@ void do_mset(CHAR_DATA *ch, char *argument)
 				if (sclass > 0)
 					strcat(buf, " ");
 
-				strcat(buf, CClass::GetClass(sclass)->name);
+				strcat(buf, CClass::GetClass(sclass)->name.c_str());
 			}
 
 			strcat(buf, ".\n\r");
@@ -6441,7 +6441,7 @@ void do_classes(CHAR_DATA *ch, char *argument)
 		{
 			if (pc_race_table[iRace].classes[iClass] == 1)
 			{
-				sprintf(buf, "%s ", (RSTR)CClass::GetClass(iClass)->name);
+				sprintf(buf, "%s ", CClass::GetClass(iClass)->name.c_str());
 				send_to_char(buf, ch);
 			}
 		}

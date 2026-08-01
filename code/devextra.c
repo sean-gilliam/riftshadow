@@ -884,7 +884,7 @@ void plug_graveyard(CHAR_DATA *ch, int type)
 		get_hours(ch),
 		race_table[ch->race].name,
 		sex_table[ch->sex].name,
-		(RSTR)ch->Class()->name);
+		ch->Class()->name.c_str());
 
 	if (ch->Class()->GetIndex() == CLASS_WARRIOR)
 	{
