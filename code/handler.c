@@ -50,7 +50,6 @@
 #include "act_wiz.h"
 #include "characterClasses/warrior.h"
 #include "fight.h"
-#include "skill.h"
 #include "pstring.h"
 #include "comm.h"
 #include "interp.h"

@@ -16,9 +16,7 @@
 #include "stdlibs/clogger.h"
 #include "stdlibs/dbsession.h"
 #include "queue.h"
-#include "skill.h"
 #include "characterClasses/class.h"
-#include "race.h"
 #include "prof.h"
 #include "config.h"
 

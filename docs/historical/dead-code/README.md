@@ -34,6 +34,23 @@ Both branches produce `4`. That `#undef` exists for no reason other than to defe
 — someone hit the collision and worked around the symptom rather than removing the source. With
 `socket.h` archived the guard is dead and can collapse to a plain `#define`.
 
+## Added later: `race.h` and `skill.h` (2026-08-01)
+
+These two were missed when the rest of the set was archived, and their continued presence in `code/`
+was later mistaken for evidence that something used them. It was not. `CRace` and `CSkill` each have
+**zero method definitions and zero instantiations**, and every mention outside their own header is
+commented out (`mud.c:472`, `mud.h:83-84`). Neither header carried anything else worth rescuing —
+`race.h`'s `MAX_STAT` is used only by `CRace::max_stats` itself, and `skill.h` is nothing but the
+class.
+
+They came out with **no constant collisions** (unlike `socket.h` and `stddefs.h` above) and **no call
+sites touched**: four vestigial `#include` lines were dropped, two of them in `handler.c` and
+`magic.c`, which include `skill.h` **and** the live, unrelated `skills.h` two lines apart. Nothing in
+either file references `CSkill`.
+
+**A header still sitting in `code/` is not evidence that the class it declares is used** — the same
+conflation the survey note below warns about, arriving from the opposite direction.
+
 ## What was *not* archived
 
 - **`code/direction.h`** — `MAX_EXIT`, `MAX_TRACKS`, and the `Directions` enum were rescued out of

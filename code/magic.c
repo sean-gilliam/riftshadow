@@ -25,7 +25,6 @@
 #include "effects.h"
 #include "comm.h"
 #include "interp.h"
-#include "skill.h"
 #include "devextra.h"
 #include "db.h"
 #include "chardef.h"
