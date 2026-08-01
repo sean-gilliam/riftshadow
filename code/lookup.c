@@ -122,7 +122,7 @@ int display_lookup(const char *name, const struct display_type *flag_table)
 	return 0;
 }
 
-char *get_demon_names(CHAR_DATA *ch)
+std::string get_demon_names(CHAR_DATA *ch)
 {
 	int favor, i;
 	char buf[MSL], buf2[MSL], buf3[MSL];
@@ -164,7 +164,7 @@ char *get_demon_names(CHAR_DATA *ch)
 		sprintf(buf2, "None");
 
 	strcat(buf, buf2);
-	return talloc_string(buf);
+	return buf;
 }
 
 char *display_name_lookup(long bitv, const struct display_type *flag_table)
@@ -239,7 +239,7 @@ char *flag_name_lookup(long bitv, const struct flag_type *flag_table)
 	for (flag = 0; flag_table[flag].name != nullptr; flag++)
 	{
 		if (flag_table[flag].bit == bitv)
-			return talloc_string(flag_table[flag].name);
+			return flag_table[flag].name;
 	}
 
 	return nullptr;

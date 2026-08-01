@@ -3833,7 +3833,7 @@ void speech_prog_elven_mirror(OBJ_DATA *obj, CHAR_DATA *ch, char *speech)
 {
 	char arg1[MSL], arg2[MSL], arg3[MSL], arg4[MSL], buf[MSL];
 	CHAR_DATA *victim;
-	char *sect;
+	const char *sect;
 	ROOM_INDEX_DATA *room, *room2 = ch->in_room;
 	int rand;
 
@@ -3855,67 +3855,67 @@ void speech_prog_elven_mirror(OBJ_DATA *obj, CHAR_DATA *ch, char *speech)
 	switch (room->sector_type)
 	{
 		case SECT_INSIDE:
-			sect = talloc_string("inside a room");
+			sect = "inside a room";
 			break;
 		case SECT_CITY:
-			sect = talloc_string("in a city");
+			sect = "in a city";
 			break;
 		case SECT_FOREST:
-			sect = talloc_string("in a forest");
+			sect = "in a forest";
 			break;
 		case SECT_MOUNTAIN:
-			sect = talloc_string("in the mountains");
+			sect = "in the mountains";
 			break;
 		case SECT_FIELD:
-			sect = talloc_string("in a field");
+			sect = "in a field";
 			break;
 		case SECT_HILLS:
-			sect = talloc_string("among some hills");
+			sect = "among some hills";
 			break;
 		case SECT_WATER:
-			sect = talloc_string("on a body of water");
+			sect = "on a body of water";
 			break;
 		case SECT_UNDERWATER:
-			sect = talloc_string("underwater");
+			sect = "underwater";
 			break;
 		case SECT_AIR:
-			sect = talloc_string("in mid-air");
+			sect = "in mid-air";
 			break;
 		case SECT_CONFLAGRATION:
-			sect = talloc_string("amidst a raging fire");
+			sect = "amidst a raging fire";
 			break;
 		case SECT_BURNING:
-			sect = talloc_string("amidst a raging fire");
+			sect = "amidst a raging fire";
 			break;
 		case SECT_DESERT:
-			sect = talloc_string("in a parched desert");
+			sect = "in a parched desert";
 			break;
 		case SECT_ROAD:
-			sect = talloc_string("on a road");
+			sect = "on a road";
 			break;
 		case SECT_TRAIL:
-			sect = talloc_string("along a trail");
+			sect = "along a trail";
 			break;
 		case SECT_SWAMP:
-			sect = talloc_string("in a swamp");
+			sect = "in a swamp";
 			break;
 		case SECT_PARK:
-			sect = talloc_string("in a park");
+			sect = "in a park";
 			break;
 		case SECT_VERTICAL:
-			sect = talloc_string("near some cliffs");
+			sect = "near some cliffs";
 			break;
 		case SECT_ICE:
-			sect = talloc_string("amidst snow and ice");
+			sect = "amidst snow and ice";
 			break;
 		case SECT_SNOW:
-			sect = talloc_string("amidst snow and ice");
+			sect = "amidst snow and ice";
 			break;
 		case SECT_CAVE:
-			sect = talloc_string("in a cave");
+			sect = "in a cave";
 			break;
 		default:
-			sect = talloc_string("but cannot make out their surroundings");
+			sect = "but cannot make out their surroundings";
 			break;
 	}
 

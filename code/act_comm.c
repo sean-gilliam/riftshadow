@@ -1122,7 +1122,7 @@ void do_pray(CHAR_DATA *ch, char *argument)
 	if (fp)
 	{
 		sprintf(buf, "%s: %s [%d] is PRAYing for: %s\n",
-				log_time(),
+				log_time().c_str(),
 				ch->true_name,
 				ch->in_room->vnum,
 				argument);

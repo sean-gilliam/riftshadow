@@ -1480,7 +1480,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 {
 	DESCRIPTOR_DATA *d_old, *d_next;
 	char buf[MAX_STRING_LENGTH], word[200], tword[200], cword[200];
-	std::string buffer;
+	std::string buffer, namebuf;
 	char arg[MAX_INPUT_LENGTH];
 	CHAR_DATA *ch;
 	OBJ_DATA *fobj; /* For pfile limit bug */
@@ -1517,8 +1517,9 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				return;
 			}
 
-			argument = talloc_string(lowstring(argument));
-			argument[0] = UPPER(argument[0]);
+			namebuf = lowstring(argument);
+			namebuf[0] = UPPER(namebuf[0]);
+			argument = namebuf.data();
 
 			if (!check_parse_name(argument))
 			{
@@ -3562,7 +3563,6 @@ void act_new(const char *format, CHAR_DATA *ch, const void *arg1, const void *ar
 void announce_login(CHAR_DATA *ch)
 {
 	CHAR_DATA *guardian;
-	char *rstring;
 
 	if (ch->cabal == 0 || ch->cabal > MAX_CABAL || is_immortal(ch))
 		return;
@@ -3572,9 +3572,7 @@ void announce_login(CHAR_DATA *ch)
 	if (!guardian)
 		return;
 
-	rstring = talloc_string(cabal_messages[ch->cabal].login);
-
-	auto buffer = fmt::sprintf(rstring, ch->name);
+	auto buffer = fmt::sprintf(cabal_messages[ch->cabal].login, ch->name);
 	buffer = fmt::format("\x01B[1;37m{}\x01B[0;37m", buffer);
 	do_cb(guardian, buffer.data());
 }
@@ -3582,7 +3580,6 @@ void announce_login(CHAR_DATA *ch)
 void announce_logout(CHAR_DATA *ch)
 {
 	CHAR_DATA *guardian;
-	char *rstring;
 
 	if (ch->cabal == 0 || ch->cabal > MAX_CABAL || is_immortal(ch))
 		return;
@@ -3592,9 +3589,7 @@ void announce_logout(CHAR_DATA *ch)
 	if (!guardian)
 		return;
 
-	rstring = talloc_string(cabal_messages[ch->cabal].logout);
-
-	auto buffer = fmt::sprintf(rstring, ch->name);
+	auto buffer = fmt::sprintf(cabal_messages[ch->cabal].logout, ch->name);
 	buffer = fmt::format("\x01B[1;37m{}\x01B[0;37m", buffer);
 	do_cb(guardian, buffer.data());
 }

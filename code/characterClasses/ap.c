@@ -1158,7 +1158,6 @@ void check_unholy_communion(CHAR_DATA *ch, char *argument)
 	DESCRIPTOR_DATA *d;
 	AFFECT_DATA *af;
 	int demon = -1, type = -1;
-	int *typeptr = nullptr, *demonptr = nullptr;
 	int i;
 	int failed = 0;
 	char *said;
@@ -1290,21 +1289,14 @@ void check_unholy_communion(CHAR_DATA *ch, char *argument)
 
 	affect_remove(ch, af);
 
-	typeptr = (int *)talloc_struct(sizeof(int));
-	demonptr = (int *)talloc_struct(sizeof(int));
-
-	*typeptr = type;
-	*demonptr = demon;
-
-	RS.Queue.AddToQueue(3, "check_unholy_communion", "demon_appear", demon_appear, ch, demonptr, typeptr);
+	RS.Queue.AddToQueue(3, "check_unholy_communion", "demon_appear", demon_appear, ch, demon, type);
 }
 
-void demon_appear(CHAR_DATA *ch, int *demonptr, int *typeptr)
+void demon_appear(CHAR_DATA *ch, int demon, int type)
 {
 	std::string buffer;
 	AFFECT_DATA af;
 	int vnum = -1;
-	int demon = *demonptr, type = *typeptr;
 	CHAR_DATA *mob;
 
 	if (type == LESSER_DEMON)

@@ -760,11 +760,11 @@ void enter_text(CHAR_DATA *ch, DO_FUN *end_fun)
 	}
 }
 
-char *log_time(void)
+std::string log_time(void)
 {
 	char result[200];
 	strftime(result, 200, "%m/%d/%Y %l:%M%P", localtime(&current_time));
-	return talloc_string(result);
+	return result;
 }
 
 void plug_graveyard(CHAR_DATA *ch, int type)

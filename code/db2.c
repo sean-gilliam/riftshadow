@@ -410,7 +410,8 @@ void load_mobs(FILE *fp)
 {
 	MOB_INDEX_DATA *pMobIndex;
 	int i = 0, pos = 0;
-	char *aword, *bword, *temp_wealth;
+	std::string aword, bword;
+	char *temp_wealth;
 	char bugtext[250];
 	short wealth;
 
@@ -564,48 +565,48 @@ void load_mobs(FILE *fp)
 				break;
 			}
 
-			aword = talloc_string(fread_word(fp));
-			bword = talloc_string(fread_word(fp));
+			aword = fread_word(fp);
+			bword = fread_word(fp);
 
-			if (!str_cmp(aword, "ACT") && ((pos = flag_lookup(bword, act_flags)) != NO_FLAG) && pos != ACT_IS_NPC)
+			if (!str_cmp(aword.c_str(), "ACT") && ((pos = flag_lookup(bword.c_str(), act_flags)) != NO_FLAG) && pos != ACT_IS_NPC)
 			{
 				SET_BIT(pMobIndex->act, pos);
 				BITWISE_OR(pMobIndex->act, race_data_lookup(pMobIndex->race)->act);
 			}
 
-			if (!str_cmp(aword, "AFF") && (pos = flag_lookup(bword, affect_flags)) != NO_FLAG)
+			if (!str_cmp(aword.c_str(), "AFF") && (pos = flag_lookup(bword.c_str(), affect_flags)) != NO_FLAG)
 			{
 				SET_BIT(pMobIndex->affected_by, pos);
 				BITWISE_OR(pMobIndex->affected_by, race_data_lookup(pMobIndex->race)->aff);
 			}
 
-			if (!str_cmp(aword, "OFF") && (pos = flag_lookup(bword, off_flags)) != NO_FLAG)
+			if (!str_cmp(aword.c_str(), "OFF") && (pos = flag_lookup(bword.c_str(), off_flags)) != NO_FLAG)
 			{
 				SET_BIT(pMobIndex->off_flags, pos);
 				BITWISE_OR(pMobIndex->off_flags, race_data_lookup(pMobIndex->race)->off);
 			}
 
-			if (!str_cmp(aword, "IMM") && (pos = flag_lookup(bword, imm_flags)) != NO_FLAG)
+			if (!str_cmp(aword.c_str(), "IMM") && (pos = flag_lookup(bword.c_str(), imm_flags)) != NO_FLAG)
 			{
 				SET_BIT(pMobIndex->imm_flags, pos);
 				BITWISE_OR(pMobIndex->imm_flags, race_data_lookup(pMobIndex->race)->imm);
 			}
 
-			if (!str_cmp(aword, "RES") && (pos = flag_lookup(bword, imm_flags)) != NO_FLAG)
+			if (!str_cmp(aword.c_str(), "RES") && (pos = flag_lookup(bword.c_str(), imm_flags)) != NO_FLAG)
 			{
 				SET_BIT(pMobIndex->res_flags, pos);
 				BITWISE_OR(pMobIndex->res_flags, race_data_lookup(pMobIndex->race)->res);
 			}
 
-			if (!str_cmp(aword, "VUL") && (pos = flag_lookup(bword, imm_flags)) != NO_FLAG)
+			if (!str_cmp(aword.c_str(), "VUL") && (pos = flag_lookup(bword.c_str(), imm_flags)) != NO_FLAG)
 			{
 				SET_BIT(pMobIndex->vuln_flags, pos);
 				BITWISE_OR(pMobIndex->vuln_flags, race_data_lookup(pMobIndex->race)->vuln);
 			}
 
-			if (!str_cmp(aword, "CLASS"))
+			if (!str_cmp(aword.c_str(), "CLASS"))
 			{
-				pMobIndex->SetClass(CClass::Lookup(bword));
+				pMobIndex->SetClass(CClass::Lookup(bword.c_str()));
 				if (pMobIndex->Class()->GetIndex() == CLASS_WARRIOR)
 				{
 					// Warriors always carry two style words; unspecialized slots are
@@ -627,12 +628,12 @@ void load_mobs(FILE *fp)
 				}
 			}
 
-			if (!str_cmp(aword, "SPEECH"))
+			if (!str_cmp(aword.c_str(), "SPEECH"))
 			{
 				char *word;
 
 				SPEECH_DATA *speech = &pMobIndex->speech.emplace_back();
-				speech->name = palloc_string(bword);
+				speech->name = palloc_string(bword.c_str());
 
 				for (;;)
 				{

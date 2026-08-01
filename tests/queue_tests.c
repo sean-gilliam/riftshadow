@@ -236,6 +236,53 @@ SCENARIO("Testing execution order of queued events", "[ProcessQueue]")
 	}
 }
 
+// Scalar payloads a queued event carries must be copies taken at schedule time.
+// The callers that schedule delayed events (do_brace, do_retreat,
+// spell_concave_shell) have returned long before the event fires, so a captured
+// reference would read a dead frame.
+static int capturedInt = 0;
+static float capturedFloat = 0.0f;
+
+void recordScalarsFunction(char_data *qChar, int i, float f)
+{
+	capturedInt = i;
+	capturedFloat = f;
+}
+
+SCENARIO("Testing that scalar queue arguments are copied, not referenced", "[AddToQueue]")
+{
+	GIVEN("an event scheduled with scalar locals that are then overwritten")
+	{
+		CQueue sut;
+		char_data *mockPlayer = new char_data();
+		mockPlayer->name = "Test";
+		capturedInt = 0;
+		capturedFloat = 0.0f;
+
+		int direction = 4;
+		float bracemod = 0.75f;
+
+		sut.AddToQueue(2, "queue_test", "recordScalarsFunction", recordScalarsFunction, mockPlayer, direction, bracemod);
+
+		// Deliberately not UB: if the queue held references to these, the event
+		// below would observe the new values rather than the scheduled ones.
+		direction = 99;
+		bracemod = -1.0f;
+
+		WHEN("the queue is processed")
+		{
+			sut.ProcessQueue();
+			sut.ProcessQueue();
+
+			THEN("the event sees the values as they were when it was scheduled")
+			{
+				REQUIRE(capturedInt == 4);
+				REQUIRE(capturedFloat == 0.75f);
+			}
+		}
+	}
+}
+
 SCENARIO("Testing queue processing", "[ProcessQueue]")
 {
 	GIVEN("A queue with a ready-to-run function")

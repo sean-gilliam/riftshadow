@@ -2737,7 +2737,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 
 		if (victim->Class()->GetIndex() == CLASS_ANTI_PALADIN)
 		{
-			sprintf(buf, "%s\n\r", get_demon_names(victim));
+			sprintf(buf, "%s\n\r", get_demon_names(victim).c_str());
 			send_to_char(buf, ch);
 		}
 	}

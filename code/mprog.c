@@ -1730,7 +1730,7 @@ bool death_prog_barbas(CHAR_DATA *mob, CHAR_DATA *killer)
 
 void speech_prog_aamon(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 {
-	char *lowspeech;
+	std::string lowspeech;
 	AFFECT_DATA *af = affect_find(mob->affected, gsn_lesser_demon);
 
 	if (!af)
@@ -1739,9 +1739,9 @@ void speech_prog_aamon(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 	if (ch != Deref(af->owner))
 		return;
 
-	lowspeech = talloc_string(lowstring(speech));
+	lowspeech = lowstring(speech);
 
-	if (strstr(lowspeech, "repeat") || strstr(lowspeech, "again"))
+	if (lowspeech.find("repeat") != std::string::npos || lowspeech.find("again") != std::string::npos)
 	{
 		do_say(mob, "Most often by hoes and by gardeners I'm chased,");
 		do_say(mob, "They cut off my head and then smash it to paste;");
@@ -1751,7 +1751,7 @@ void speech_prog_aamon(CHAR_DATA *mob, CHAR_DATA *ch, char *speech)
 		return;
 	}
 
-	if (strstr(lowspeech, "weed"))
+	if (lowspeech.find("weed") != std::string::npos)
 	{
 		do_emote(mob, "appears to be crestfallen as the answer to his riddle rings out.");
 		do_say(mob, "Very well... defeated once more... take this and let me leave.");

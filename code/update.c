@@ -2168,7 +2168,7 @@ void age_update(void)
 	CHAR_DATA *ch;
 	CHAR_DATA *ch_next;
 	bool timedied= false;
-	char *cname;
+	std::string cname;
 
 	for (ch = char_list; ch != nullptr; ch = ch_next)
 	{
@@ -2204,10 +2204,10 @@ void age_update(void)
 
 				stop_fighting(ch, true);
 
-				cname = talloc_string(ch->true_name);
+				cname = ch->true_name;
 
 				do_quit_new(ch, "", true);
-				delete_char(cname, true);
+				delete_char(cname.data(), true);
 			}
 
 			continue;
