@@ -51,7 +51,7 @@
 #include "characterClasses/warrior.h"
 #include "save.h"
 #include "act_info.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "act_wiz.h"
 #include "interp.h"
 #include "fight.h"
@@ -1122,7 +1122,7 @@ void do_pray(CHAR_DATA *ch, char *argument)
 	if (fp)
 	{
 		sprintf(buf, "%s: %s [%d] is PRAYing for: %s\n",
-				log_time(),
+				log_time().c_str(),
 				ch->true_name,
 				ch->in_room->vnum,
 				argument);
@@ -2272,7 +2272,7 @@ void do_group(CHAR_DATA *ch, char *argument)
 					auto exp_ltl = (gch->level * exp_per_level(gch) - (gch->level - 1) * epl);
 					buffer = fmt::sprintf("[%2d %s] %-32s %3d%%hp %3d%%mana %3d%%mv %3d%%tnl\n\r",
 							gch->level,
-							is_npc(gch) ? "Mob" : gch->Class()->who_name,
+							is_npc(gch) ? "Mob" : gch->Class()->who_name.c_str(),
 							capitalize(pers(gch, ch)),
 							(gch->max_hit == 0) ? 0 : (gch->hit * 100) / gch->max_hit,
 							(gch->max_mana == 0) ? 0 : (gch->mana * 100) / gch->max_mana,
@@ -2735,7 +2735,7 @@ void perm_death_log(CHAR_DATA *ch, int deltype)
 			deletedReason,
 			ch->level,
 			pc_race_table[ch->race].who_name,
-			(RSTR)ch->Class()->who_name,
+			ch->Class()->who_name.c_str(),
 			cabal_table[ch->cabal].who_name,
 			ch->true_name, is_npc(ch) ? "" : ch->pcdata->title,
 			is_npc(ch) ? "" : (ch->pcdata->extitle) ? ch->pcdata->extitle

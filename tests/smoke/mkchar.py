@@ -206,6 +206,20 @@ def main():
         s.fail("'look' did not produce a room description")
     print(">>> server still answering commands")
 
+    # `who` renders the class table's three-letter who_name for every visible
+    # player. It is the only display path that reads that field, so a class
+    # table that loaded blank or garbage shows up here and nowhere else.
+    s.send("who")
+    reply = s.recv(2.0)
+    line = next((l for l in reply.splitlines() if name in l), None)
+    if line is None:
+        s.fail("'who' did not list %s" % name)
+    print(">>> who: %s" % line.strip())
+    tag = re.search(r"\[\s*\d+\s+\w+\s+([A-Za-z]{2,4})\s*\]", line)
+    if not tag:
+        s.fail("'who' line has no class tag: %r" % line.strip())
+    print(">>> who lists a class tag (%s)" % tag.group(1))
+
     s.sock.close()
     return 0
 

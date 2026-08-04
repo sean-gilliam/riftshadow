@@ -28,7 +28,7 @@
 #include "../act_comm.h"
 #include "../act_move.h"
 #include "../fight.h"
-#include "../newmem.h"
+#include "../pstring.h"
 #include "../devextra.h"
 #include "../dioextra.h"
 #include "../act_move.h"
@@ -5011,7 +5011,6 @@ void spell_concave_shell(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	EXIT_DATA *pexit;
 	int dir;
-	int *dirptr = nullptr;
 
 	if (!str_cmp(target_name, "n") || !str_cmp(target_name, "north"))
 	{
@@ -5056,25 +5055,20 @@ void spell_concave_shell(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 	ch->disrupted = false;
 
-	dirptr = (int *)talloc_struct(sizeof(int));
-	*dirptr = dir;
-
-	RS.Queue.AddToQueue(6, "spell_concave_shell", "concave_shell_move", concave_shell_move, ch, dirptr, ch->in_room);
+	RS.Queue.AddToQueue(6, "spell_concave_shell", "concave_shell_move", concave_shell_move, ch, dir, ch->in_room);
 
 	act("Air begins to swirl rapidly around you.", ch, 0, 0, TO_CHAR);
 	act("Swirling winds begin to mass near $n.", ch, 0, 0, TO_ROOM);
 }
 
-void concave_shell_move(CHAR_DATA *ch, int *dirptr, ROOM_INDEX_DATA *oldroom)
+void concave_shell_move(CHAR_DATA *ch, int dir, ROOM_INDEX_DATA *oldroom)
 {
 	char buf[MSL];
-	int i, dir, range;
+	int i, range;
 	bool verbose = false, stopped = false;
 	EXIT_DATA *pexit;
 	char *direction;
 	CHAR_DATA *wch, *wch_next;
-
-	dir = *dirptr;
 
 	if (ch->in_room->vnum != oldroom->vnum)
 		return;

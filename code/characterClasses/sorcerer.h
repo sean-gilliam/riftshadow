@@ -123,7 +123,7 @@ void spell_blanket (int sn, int level, CHAR_DATA *ch, void *vo, int target);
 void blanket_melt (ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af);
 void spell_boreal_wind (int sn, int level, CHAR_DATA *ch, void *vo, int target);
 void spell_concave_shell (int sn, int level, CHAR_DATA *ch, void *vo, int target);
-void concave_shell_move (CHAR_DATA *ch, int *dirptr,ROOM_INDEX_DATA *oldroom);
+void concave_shell_move (CHAR_DATA *ch, int dir, ROOM_INDEX_DATA *oldroom);
 void spell_frost_glaze (int sn, int level, CHAR_DATA *ch, void *vo, int target);
 void spell_unbreakable (int sn, int level, CHAR_DATA *ch, void *vo, int target);
 void spell_earthsembrace (int sn,int level, CHAR_DATA *ch, void *vo, int target);

@@ -8,7 +8,6 @@
 // of the Directions enum and the natural home. Both were 6.
 
 #include "stdlibs/bitvector.h"
-#include "stdlibs/strings.h"
 #include "stdlibs/funcptr.h"
 
 // Forward declaration rather than #include "mud.h": mud.h includes this header,
@@ -21,11 +20,7 @@ class CMud;
 #endif
 
 extern CMud RS;
-extern RString EmptyString;
 void bug(const char *bugstr, ...); //wraps onto RS.Bug
-
-//the following is for typecasting rstrings when the func is weak typing
-#define RSTR	const char *
 
 //
 // Data files used by the server.
@@ -86,7 +81,6 @@ void bug(const char *bugstr, ...); //wraps onto RS.Bug
 #endif
 
 
-#define throwbug(...) throw Exception(__FILE__, __LINE__, __VA_ARGS__);
 #define ERROR_TRAP()	try {
 #define CATCH_ERRORS(j)	} catch (const char *msg) { bug("%s error: %s",j,msg); } catch (...) { bug("%s exception: unhandled",j); }
 

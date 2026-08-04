@@ -15,7 +15,7 @@
 #include "comm.h"
 #include "act_comm.h"
 #include "devextra.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "utility.h"
 #include "./repositories/helprepository.h"
 

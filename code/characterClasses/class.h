@@ -2,6 +2,8 @@
 #define CLASS_H
 
 #include <stdio.h> //temp
+#include <string>
+
 #include "../rift.h"
 /*
 #define CLASS_NONE          0
@@ -31,8 +33,8 @@ public:
 		CClass *		operator[](int nIndex);			//same as Getclass
 		static int 		Lookup (const char *name);		//lookup "paladin" and return CLASS_PALADIN
 
-		RString			name;
-		RString			who_name;			//3 letter name that shows on who
+		std::string		name;
+		std::string		who_name;			//3 letter name that shows on who
 
 		static void		LoadClassTable();
 		
@@ -44,8 +46,8 @@ public:
 		int				ctype;					//neither, caster, communer
 		int				status;					//open for players to choose?
 
-		RString			base_group;
-		RString			default_group;
+		std::string		base_group;
+		std::string		default_group;
 /*		enum
 		{
 			CLASS_NEITHER = 0,

@@ -55,7 +55,7 @@
 #include "olc.h"
 #include "spec.h"
 #include "act_comm.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "act_wiz.h"
 #include "devextra.h"
@@ -4132,7 +4132,6 @@ void load_newresets(FILE *fp)
 		ROOM_INDEX_DATA *pRoomIndex = nullptr;
 		char letter, tletter;
 		OBJ_INDEX_DATA *temp_index;
-		char *word;
 
 		letter = fread_letter(fp);
 
@@ -4253,8 +4252,7 @@ void load_newresets(FILE *fp)
 			case 'E':
 				pReset->arg1 = fread_number(fp); // object to give
 				pReset->arg2 = 0;
-				word = talloc_string(fread_word(fp));
-				pReset->arg3 = flag_lookup(word, wear_locations); // location of obj
+				pReset->arg3 = flag_lookup(fread_word(fp), wear_locations); // location of obj
 
 				if (pReset->arg3 == NO_FLAG)
 					bugout("Invalid wear location in resets.");

@@ -12,7 +12,6 @@
 #include "../db.h"
 #include "../lookup.h"
 #include "../tables.h"
-#include "../newmem.h"
 #include "../const.h"
 #include "../utility.h"
 #include "../skills.h"
@@ -73,14 +72,10 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	}
 
 	// The drawn rune has to survive nine ticks on the queue before draw_rune
-	// finalises it, so it cannot live in the temp-struct pool: talloc_struct
-	// bumps a pointer through a fixed buffer and wraps back to the start
-	// without regard for anything still holding what it hands out. Nine ticks
-	// is ample for another caller -- act_info.c allocates from that pool on a
-	// plain `look` -- to come round and write over the rune while the queue
-	// entry still names it.
+	// finalises it, so it needs a lifetime of its own rather than any kind of
+	// scratch storage the next caller can reuse.
 	//
-	// new_rune gives it a lifetime instead, and draw_rune ends that lifetime on
+	// new_rune gives it that lifetime, and draw_rune ends that lifetime on
 	// every path out. The one hole left is a queue entry cancelled rather than
 	// run (DeleteQueuedEventsInvolving, which extract_char calls for NPCs):
 	// that leaks the struct, because the queue cancels with a tombstone and has

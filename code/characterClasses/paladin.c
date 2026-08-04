@@ -23,7 +23,7 @@
 #include "../utility.h"
 #include "../act_comm.h"
 #include "../act_info.h"
-#include "../newmem.h"
+#include "../pstring.h"
 
 void spell_rites_of_preparation(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {

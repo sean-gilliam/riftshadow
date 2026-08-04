@@ -12,7 +12,7 @@
 #include "../code/enums.h"
 #include "../code/db.h"
 #include "../code/recycle.h"
-#include "../code/newmem.h"
+#include "../code/pstring.h"
 
 // TEST_CASE("Test capitalization", "[string]" )
 // {

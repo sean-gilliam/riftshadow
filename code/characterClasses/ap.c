@@ -19,7 +19,7 @@
 #include "../act_ente.h"
 #include "../act_info.h"
 #include "../act_move.h"
-#include "../newmem.h"
+#include "../pstring.h"
 #include "../comm.h"
 #include "../act_comm.h"
 #include "../act_info.h"
@@ -1098,7 +1098,7 @@ void spell_unholy_communion(int sn, int level, CHAR_DATA *ch, void *vo, int targ
 {
 	AFFECT_DATA af;
 
-	if (str_cmp(ch->Class()->name, "anti-paladin"))
+	if (str_cmp(ch->Class()->name.c_str(), "anti-paladin"))
 	{
 		send_to_char("Only anti-paladins may call upon the demonic powers in this manner.\n\r", ch);
 		return;
@@ -1158,7 +1158,6 @@ void check_unholy_communion(CHAR_DATA *ch, char *argument)
 	DESCRIPTOR_DATA *d;
 	AFFECT_DATA *af;
 	int demon = -1, type = -1;
-	int *typeptr = nullptr, *demonptr = nullptr;
 	int i;
 	int failed = 0;
 	char *said;
@@ -1170,7 +1169,7 @@ void check_unholy_communion(CHAR_DATA *ch, char *argument)
 	if (af->aftype == AFT_TIMER)
 		return;
 
-	if (str_cmp(ch->Class()->name, "anti-paladin"))
+	if (str_cmp(ch->Class()->name.c_str(), "anti-paladin"))
 		return;
 
 	said = palloc_string(lowstring(argument));
@@ -1290,21 +1289,14 @@ void check_unholy_communion(CHAR_DATA *ch, char *argument)
 
 	affect_remove(ch, af);
 
-	typeptr = (int *)talloc_struct(sizeof(int));
-	demonptr = (int *)talloc_struct(sizeof(int));
-
-	*typeptr = type;
-	*demonptr = demon;
-
-	RS.Queue.AddToQueue(3, "check_unholy_communion", "demon_appear", demon_appear, ch, demonptr, typeptr);
+	RS.Queue.AddToQueue(3, "check_unholy_communion", "demon_appear", demon_appear, ch, demon, type);
 }
 
-void demon_appear(CHAR_DATA *ch, int *demonptr, int *typeptr)
+void demon_appear(CHAR_DATA *ch, int demon, int type)
 {
 	std::string buffer;
 	AFFECT_DATA af;
 	int vnum = -1;
-	int demon = *demonptr, type = *typeptr;
 	CHAR_DATA *mob;
 
 	if (type == LESSER_DEMON)

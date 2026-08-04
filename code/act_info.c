@@ -62,7 +62,7 @@
 #include "devextra.h"
 #include "dioextra.h"
 #include "fight.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "act_wiz.h"
 #include "update.h"
@@ -239,9 +239,12 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 	ch->lines = 0;
 
 	BUFFER output;
-	auto prgpstrShow = (char **)talloc_struct((count * sizeof(char *)));
-	auto prgnShow = (int *)talloc_struct((count * sizeof(int)));
+	std::vector<std::string> prgpstrShow;
+	std::vector<int> prgnShow;
 	auto nShow = 0;
+
+	prgpstrShow.reserve(count);
+	prgnShow.reserve(count);
 
 	/*
 	 * Format the list of objects.
@@ -264,7 +267,7 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 				 */
 				for (auto iShow = nShow - 1; iShow >= 0; iShow--)
 				{
-					if (!strcmp(prgpstrShow[iShow], pstrShow))
+					if (prgpstrShow[iShow] == pstrShow)
 					{
 						prgnShow[iShow]++;
 						fCombine = true;
@@ -278,8 +281,8 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 			 */
 			if (!fCombine)
 			{
-				prgpstrShow[nShow] = talloc_string(pstrShow);
-				prgnShow[nShow] = 1;
+				prgpstrShow.emplace_back(pstrShow);
+				prgnShow.push_back(1);
 				nShow++;
 			}
 		}
@@ -290,7 +293,7 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 	 */
 	for (auto iShow = 0; iShow < nShow; iShow++)
 	{
-		if (prgpstrShow[iShow][0] == '\0')
+		if (prgpstrShow[iShow].empty())
 			continue;
 
 		if (is_npc(ch) || IS_SET(ch->comm, COMM_COMBINE))
@@ -306,7 +309,7 @@ void show_list_to_char(OBJ_DATA *list, CHAR_DATA *ch, bool fShort, bool fShowNot
 				output.add("     ");
 			}
 		}
-		output.add(prgpstrShow[iShow]);
+		output.add(prgpstrShow[iShow].c_str());
 		output.add("\n\r");
 	}
 
@@ -2455,7 +2458,7 @@ void do_score(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "Race: %s  Sex: %s  Class: %s\n\r",
 		race_table[ch->race].name,
 		sex_table[ch->sex].name,
-		is_npc(ch) ? "mobile" : ch->Class()->name);
+		is_npc(ch) ? "mobile" : ch->Class()->name.c_str());
 	send_to_char(buf, ch);
 
 	if (get_trust(ch) != ch->level)
@@ -2826,16 +2829,22 @@ void do_time(CHAR_DATA *ch, char *argument)
 		time_info.year);
 	send_to_char(buf, ch);
 
-	auto time = talloc_string(str_boot_time);
-	chomp(time);
+	std::string time = str_boot_time;
+	auto eol = time.find_first_of("\r\n");
 
-	sprintf(buf, "Riftshadow started up at %s.\n\r", time);
+	if (eol != std::string::npos)
+		time.erase(eol);
+
+	sprintf(buf, "Riftshadow started up at %s.\n\r", time.c_str());
 	send_to_char(buf, ch);
 
-	time = talloc_string(ctime(&current_time));
-	chomp(time);
+	time = ctime(&current_time);
+	eol = time.find_first_of("\r\n");
 
-	sprintf(buf, "The system time is %s.\n\r", time);
+	if (eol != std::string::npos)
+		time.erase(eol);
+
+	sprintf(buf, "The system time is %s.\n\r", time.c_str());
 	send_to_char(buf, ch);
 }
 
@@ -2977,7 +2986,7 @@ void do_whois(CHAR_DATA *ch, char *argument)
 			found = true;
 
 			/* work out the printing */
-			class_name = wch->Class()->who_name;
+			class_name = wch->Class()->who_name.c_str();
 			switch (wch->level)
 			{
 				case MAX_LEVEL - 0:
@@ -3402,7 +3411,7 @@ void do_who(CHAR_DATA *ch, char *argument)
 				imm_lvl = "Avatar ";
 				break;
 			default:
-				class_name = wch->Class()->who_name;
+				class_name = wch->Class()->who_name.c_str();
 				imm_lvl = "";
 				break;
 		}

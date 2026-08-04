@@ -25,7 +25,7 @@
 #include "../lookup.h"
 #include "../tables.h"
 #include "../skills.h"
-#include "../newmem.h"
+#include "../pstring.h"
 #include "../interp.h"
 #include "../act_info.h"
 #include "../act_obj.h"
@@ -2660,7 +2660,6 @@ void do_brace(CHAR_DATA *ch, char *arg)
 {
 	int skill, ac;
 	float bracemod;
-	float *braceptr = nullptr;
 	CHAR_DATA *victim;
 
 	skill = get_skill(ch, gsn_brace);
@@ -2708,18 +2707,15 @@ void do_brace(CHAR_DATA *ch, char *arg)
 
 		ch->dam_mod *= bracemod;
 
-		braceptr = (float *)talloc_struct(sizeof(float));
-		*braceptr = bracemod;
-
-		RS.Queue.AddToQueue(8, "do_brace", "brace_helper_undo", brace_helper_undo, ch, braceptr);
+		RS.Queue.AddToQueue(8, "do_brace", "brace_helper_undo", brace_helper_undo, ch, bracemod);
 		RS.Queue.AddToQueue(8, "do_brace", "act_queue", act_queue, "You are no longer bracing yourself against incoming blows.", ch, nullptr, nullptr, TO_CHAR);
 		check_improve(ch, gsn_brace, true, 3);
 	}
 }
 
-void brace_helper_undo(CHAR_DATA *ch, float *braceptr)
+void brace_helper_undo(CHAR_DATA *ch, float bracemod)
 {
-	ch->dam_mod /= *braceptr;
+	ch->dam_mod /= bracemod;
 }
 
 void do_shatter(CHAR_DATA *ch, char *argument)
@@ -4698,7 +4694,6 @@ void do_retreat(CHAR_DATA *ch, char *arg)
 	EXIT_DATA *pexit;
 	int skill;
 	int direction;
-	int *dirptr = nullptr;
 
 	skill = get_skill(ch, gsn_retreat);
 	if (skill == 0)
@@ -4732,18 +4727,14 @@ void do_retreat(CHAR_DATA *ch, char *arg)
 
 	act("You begin plotting a retreat.", ch, 0, 0, TO_CHAR);
 
-	dirptr = (int *)talloc_struct(sizeof(int));
-	*dirptr = direction;
-
-	RS.Queue.AddToQueue(3, "do_retreat", "execute_retreat", execute_retreat, ch, dirptr);
+	RS.Queue.AddToQueue(3, "do_retreat", "execute_retreat", execute_retreat, ch, direction);
 
 	WAIT_STATE(ch, PULSE_VIOLENCE);
 }
 
-void execute_retreat(CHAR_DATA *ch, int *direction)
+void execute_retreat(CHAR_DATA *ch, int dir)
 {
 	char *dirname;
-	int dir = *direction;
 	int skill = get_skill(ch, gsn_retreat);
 	ROOM_INDEX_DATA *start = ch->in_room;
 

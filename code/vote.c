@@ -7,7 +7,6 @@
 #include "lookup.h"
 #include "interp.h"
 #include "devextra.h"
-#include "newmem.h"
 #include "utility.h"
 #include "./repositories/voterepository.h"
 #include "./include/spdlog/fmt/bundled/format.h"

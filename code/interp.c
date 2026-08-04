@@ -81,7 +81,6 @@
 #include "characterClasses/chrono.h"
 #include "characterClasses/thief.h"
 #include "update.h"
-#include "newmem.h"
 #include "lookup.h"
 #include "./include/spdlog/fmt/bundled/format.h"
 

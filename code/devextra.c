@@ -36,7 +36,7 @@
 #include "utility.h"
 #include "characterClasses/sorcerer.h"
 #include "comm.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "fight.h"
 #include "skills.h"
 #include "update.h"
@@ -760,11 +760,11 @@ void enter_text(CHAR_DATA *ch, DO_FUN *end_fun)
 	}
 }
 
-char *log_time(void)
+std::string log_time(void)
 {
 	char result[200];
 	strftime(result, 200, "%m/%d/%Y %l:%M%P", localtime(&current_time));
-	return talloc_string(result);
+	return result;
 }
 
 void plug_graveyard(CHAR_DATA *ch, int type)
@@ -884,7 +884,7 @@ void plug_graveyard(CHAR_DATA *ch, int type)
 		get_hours(ch),
 		race_table[ch->race].name,
 		sex_table[ch->sex].name,
-		(RSTR)ch->Class()->name);
+		ch->Class()->name.c_str());
 
 	if (ch->Class()->GetIndex() == CLASS_WARRIOR)
 	{

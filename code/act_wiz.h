@@ -153,5 +153,6 @@ void buglist_end_fun (CHAR_DATA *ch, char *argument);
 void do_constdump (CHAR_DATA *ch, char *argument);
 void do_interpdump (CHAR_DATA *ch, char *argument);
 void do_racedump (CHAR_DATA *ch, char *argument);
+void do_memtest (CHAR_DATA *ch, char *argument);
 
 #endif /* ACT_WIZ_H */

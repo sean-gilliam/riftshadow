@@ -64,7 +64,7 @@
 #include "chardef.h"
 #include "const.h"
 #include "utility.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "./include/spdlog/fmt/bundled/format.h"
 #include "./include/spdlog/fmt/bundled/printf.h"
 
@@ -1345,7 +1345,7 @@ void do_finger(CHAR_DATA *ch, char *argument)
 		sprintf(buf2, "  [%2d %5s %s%s] %s%s %s%s\n\r",
 			level,
 			pc_race_table[race].who_name,
-			(RSTR)CClass::GetClass(class_index)->who_name, history ? " *" : "  ",
+			CClass::GetClass(class_index)->who_name.c_str(), history ? " *" : "  ",
 			cabal_table[cabal].who_name,
 			name,
 			title ? title : "",

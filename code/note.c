@@ -45,7 +45,7 @@
 #include "handler.h"
 #include "recycle.h"
 #include "tables.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "interp.h"
 #include "db.h"
@@ -168,7 +168,7 @@ bool is_note_to(CHAR_DATA *ch, const char *sender, const char *to_list)
 	if (IS_SET(ch->act, PLR_CODER) && is_name("coder", to_list))
 		return true;
 
-	if (!is_npc(ch) && is_name(ch->Class()->name, to_list))
+	if (!is_npc(ch) && is_name(ch->Class()->name.c_str(), to_list))
 		return true;
 
 	if (ch->cabal && is_name(cabal_table[ch->cabal].name, to_list))

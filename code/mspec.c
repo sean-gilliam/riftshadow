@@ -14,7 +14,7 @@
 #include "act_comm.h"
 #include "act_move.h"
 #include "fight.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "interp.h"
 #include "db.h"
@@ -322,7 +322,7 @@ void apet_at_room(CHAR_DATA *ch, int vnum)
 		return;
 	}
 
-	sprintf(cname, "%s", (RSTR)player->Class()->name);
+	sprintf(cname, "%s", player->Class()->name.c_str());
 	cname[0] = UPPER(cname[0]);
 
 	sprintf(buf, "This is the %s's Guild.  You can practice skills and train physically here.", cname);

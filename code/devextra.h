@@ -1,6 +1,8 @@
 #ifndef DEVEXTRA_H
 #define DEVEXTRA_H
 
+#include <string>
+
 #include "entity/fwd.h"
 #include "handler.h"
 
@@ -27,7 +29,7 @@ void show_database_info (CHAR_DATA *ch, char *argument);
 void do_demo (CHAR_DATA *ch, char *name);
 void delete_char (char *name, bool save_pfile);
 void enter_text (CHAR_DATA *ch, DO_FUN *end_fun);
-char *log_time (void);
+std::string log_time (void);
 void plug_graveyard (CHAR_DATA *ch, int type);
 void do_pktrack (CHAR_DATA *ch, char *argument);
 bool trusts (CHAR_DATA *ch, CHAR_DATA *victim);

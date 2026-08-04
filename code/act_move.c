@@ -51,7 +51,7 @@
 #include "devextra.h"
 #include "dioextra.h"
 #include "fight.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "comm.h"
 #include "act_wiz.h"
 #include "update.h"

@@ -34,6 +34,8 @@
 #ifndef LOOKUP_H
 #define LOOKUP_H
 
+#include <string>
+
 #include "entity/fwd.h"
 
 struct flag_type;		// code/tables.h
@@ -48,7 +50,7 @@ int climate_lookup (const char *name);
 int restrict_lookup (const char *name);
 RACE_DATA *race_data_lookup (const int race);
 int display_lookup (const char *name, const struct display_type *flag_table);
-char *get_demon_names (CHAR_DATA *ch);
+std::string get_demon_names (CHAR_DATA *ch);
 char *display_name_lookup (long bitv, const struct display_type *flag_table);
 char *restrict_name_lookup (long bitv);
 char *tribe_name_lookup (long bitv);

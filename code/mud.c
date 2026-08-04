@@ -1,4 +1,3 @@
-#include "stdlibs/file.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -6,7 +5,7 @@
 #include "mud.h"
 #include "merc.h"
 #include "rift.h"
-#include "newmem.h"
+#include "pstring.h"
 #include "direction.h"
 #include "update.h"
 #include "dioextra.h"
@@ -432,8 +431,8 @@ void CMud::LoadAreas()
 void CMud::LoadOptions()
 {
 	game_port = stoi(Settings.GetValue("Port"));
-	base_directory = (Settings.GetValue("BaseDir").c_str());
-	player_dir = (Settings.GetValue("PlayerDir").c_str());
+	base_directory = Settings.GetValue("BaseDir");
+	player_dir = Settings.GetValue("PlayerDir");
 }
 
 void CMud::LoadGreetingScreen()
@@ -458,7 +457,6 @@ void CMud::LoadGreetingScreen()
 		;
 	buf[i-2] = '\0';
    	fclose(fp);
-	greeting_screen = buf;
 	help_greeting = palloc_string(buf);
 }
 

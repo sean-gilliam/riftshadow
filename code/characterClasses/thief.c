@@ -10,7 +10,7 @@
 #include "../comm.h"
 #include "../devextra.h"
 #include "../skills.h"
-#include "../newmem.h"
+#include "../pstring.h"
 #include "../update.h"
 #include "../act_info.h"
 #include "../act_wiz.h"

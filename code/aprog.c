@@ -20,7 +20,7 @@
 #include "utility.h"
 #include "fight.h"
 #include "act_info.h"
-#include "newmem.h"
+#include "pstring.h"
 
 const struct improg_type aprog_table[] = 
 {
