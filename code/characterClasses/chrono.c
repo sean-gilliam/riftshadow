@@ -126,7 +126,11 @@ bool trigger_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 
 bool activate_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 {
-	RUNE_DATA *rune = (RUNE_DATA *)vo, new_rune;
+	// Zero-initialized, like the sibling template in spell_stasis_wall: this sets
+	// nine of the twelve fields and apply_rune copies the whole struct, so
+	// leaving it default-initialized handed `extra`, `drawn_in` and
+	// `next_content` to the copy as indeterminate values.
+	RUNE_DATA *rune = (RUNE_DATA *)vo, new_rune = {};
 	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = Deref(rune->owner);
 	int dir = reverse_d((int)*(int *)vo3);
 
