@@ -310,7 +310,7 @@ bool move_prog_mudschool_key(ROOM_INDEX_DATA *room, CHAR_DATA *ch, int dir)
 	OBJ_DATA *obj;
 	bool found= false;
 
-	for (obj = ch->carrying; obj != nullptr; obj = obj->next)
+	for (obj = ch->carrying; obj != nullptr; obj = obj->next_content)
 	{
 		if (obj->pIndexData->vnum == 24596)
 		{
@@ -440,7 +440,7 @@ bool move_prog_stone_roll(ROOM_INDEX_DATA *room, CHAR_DATA *ch, int dir)
 
 	act("As you pass through, the stone rolls violently back into place!", ch, 0, 0, TO_CHAR);
 
-	for (corpse = room->contents; corpse != nullptr; corpse = corpse->next)
+	for (corpse = room->contents; corpse != nullptr; corpse = corpse->next_content)
 	{
 		if (corpse->pIndexData->vnum == 24558)
 		{
