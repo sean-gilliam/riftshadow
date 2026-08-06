@@ -3317,11 +3317,14 @@ void save_demos()
 
 void rune_update()
 {
-	RUNE_DATA *rune, *rune_next;
-
-	for (rune = rune_list; rune; rune = rune_next)
+	// Advance before the body runs: extract_rune erases the rune it is given, so
+	// the cursor has to be off it already. Same reason the old walk saved
+	// rune->next first.
+	for (auto it = rune_list.begin(); it != rune_list.end(); )
 	{
-		rune_next = rune->next;
+		RUNE_DATA *rune = it->get();
+		++it;
+
 		rune->duration--;
 
 		if (rune->duration <= 0)

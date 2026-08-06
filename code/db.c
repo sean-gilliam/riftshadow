@@ -104,7 +104,7 @@ short moon_calabren;
 short calabren_pos;
 ROOM_INDEX_DATA *room_list = nullptr;
 ROOM_INDEX_DATA *top_affected_room;
-RUNE_DATA *rune_list = nullptr;
+std::list<std::unique_ptr<RUNE_DATA>> rune_list;
 MOB_INDEX_DATA *mindex_list = nullptr;
 OBJ_INDEX_DATA *oIndex_list = nullptr;
 long gold_constant = 0;

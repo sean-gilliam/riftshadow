@@ -15,15 +15,17 @@
 //
 // RUNE_DATA, and the two lists every rune is on at once.
 //
-// apply_rune puts a rune on the global `rune_list` (via `next`) AND on a
-// per-container chain hanging off obj->rune / exit->rune / room->rune (via
-// `next_content`). update.c ticks runes off the global list and calls
+// apply_rune puts a rune on the global `rune_list`, which owns it, AND on a
+// non-owning per-container chain hanging off obj->rune / exit->rune / room->rune
+// (via `next_content`). update.c ticks runes off the global list and calls
 // extract_rune when one expires; find_rune walks the per-container chain to
 // decide whether entering a room or opening a door should trigger anything.
 //
-// So the global list decides *when* a rune fires and the container chain
-// decides *whether*, and extract_rune has to unlink from both. These scenarios
-// are about the container half, because that is the half it gets wrong.
+// So the global list decides *when* a rune fires and holds it alive, and the
+// container chain decides *whether*. extract_rune has to unlink from both, and
+// the container chain strictly first, since leaving rune_list destroys the rune.
+// These scenarios are about the container half, because that is the half it
+// gets wrong.
 //
 
 namespace
@@ -67,8 +69,8 @@ namespace
 		apply_rune(&temp);
 
 		// apply_rune pushes onto both heads, so the rune it just made is the
-		// head of the global list.
-		return rune_list;
+		// front of the global list.
+		return rune_list.front().get();
 	}
 
 	// The container chain as a list of rune `type`s, read the way find_rune
@@ -85,18 +87,13 @@ namespace
 
 	int GlobalListLength()
 	{
-		int count = 0;
-
-		for (RUNE_DATA *rune = rune_list; rune != nullptr; rune = rune->next)
-			count++;
-
-		return count;
+		return (int)rune_list.size();
 	}
 
 	void ClearRunes(OBJ_DATA *obj)
 	{
-		while (rune_list != nullptr)
-			extract_rune(rune_list);
+		while (!rune_list.empty())
+			extract_rune(rune_list.front().get());
 
 		obj->rune = nullptr;
 	}

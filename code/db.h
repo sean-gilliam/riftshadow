@@ -36,6 +36,7 @@
 
 #include <cstddef>
 #include <list>
+#include <memory>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>		// srandom
@@ -79,7 +80,12 @@ extern short moon_calabren;
 extern short calabren_pos;
 extern ROOM_INDEX_DATA *room_list;
 extern ROOM_INDEX_DATA *top_affected_room;
-extern RUNE_DATA *rune_list;
+// Owns every applied rune. A rune is on two lists at once: this one, which
+// decides when it expires and holds it alive, and a per-container chain off
+// obj->rune / exit->rune / room->rune, which decides whether it triggers and is
+// non-owning. Erasing from here is the destruction point, so extract_rune has
+// to unlink the container chain strictly first.
+extern std::list<std::unique_ptr<RUNE_DATA>> rune_list;
 extern long gold_constant;
 extern long total_gold;
 extern long player_gold;

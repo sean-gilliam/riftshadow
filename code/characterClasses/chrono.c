@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <algorithm>
 #include "../merc.h"
 #include "chrono.h"
 #include "../magic.h"
@@ -436,9 +437,11 @@ void extract_rune(RUNE_DATA *rune)
 {
 	RUNE_DATA *rune_prev;
 
-	// Unlink from the container's chain. Every rune is on two lists and this is
-	// the one keyed by what it was placed on, so a rune that stays linked here
-	// after free_rune has recycled it is a chain find_rune will walk into.
+	// Unlink from the container's chain first. Every rune is on two lists, and
+	// erasing it from rune_list below destroys it. This has to happen while
+	// the node is still readable, or the chain find_rune walks is left pointing
+	// at freed memory. The ordering was load-bearing by accident before
+	// rune_list owned its runes; it is load-bearing on purpose now.
 	RUNE_DATA **head = rune_container_head(rune);
 
 	if (head != nullptr)
@@ -460,34 +463,26 @@ void extract_rune(RUNE_DATA *rune)
 		}
 	}
 
-	if (rune_list == rune)
-	{
-		rune_list = rune_list->next;
-	}
-	else
-	{
-		for (rune_prev = rune_list; rune_prev; rune_prev = rune_prev->next)
-		{
-			if (rune_prev->next == rune)
-			{
-				rune_prev->next = rune->next;
-				break;
-			}
-		}
-	}
+	// And this is the destruction point.
+	auto owned = std::find_if(rune_list.begin(), rune_list.end(),
+		[rune](const std::unique_ptr<RUNE_DATA> &candidate) { return candidate.get() == rune; });
 
-	free_rune(rune);
+	if (owned != rune_list.end())
+		rune_list.erase(owned);
 }
+
 void apply_rune(RUNE_DATA *rune)
 {
-	RUNE_DATA *rune_new;
 	OBJ_DATA *obj;
 	EXIT_DATA *pexit;
 	ROOM_INDEX_DATA *room;
-	rune_new = new_rune();
-	*rune_new = *rune;
-	rune_new->next = rune_list;
-	rune_list = rune_new;
+
+	// The caller's rune is a template it owns itself, often a stack struct,
+	// so the copy is what goes on the lists. push_front keeps the order the
+	// hand-rolled link had.
+	rune_list.push_front(std::make_unique<RUNE_DATA>(*rune));
+
+	RUNE_DATA *rune_new = rune_list.front().get();
 	rune_new->next_content = nullptr;
 
 	switch (rune_new->target_type)
