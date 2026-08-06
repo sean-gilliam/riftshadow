@@ -3,7 +3,25 @@
 #include "../code/act_comm.h"
 #include "../code/entity/char_data.h"
 #include "../code/enums.h"
+#include "../code/entity/handles.h"
  
+namespace
+{
+	/// A character the queue can index.
+	///
+	/// CQueue keys its cancellation index on Handle<CHAR_DATA> rather than on a
+	/// raw pointer, so a character that was never registered in the slot map has
+	/// no identity to key on and cannot be found or cancelled. new_char does the
+	/// registration; these mocks are built by hand, so they have to do it too.
+	char_data *MakeMockChar()
+	{
+		char_data *ch = new char_data();
+		ch->self = charHandles.Add(ch);
+
+		return ch;
+	}
+}
+
 void testQueueFunction(char_data *qChar) {
     return;
 }
@@ -17,7 +35,7 @@ SCENARIO("Testing queueing functions", "[AddToQueue]")
 		WHEN("AddToQueue is called with a positive timer")
 		{
 			CQueue sut;
-			char_data *mockPlayer = new char_data();
+			char_data *mockPlayer = MakeMockChar();
 			mockPlayer->name = "Test";
 
 			sut.AddToQueue(timer, "queue_test", "testQueueFunction", testQueueFunction, mockPlayer);
@@ -35,7 +53,7 @@ SCENARIO("Testing deleting queue entries with that involve character", "[DeleteQ
 	GIVEN("a function with no parameters")
 	{
 		CQueue sut;
-		char_data *mockPlayer = new char_data();
+		char_data *mockPlayer = MakeMockChar();
 		mockPlayer->name = "Test";
 
 		int timer = 3; // 3 tics 
@@ -95,7 +113,7 @@ SCENARIO("Testing a queued function that cancels other events for its own char",
 	{
 		CQueue sut;
 		activeSut = &sut;
-		char_data *mockVictim = new char_data();
+		char_data *mockVictim = MakeMockChar();
 		mockVictim->name = "Victim";
 
 		// All four are due this tick and all name the same char. The first is
@@ -128,7 +146,7 @@ SCENARIO("Testing a queued function that requeues itself", "[ProcessQueue]")
 	{
 		CQueue sut;
 		activeSut = &sut;
-		char_data *mockPlayer = new char_data();
+		char_data *mockPlayer = MakeMockChar();
 		mockPlayer->name = "Test";
 
 		// Four entries, so the re-entrant add below happens while three more are
@@ -166,7 +184,7 @@ SCENARIO("Testing execution order of queued events", "[ProcessQueue]")
 	GIVEN("four events queued at the same tick")
 	{
 		CQueue sut;
-		char_data *mockPlayer = new char_data();
+		char_data *mockPlayer = MakeMockChar();
 		mockPlayer->name = "Test";
 		executionOrder.clear();
 
@@ -191,7 +209,7 @@ SCENARIO("Testing execution order of queued events", "[ProcessQueue]")
 	GIVEN("events queued across several ticks, added out of order")
 	{
 		CQueue sut;
-		char_data *mockPlayer = new char_data();
+		char_data *mockPlayer = MakeMockChar();
 		mockPlayer->name = "Test";
 		executionOrder.clear();
 
@@ -216,7 +234,7 @@ SCENARIO("Testing execution order of queued events", "[ProcessQueue]")
 	GIVEN("an event queued from inside a queued event")
 	{
 		CQueue sut;
-		char_data *mockPlayer = new char_data();
+		char_data *mockPlayer = MakeMockChar();
 		mockPlayer->name = "Test";
 		executionOrder.clear();
 
@@ -254,7 +272,7 @@ SCENARIO("Testing that scalar queue arguments are copied, not referenced", "[Add
 	GIVEN("an event scheduled with scalar locals that are then overwritten")
 	{
 		CQueue sut;
-		char_data *mockPlayer = new char_data();
+		char_data *mockPlayer = MakeMockChar();
 		mockPlayer->name = "Test";
 		capturedInt = 0;
 		capturedFloat = 0.0f;
@@ -289,7 +307,7 @@ SCENARIO("Testing queue processing", "[ProcessQueue]")
 	{
 		CQueue sut;
 		int timer = 1;
-		char_data* tmpChar = new char_data();
+		char_data* tmpChar = MakeMockChar();
 		tmpChar->id = 10107;
 		long expected = 1337L;
 		sut.AddToQueue(timer, "queue_test", "updateValueFunction", updateValueFunction, tmpChar, expected);
@@ -303,7 +321,7 @@ SCENARIO("Testing queue processing", "[ProcessQueue]")
 	GIVEN("A function with a timer greater than one")
 	{
 		CQueue sut;
-		char_data* tmpChar = new char_data();
+		char_data* tmpChar = MakeMockChar();
 		tmpChar->name = "Test";
 		tmpChar->id = 10107;
 		long expected = 1337L;
@@ -312,6 +330,66 @@ SCENARIO("Testing queue processing", "[ProcessQueue]")
 		THEN("The function should update the value")
 		{
 			REQUIRE(tmpChar->id == expected);
+		}
+	}
+}
+//
+// The reason charIndex is keyed on a handle rather than on a CHAR_DATA *.
+//
+// A queued entry can outlive any character it names. Keyed by pointer, a
+// character who left the world with entries still pending leaves its key
+// behind, and the free lists hand the next character that very address -- so
+// the newcomer answers to the departed character's key and inherits its pending
+// events. A handle carries the slot's generation, so the newcomer's key differs
+// even when the address is identical.
+//
+// Expiring a handle and reissuing one for the same pointer is what that looks
+// like from the slot map's side, and it is deterministic: same address, same
+// slot, new generation. Under a pointer-keyed index the assertions below would
+// read the departed character's entry back out.
+//
+
+SCENARIO("the queue does not attribute a departed character's events to its replacement", "[DeleteQueuedEventsInvolving]")
+{
+	GIVEN("a character with a queued event, whose handle is then expired and reissued")
+	{
+		CQueue sut;
+		char_data *ch = MakeMockChar();
+
+		sut.AddToQueue(5, "queue_test", "testQueueFunction", testQueueFunction, ch);
+
+		REQUIRE(sut.HasQueuePending(ch));
+
+		Handle<CHAR_DATA> indexedUnder = ch->self;
+
+		// What free_char does to the handle, without the rest of free_char --
+		// these mocks are not built by new_char and do not own their strings.
+		charHandles.Remove(ch->self);
+
+		// And what new_char does for whoever lands on the address next.
+		ch->self = charHandles.Add(ch);
+
+		WHEN("the queue is asked about the character at that address")
+		{
+			THEN("the reissued handle is not the one the entry was indexed under")
+			{
+				REQUIRE(!(ch->self == indexedUnder));
+			}
+
+			THEN("it has nothing pending, though the address is unchanged")
+			{
+				REQUIRE(sut.HasQueuePending(ch) == false);
+			}
+
+			THEN("and cancelling for it leaves the orphaned entry alone")
+			{
+				sut.DeleteQueuedEventsInvolving(ch);
+
+				// Still indexed under the expired handle, waiting to run or be
+				// dropped when it does. It is not reachable by anyone, which is
+				// the point: nobody inherits it either.
+				REQUIRE(sut.HasQueuePending(ch) == false);
+			}
 		}
 	}
 }

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "entity/fwd.h"
+#include "entity/handles.h"
 
 class CQueue
 {
@@ -68,7 +69,11 @@ private:
 	{
 		std::string callerFuncName;
 		std::string calleeFuncName;
-		std::vector<CHAR_DATA*> charList;
+		/// Every character this entry names as handles. An entry can outlive
+		/// any of them so a raw pointer here would go stale, and a stale pointer
+		/// is worse than a dangling one while the free lists recycle addresses: 
+		/// it names whichever character next lands on that address.
+		std::vector<Handle<CHAR_DATA>> charList;
 		std::function<void()> function;
 
 		/// tombstone flag
@@ -99,9 +104,14 @@ private:
 	/// Reverse lookup for cancellation. Holds refs to *live* entries only: refs are
 	/// dropped when an entry is cancelled or executed, so a non-empty entry here
 	/// means the character genuinely has work pending.
-	std::unordered_map<CHAR_DATA*, std::vector<entryRef>> charIndex;
+	///
+	/// Keyed by handle rather than by pointer. A character who leaves the world
+	/// with entries still queued leaves its key behind until those entries run or
+	/// are cancelled; keyed by pointer, the next character to be handed that
+	/// address would inherit them.
+	std::unordered_map<Handle<CHAR_DATA>, std::vector<entryRef>> charIndex;
 
-	void RegisterEntry(const std::vector<CHAR_DATA*>& chars, entryRef ref);
+	void RegisterEntry(const std::vector<Handle<CHAR_DATA>>& chars, entryRef ref);
 	void DropEntryRefs(const queueEntry_t& entry, entryRef ref);
 	queueEntry_t* ResolveEntry(entryRef ref);
 
@@ -109,11 +119,11 @@ private:
 	/// @note Main use is for extracting character data sent to the AddToQueue method.
 	/// @tparam ...Tp: Template parameter pack used to specify the variadic arguments. 
 	/// @param t: Variadic arguments containing the values of the tuple.
-	/// @return A list containing character data from the tuple.
+	/// @return Handles to the characters named in the tuple.
 	template<class... Tp>
-	std::vector<CHAR_DATA*> GetCharacterData(std::tuple<Tp...>& t)
+	std::vector<Handle<CHAR_DATA>> GetCharacterData(std::tuple<Tp...>& t)
 	{
-		std::vector<CHAR_DATA*> accumulator;
+		std::vector<Handle<CHAR_DATA>> accumulator;
 
 		std::apply([&] (const auto&... tupleArgs) 
 		{
@@ -121,7 +131,13 @@ private:
 			{
 				// decay x to get the actual argument type to compare to our character data type 
 		 		if constexpr (std::is_same<typename std::decay<decltype(x)>::type,CHAR_DATA*>::value)
-					accumulator.push_back(x);
+				{
+					// A character built outside the slot map has a null handle,
+					// and cannot be indexed or cancelled. That is the same answer
+					// the old pointer version gave for a null argument.
+					if (x != nullptr)
+						accumulator.push_back(x->self);
+				}
 			};
 			(processTuple(tupleArgs), ...);  // fold expression - calls processTuple for each argument in tupleArgs
 		}, t);

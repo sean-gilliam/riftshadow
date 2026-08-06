@@ -3,11 +3,13 @@
 #include <algorithm>
 
 /// Registers a new entry against every character it names.
-void CQueue::RegisterEntry(const std::vector<CHAR_DATA*>& chars, entryRef ref)
+/// @param chars: The characters the entry affects.
+/// @param ref: The entry's ref, which is what the index holds.
+void CQueue::RegisterEntry(const std::vector<Handle<CHAR_DATA>>& chars, entryRef ref)
 {
-	for (auto *ch : chars)
+	for (auto ch : chars)
 	{
-		if (ch != nullptr)
+		if (!ch.IsNull())
 			charIndex[ch].push_back(ref);
 	}
 }
@@ -15,9 +17,11 @@ void CQueue::RegisterEntry(const std::vector<CHAR_DATA*>& chars, entryRef ref)
 /// Removes an entry's refs from every character it names.
 /// Done for all of the entry's characters, not just the one being cancelled, so that
 /// charIndex only ever holds refs to entries that can still run.
+/// @param entry: The entry to remove from the index.
+/// @param ref: The entry's ref, which is what the index holds.
 void CQueue::DropEntryRefs(const queueEntry_t& entry, entryRef ref)
 {
-	for (auto *ch : entry.charList)
+	for (auto ch : entry.charList)
 	{
 		auto it = charIndex.find(ch);
 
@@ -32,6 +36,8 @@ void CQueue::DropEntryRefs(const queueEntry_t& entry, entryRef ref)
 	}
 }
 
+/// Resolves a ref to the entry it points at, or nullptr if the entry is gone.
+/// @param ref: The entry's ref, which is what the index holds.
 /// @return the entry a ref points at, or nullptr if its bucket is already gone.
 CQueue::queueEntry_t* CQueue::ResolveEntry(entryRef ref)
 {
@@ -86,7 +92,10 @@ void CQueue::ProcessQueue()
 /// @return true if there are entries related to the character in the queue; otherwise false.
 bool CQueue::HasQueuePending(CHAR_DATA *qChar)
 {
-	auto it = charIndex.find(qChar);
+	if (qChar == nullptr)
+		return false;
+
+	auto it = charIndex.find(qChar->self);
 
 	return it != charIndex.end() && !it->second.empty();
 }
@@ -99,7 +108,13 @@ bool CQueue::HasQueuePending(CHAR_DATA *qChar)
 /// @param qChar: The character to lookup in the queue.
 void CQueue::DeleteQueuedEventsInvolving(CHAR_DATA *qChar)
 {
-	auto it = charIndex.find(qChar);
+	if (qChar == nullptr)
+		return;
+
+	// Read qChar->self while the character is still registered. extract_char
+	// calls this before free_char clears the handle, which is the only ordering
+	// that lets a departing character cancel its own pending events.
+	auto it = charIndex.find(qChar->self);
 
 	if (it == charIndex.end())
 		return;

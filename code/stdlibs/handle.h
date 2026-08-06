@@ -12,7 +12,7 @@
 // The problem this solves: the recycled entity types hand out reused
 // addresses. When one is freed it goes onto a free list and the very next
 // allocation can return the same address, so a raw back-reference to a dead
-// entity does not merely dangle -- it can silently start pointing at whatever
+// entity does not merely dangle. It can silently start pointing at whatever
 // took its place. Today that is policed by a `valid` bool plus hand-written
 // scrub loops that walk every entity nulling inbound references to the one
 // being freed.
@@ -20,7 +20,7 @@
 // A handle is that `valid` check folded into the reference itself. It names a
 // slot and the generation of that slot at the moment the handle was made.
 // Deref compares generations, so a handle to a freed entity resolves to null
-// forever -- no scrub loop required, and no chance of resolving to the
+// forever. No scrub loop required, and no chance of resolving to the
 // entity's replacement.
 //
 // Two invariants carry most of the weight:
@@ -32,7 +32,7 @@
 //
 //   * A slot whose generation counter is spent is retired permanently rather
 //     than wrapped. Wrapping is the one way a generational handle can still
-//     resolve to the wrong object, and it is silent -- no sanitizer sees it.
+//     resolve to the wrong object, and it is silent. No sanitizer sees it.
 //     Burning a slot is far cheaper than that.
 //
 // Note there is deliberately no `operator bool` and no `operator->`. A handle
@@ -58,7 +58,7 @@ public:
 	Handle(std::nullptr_t) {}
 
 	/// True when this handle names nothing at all. Says nothing about whether
-	/// the entity it names is still alive -- only Deref answers that.
+	/// the entity it names is still alive. Only Deref answers that.
 	bool IsNull() const { return generation == 0; }
 
 	bool operator==(const Handle &other) const
@@ -81,6 +81,24 @@ public:
 	bool operator==(std::nullptr_t) const = delete;
 	bool operator!=(std::nullptr_t) const = delete;
 
+	/// Hashes the handle's identity, so a handle can key an unordered_map.
+	///
+	/// This is the one thing worth having that a raw pointer key does not do:
+	/// a handle to a freed entity never compares equal to a handle to whatever
+	/// entity later takes its address, because the generation differs. A map
+	/// keyed on pointers silently answers the old entity's questions with the
+	/// new entity's entry.
+	///
+	/// Says nothing about liveness. An expired handle keeps its hash, which is
+	/// what makes stale entries findable and droppable rather than confusable.
+	/// Exposing this does not weaken the deliberate omissions above: it yields a
+	/// number, not a way to reach the entity, so every read still goes through
+	/// Deref.
+	std::size_t Hash() const
+	{
+		return (static_cast<std::size_t>(index) << 32) ^ static_cast<std::size_t>(generation);
+	}
+
 private:
 	friend class SlotMap<T, GenT>;
 
@@ -90,7 +108,7 @@ private:
 
 /// Issues handles for entities and answers whether a handle is still good.
 ///
-/// The map does not own the entities and never moves them -- it stores plain
+/// The map does not own the entities and never moves them. It stores plain
 /// pointers to objects allocated elsewhere. That is not an oversight: the
 /// codebase caches raw entity pointers across list mutations all over the
 /// place, so storage that relocates its elements would break those callers.
@@ -138,8 +156,8 @@ public:
 	}
 
 	/// Expires every handle to this entity. Removing something already removed
-	/// is a silent no-op, matching how the free_X functions behave today --
-	/// and it matters, because bumping the generation on a stray call would
+	/// is a silent no-op, matching how the free_X functions behave today.
+	/// It matters because bumping the generation on a stray call would
 	/// spend the slot's counter for nothing.
 	void Remove(HandleType handle)
 	{
@@ -205,5 +223,16 @@ private:
 	std::uint32_t		freeHead = NO_SLOT;
 	std::size_t			liveCount = 0;
 };
+
+/// Lets a handle be an unordered_map key. See Handle::Hash for why that is
+/// worth having over a raw pointer key.
+namespace std
+{
+	template <typename T, typename GenT>
+	struct hash<Handle<T, GenT>>
+	{
+		std::size_t operator()(const Handle<T, GenT> &handle) const { return handle.Hash(); }
+	};
+}
 
 #endif /* STDLIBS_HANDLE_H */
