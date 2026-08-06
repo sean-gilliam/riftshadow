@@ -7,9 +7,11 @@
 #include "../code/entity/char_data.h"
 #include "../code/entity/obj_data.h"
 #include "../code/entity/handles.h"
+#include "../code/entity/list_cursor.h"
 
 #include <algorithm>
 #include <functional>
+#include <stdexcept>
 #include <vector>
 
 //
@@ -142,9 +144,30 @@ namespace
 		return d;
 	}
 
-	void ExtractChar(CHAR_DATA *ch)   { Unlink(ch); free_char(ch); }
-	void ExtractObj(OBJ_DATA *obj)    { Unlink(obj); free_obj(obj); }
-	void ExtractDescriptor(DESCRIPTOR_DATA *d) { Unlink(d); free_descriptor(d); }
+	// Mirrors the order the real extract_char/extract_obj/close_socket use:
+	// advance any walk in flight first, because both the unlink and the free
+	// destroy the link that answer comes from. A walk that registered no cursor
+	// is unaffected, which is what makes section 3 and section 5 differ.
+	void ExtractChar(CHAR_DATA *ch)
+	{
+		CursorRegistry<CHAR_DATA>::Advance(ch);
+		Unlink(ch);
+		free_char(ch);
+	}
+
+	void ExtractObj(OBJ_DATA *obj)
+	{
+		CursorRegistry<OBJ_DATA>::Advance(obj);
+		Unlink(obj);
+		free_obj(obj);
+	}
+
+	void ExtractDescriptor(DESCRIPTOR_DATA *d)
+	{
+		CursorRegistry<DESCRIPTOR_DATA>::Advance(d);
+		Unlink(d);
+		free_descriptor(d);
+	}
 
 	/// Leaves the list empty however a scenario ended.
 	void DrainChars()       { while (char_list != nullptr) ExtractChar(char_list); }
@@ -372,14 +395,16 @@ SCENARIO("a walk may extract the entity it was handed", "[entity_storage]")
 // │ These two scenarios assert *today's* broken behaviour on purpose, because │
 // │ that is what "no behaviour change" would mean. They are the only          │
 // │ assertions in this file expected to need editing, and editing them is the │
-// │ record of the semantic change. After conversion the same code cannot      │
-// │ silently continue. A saved iterator to an erased node is a hard failure   │
-// │ and a sanitizer report, which is the improvement being bought.            │
+// │ record of the semantic change.                                            │
 // │                                                                           │
-// │ Note this is NOT fixed by keeping the entity alive past the extract: the  │
-// │ entity's lifetime is not what the walk is following, the list node is.    │
-// │ Preserving these semantics needs the *unlink* deferred, not just the      │
-// │ free, ie. the node tombstoned in place and erased later.                  │
+// │ The replacement is tombstone-and-sweep: extraction marks the entity and   │
+// │ leaves it linked where it is, and a sweep at the end of the pulse does the│
+// │ unlink and the free. Keeping the entity *alive* past the extract would not│
+// │ have been enough on its own. The walk is not following the entity, it is  │
+// │ following the pointer inside the list node, so the node is what has to    │
+// │ stay put. The price is that iteration has to skip tombstones, and these   │
+// │ two scenarios become: the walk visits the living, skips the marked entity,│
+// │ and reaches the end of the list.                                          │
 // └───────────────────────────────────────────────────────────────────────────┘
 //
 
@@ -585,6 +610,181 @@ SCENARIO("a handle survives list mutation and expires exactly at extract", "[ent
 			THEN("the handle is expired")
 			{
 				REQUIRE(Deref(handle) == nullptr);
+			}
+		}
+
+		DrainObjs();
+	}
+}
+
+//
+// 5. The cursor-aware walk.
+//
+// Section 3 pins what a hand-rolled walk does when its successor is extracted:
+// it leaves the live list. ListWalk registers where it keeps that successor, so
+// extraction can move it along instead. These scenarios are the same setups as
+// section 3 with the walk swapped, and they are what the walks in the game
+// become as each list converts.
+//
+// The extraction is the same shim section 3 uses, and it advances registered
+// cursors exactly as the real extract_char/extract_obj/close_socket do. So the
+// difference between the two sections is only which walk is running: the fix is
+// opt-in at the walk, and a hand-rolled loop gets nothing.
+//
+
+namespace
+{
+	/// The section 3 walk, rewritten against ListWalk. Same contract: the body
+	/// sees each entity the walk lands on.
+	template <class T>
+	void CursorWalk(T *head, const std::function<void(T *)> &body)
+	{
+		for (ListWalk<T> walk(head); !walk.Done(); walk.Step())
+			body(walk.Current());
+	}
+}
+
+SCENARIO("a cursor-aware walk survives having its successor extracted", "[entity_storage]")
+{
+	GIVEN("three objects on the list and two corpses on the free list")
+	{
+		OBJ_DATA *oldest = MakeObj();
+		OBJ_DATA *middle = MakeObj();
+		OBJ_DATA *newest = MakeObj();
+
+		// Seeded after the live list: freeing first would just hand these
+		// addresses back to the MakeObj calls above.
+		OBJ_DATA *corpseA = new_obj();
+		OBJ_DATA *corpseB = new_obj();
+
+		free_obj(corpseA);
+		free_obj(corpseB);
+
+		WHEN("the first body call extracts the entity the walk was about to reach")
+		{
+			std::vector<OBJ_DATA *> visited;
+
+			CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *obj)
+			{
+				visited.push_back(obj);
+
+				if (obj == newest)
+					ExtractObj(middle);
+			});
+
+			THEN("the walk skips the extracted entity and finishes the live list")
+			{
+				// The comparison that matters: section 3's identical setup with
+				// a hand-rolled walk visits four entities, three of them dead,
+				// and never reaches `oldest`.
+				REQUIRE(visited == std::vector<OBJ_DATA *>({newest, oldest}));
+			}
+
+			THEN("nothing from the free list was handed to the body")
+			{
+				REQUIRE(std::find(visited.begin(), visited.end(), corpseA) == visited.end());
+				REQUIRE(std::find(visited.begin(), visited.end(), corpseB) == visited.end());
+
+				for (OBJ_DATA *seen : visited)
+					REQUIRE(Deref(seen->self) == seen);
+			}
+		}
+
+		WHEN("the body extracts the entity it was handed")
+		{
+			std::vector<OBJ_DATA *> visited;
+
+			CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *obj)
+			{
+				visited.push_back(obj);
+				ExtractObj(obj);
+			});
+
+			THEN("the walk still visits all three and empties the list")
+			{
+				REQUIRE(visited == std::vector<OBJ_DATA *>({newest, middle, oldest}));
+				REQUIRE(Collect<OBJ_DATA>().empty());
+			}
+		}
+
+		WHEN("the body extracts an entity the walk has not reached yet")
+		{
+			std::vector<OBJ_DATA *> visited;
+
+			CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *obj)
+			{
+				visited.push_back(obj);
+
+				if (obj == newest)
+					ExtractObj(oldest);
+			});
+
+			THEN("the walk simply never sees it")
+			{
+				REQUIRE(visited == std::vector<OBJ_DATA *>({newest, middle}));
+			}
+		}
+
+		DrainObjs();
+	}
+}
+
+SCENARIO("a walk deregisters its cursor however it ends", "[entity_storage]")
+{
+	GIVEN("no walks in flight")
+	{
+		REQUIRE(CursorRegistry<OBJ_DATA>::ActiveCount() == 0);
+
+		MakeObj();		// something for the walks to land on
+
+		WHEN("a walk runs to completion")
+		{
+			CursorWalk<OBJ_DATA>(object_list, [](OBJ_DATA *) {});
+
+			THEN("the registry is empty again")
+			{
+				REQUIRE(CursorRegistry<OBJ_DATA>::ActiveCount() == 0);
+			}
+		}
+
+		WHEN("walks are nested over the same list")
+		{
+			std::size_t innerDepth = 0;
+
+			CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *)
+			{
+				CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *)
+				{
+					innerDepth = CursorRegistry<OBJ_DATA>::ActiveCount();
+				});
+			});
+
+			THEN("both were registered at once, and both cleaned up")
+			{
+				REQUIRE(innerDepth == 2);
+				REQUIRE(CursorRegistry<OBJ_DATA>::ActiveCount() == 0);
+			}
+		}
+
+		WHEN("a walk is abandoned by an exception")
+		{
+			// The destructor is what deregisters, so an early exit out of a walk
+			// must not strand a dangling T** in the registry -- it would be
+			// written through by the next extraction.
+			try
+			{
+				CursorWalk<OBJ_DATA>(object_list, [](OBJ_DATA *)
+				{
+					throw std::runtime_error("abandon the walk");
+				});
+			}
+			catch (const std::runtime_error &)
+			{
+			}
+
+			THEN("the registry is empty again")
+			{
+				REQUIRE(CursorRegistry<OBJ_DATA>::ActiveCount() == 0);
 			}
 		}
 

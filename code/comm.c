@@ -58,6 +58,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "entity/handles.h"
+#include "entity/list_cursor.h"
 #include "comm.h"
 #include "recycle.h"
 #include "tables.h"
@@ -623,8 +624,12 @@ void close_socket(DESCRIPTOR_DATA *dclose)
 		}
 	}
 
+	// The hand-rolled version of what CursorRegistry does, kept until the
+	// descriptor loops stop using the d_next global.
 	if (d_next == dclose)
 		d_next = d_next->next;
+
+	CursorRegistry<DESCRIPTOR_DATA>::Advance(dclose);
 
 	if (dclose == descriptor_list)
 	{

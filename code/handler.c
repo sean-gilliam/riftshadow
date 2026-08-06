@@ -40,6 +40,7 @@
 #include "merc.h"
 #include "handler.h"
 #include "entity/handles.h"
+#include "entity/list_cursor.h"
 #include "magic.h"
 #include "recycle.h"
 #include "tables.h"
@@ -2198,6 +2199,9 @@ void extract_obj(OBJ_DATA *obj)
 		extract_obj(obj_content);
 	}
 
+	// See extract_char: advance the walks before the link they are holding goes.
+	CursorRegistry<OBJ_DATA>::Advance(obj);
+
 	if (object_list == obj)
 	{
 		object_list = obj->next;
@@ -2318,6 +2322,11 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 			it = next;
 		}
 	}
+
+	// Before the unlink, and before the free below it: any walk in flight that
+	// was about to visit this character moves past it instead. Both of those
+	// steps destroy the `next` the advance reads.
+	CursorRegistry<CHAR_DATA>::Advance(ch);
 
 	if (ch == char_list)
 	{
