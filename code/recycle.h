@@ -72,8 +72,6 @@ void free_race_data(RACE_DATA *race_specs);
 /* apply — value type owned by parents in std::list; see entity/affect_data.h */
 TRAP_DATA *new_trap(void);
 void free_trap(TRAP_DATA *trap);
-RUNE_DATA *new_rune(void);
-void free_rune(RUNE_DATA *rune);
 /* object recycling */
 OBJ_DATA *new_obj(void);
 void free_obj(OBJ_DATA *obj);

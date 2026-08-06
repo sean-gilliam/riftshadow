@@ -58,7 +58,6 @@
 const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192, 16384};
 
 DESCRIPTOR_DATA *descriptor_free;
-RUNE_DATA *rune_free;
 OBJ_DATA *obj_free;
 CHAR_DATA *char_free;
 
@@ -371,31 +370,6 @@ void free_trap(TRAP_DATA *trap)
 	free_pstring(trap->trig_echo);
 
 	delete trap;
-}
-
-RUNE_DATA *new_rune(void)
-{
-	static RUNE_DATA rune_zero;
-	RUNE_DATA *rune;
-
-	if (rune_free == nullptr)
-	{
-		rune = new RUNE_DATA;
-	}
-	else
-	{
-		rune = rune_free;
-		rune_free = rune->next;
-	}
-
-	*rune = rune_zero;
-	return rune;
-}
-
-void free_rune(RUNE_DATA *rune)
-{
-	rune->next = rune_free;
-	rune_free = rune;
 }
 
 /* stuff for recycling objects */

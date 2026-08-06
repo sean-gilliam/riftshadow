@@ -42,7 +42,7 @@ namespace
 		rune.owner = owner->self;
 	}
 
-	// apply_rune copies its argument into a fresh new_rune(), so the caller's
+	// apply_rune copies its argument into a rune rune_list owns, so the caller's
 	// struct is a template rather than the thing that ends up on the lists.
 	RUNE_DATA *PlaceRuneOnObj(OBJ_DATA *obj, int type, int trigger, CHAR_DATA *owner = nullptr)
 	{
@@ -62,7 +62,6 @@ namespace
 		temp.type = type;
 		temp.extra = 0;
 		temp.drawn_in = 0;
-		temp.next = nullptr;
 		temp.next_content = nullptr;
 		temp.end_fun = nullptr;
 
@@ -224,9 +223,8 @@ SCENARIO("extracting the last rune leaves the container naming nothing", "[rune]
 
 			THEN("the object names no rune at all")
 			{
-				// free_rune pushes onto the rune free list, so a container left
-				// pointing at an extracted rune is pointing at something
-				// new_rune can hand straight back out.
+				// Leaving rune_list destroys the rune, so a container left pointing
+				// at an extracted one is pointing at freed memory.
 				REQUIRE(obj->rune == nullptr);
 				REQUIRE(GlobalListLength() == 0);
 			}
@@ -324,32 +322,45 @@ SCENARIO("a recycled exit does not inherit the last one's rune", "[rune]")
 // A drawn rune waits nine ticks before draw_rune finalises it. It used to live
 // in the temp-struct pool, which is a bump allocator over a fixed buffer that
 // wraps without regard for outstanding pointers -- so the queue entry named
-// memory any other pool caller could take back. It comes from new_rune now, and
-// the queue owns it until draw_rune runs.
+// memory any other pool caller could take back. Ownership is now released into
+// the queue and adopted back by draw_rune, which takes a unique_ptr by value.
+//
+// That last part is why this scenario no longer asserts on the freeing. It used
+// to read `REQUIRE(new_rune() == drawn)` -- the free list handing the same
+// address back was the only observable proof that a bail-out path had not
+// stranded the struct. There is no free list to ask any more, and the property
+// it was testing is now enforced by the signature rather than at runtime: every
+// path out of draw_rune destroys the rune because the parameter owns it. A path
+// that failed to would not compile into a leak, it would not exist.
+//
+// What is still worth pinning is the game-visible half: a draw that bails must
+// not leave a rune applied. LeakSanitizer covers the other half.
 //
 
-SCENARIO("a drawn rune is returned to the recycler however the draw ends", "[rune]")
+SCENARIO("a draw that cannot complete applies nothing", "[rune]")
 {
 	GIVEN("a rune queued for drawing whose caster then leaves")
 	{
 		CHAR_DATA *caster = new_char();
-		RUNE_DATA *drawn = new_rune();
+		auto drawn = std::make_unique<RUNE_DATA>();
 
 		drawn->owner = caster->self;
 		drawn->drawn_in = 1;
 
 		free_char(caster);
 
+		REQUIRE(GlobalListLength() == 0);
+
 		WHEN("the draw comes due with nobody left to complete it")
 		{
-			draw_rune(drawn, nullptr);
+			draw_rune(std::move(drawn));
 
-			THEN("the rune is back on the free list rather than stranded")
+			THEN("the draw is abandoned rather than applied")
 			{
-				// The bail-out paths are the ones worth pinning: the queue held
-				// the only reference, so an early return that skips the free
-				// strands the struct for the rest of the run.
-				REQUIRE(new_rune() == drawn);
+				// The owner handle expired with the caster, so draw_rune takes
+				// its first bail-out path. Nothing reaches apply_rune, so
+				// rune_list -- which owns applied runes -- stays empty.
+				REQUIRE(GlobalListLength() == 0);
 			}
 		}
 	}

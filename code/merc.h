@@ -302,7 +302,8 @@ struct rune_data
 	int type;
 	int extra;
 	int drawn_in;
-	RUNE_DATA *next;
+	// The per-container chain off obj->rune / exit->rune / room->rune.
+	// Non-owning containment: rune_list owns every applied rune.
 	RUNE_DATA *next_content;
 	RUNE_END *end_fun;
 };
