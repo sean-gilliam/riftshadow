@@ -438,24 +438,38 @@ struct race_data
 	int legs;
 };
 
+//
+// A disguised player's real identity. `disguise` stashes the true name and
+// descriptions here and `disguise_remove` puts them back; save_char_obj reads
+// them so a player's file records who they really are rather than the mob they
+// are wearing. Held by exactly one field, pcdata->old, which owns it as a
+// unique_ptr. The destructor below frees the four strings and there is no
+// free list and no `next` link.
+//
+// `carrying` is a non-owning borrow of an object owned by the global object
+// list. Nothing assigns it, so it is always null and save.c's read of it never
+// fires. It is left in place because removing it changes what gets saved, which
+// is a separate question from who owns this struct.
+//
 struct old_char
 {
-	char *name;
-	char *short_descr;
-	char *long_descr;
-	char *description;
-	short perm_stats[MAX_STATS];
-	short armor[4];
-	float dam_mod;
-	short carry_weight;
-	short carry_number;
-	short saving_throw;
-	long affected_by[MAX_BITVECTOR];
-	long res_flags[MAX_BITVECTOR];
-	long vuln_flags[MAX_BITVECTOR];
-	long imm_flags[MAX_BITVECTOR];
-	OLD_CHAR *next;
-	OBJ_DATA *carrying;
+	char *name = nullptr;
+	char *short_descr = nullptr;
+	char *long_descr = nullptr;
+	char *description = nullptr;
+	short perm_stats[MAX_STATS] = {};
+	short armor[4] = {};
+	float dam_mod = 0.0f;
+	short carry_weight = 0;
+	short carry_number = 0;
+	short saving_throw = 0;
+	long affected_by[MAX_BITVECTOR] = {};
+	long res_flags[MAX_BITVECTOR] = {};
+	long vuln_flags[MAX_BITVECTOR] = {};
+	long imm_flags[MAX_BITVECTOR] = {};
+	OBJ_DATA *carrying = nullptr;
+
+	~old_char();		// frees the four owned strings (body in recycle.c)
 };
 
 #include "entity/affect_data.h"

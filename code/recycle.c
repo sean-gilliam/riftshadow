@@ -61,7 +61,6 @@ DESCRIPTOR_DATA *descriptor_free;
 RUNE_DATA *rune_free;
 OBJ_DATA *obj_free;
 CHAR_DATA *char_free;
-OLD_CHAR *oldtype_free;
 
 long last_pc_id;
 long last_mob_id;
@@ -577,34 +576,12 @@ std::unique_ptr<PC_DATA> new_pcdata(void)
 	return pcdata;
 }
 
-OLD_CHAR *new_oldchar(void)
+old_char::~old_char()
 {
-	static OLD_CHAR oldtype_zero;
-	OLD_CHAR *oldtype;
-
-	if (oldtype_free == nullptr)
-	{
-		oldtype = new OLD_CHAR;
-	}
-	else
-	{
-		oldtype = oldtype_free;
-		oldtype_free = oldtype_free->next;
-	}
-
-	*oldtype = oldtype_zero;
-	return oldtype;
-}
-
-void free_oldchar(OLD_CHAR *old)
-{
-	free_pstring(old->name);
-	free_pstring(old->short_descr);
-	free_pstring(old->long_descr);
-	free_pstring(old->description);
-
-	old->next = oldtype_free;
-	oldtype_free = old;
+	free_pstring(name);
+	free_pstring(short_descr);
+	free_pstring(long_descr);
+	free_pstring(description);
 }
 
 pc_data::~pc_data()

@@ -3,6 +3,7 @@
 
 #include <time.h>
 #include <list>
+#include <memory>
 
 #include "fwd.h"
 #include "limits.h"
@@ -78,7 +79,12 @@ struct pc_data
 	char *logon_time;
 	char *color_scheme[MAX_EVENTS];
 	long shifted;
-	OLD_CHAR *old;
+	// The player's real identity while they are disguised, null otherwise.
+	// This is the sole owner since nothing else holds an old_char. Only 
+	// `disguise_remove` ever freed it and this destructor never did, so 
+	// a player who left the world still disguised leaked one plus its four
+	// strings. Owning it closes that.
+	std::unique_ptr<OLD_CHAR> old;
 	bool entering_text;
 	char *entered_text;
 	DO_FUN *end_fun;

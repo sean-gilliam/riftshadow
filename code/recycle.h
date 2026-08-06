@@ -81,8 +81,6 @@ void free_obj(OBJ_DATA *obj);
 CHAR_DATA *new_char(void);
 void free_char(CHAR_DATA *ch);
 std::unique_ptr<PC_DATA> new_pcdata(void);
-OLD_CHAR *new_oldchar(void);
-void free_oldchar(OLD_CHAR *old);
 /* mob id procedures */
 long get_pc_id(void);
 long get_mob_id(void);
