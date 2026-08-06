@@ -2204,23 +2204,14 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 					if (!fNest || (fVnum && obj->pIndexData == nullptr))
 					{
 						RS.Logger.Warn("Fread_obj: incomplete object.");
-						free_pstring(obj->name);
-						free_pstring(obj->description);
-						free_pstring(obj->short_descr);
-						obj->next = obj_free;
-						obj_free = obj;
+						free_obj(obj);
 						return;
 					}
 					else
 					{
 						if (!fVnum)
 						{
-							free_pstring(obj->name);
-							free_pstring(obj->description);
-							free_pstring(obj->short_descr);
-							obj->next = obj_free;
-							obj_free = obj;
-
+							free_obj(obj);
 							obj = create_object(get_obj_index(OBJ_VNUM_DUMMY), 0);
 						}
 
