@@ -40,6 +40,7 @@
 #include <time.h>
 #include "merc.h"
 #include "entity/handles.h"
+#include "entity/list_cursor.h"
 #include "act_comm.h"
 #include "rift.h"
 #include "recycle.h"
@@ -1802,8 +1803,10 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 			return;
 		}
 
-		for (auto obj = object_list; obj != nullptr; obj = obj->next)
+		for (auto &owned : object_list)
 		{
+			OBJ_DATA *obj = owned.get();
+
 			if (isCabalItem(obj))
 			{
 				if (obj->carried_by == ch->self)
@@ -1855,10 +1858,10 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 	/* Remove any Cabal items first , also owners
 		and any limiteds on levels 10 and below
 	*/
-	OBJ_DATA *obj_next;
-	for (auto obj = object_list; obj != nullptr; obj = obj_next)
+	for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
 	{
-		obj_next = obj->next;
+		OBJ_DATA *obj = walk.Current();
+
 		if (isCabalItem(obj))
 		{
 			if (obj->carried_by == ch->self)
@@ -1919,8 +1922,14 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 		close_socket(d);
 
 	/* toast evil cheating bastards */
-	for (d = descriptor_list; d != nullptr; d = d->next)
+	// The successor has to be read before the body: close_socket frees d, and the
+	// loop advances through it.
+	DESCRIPTOR_DATA *d_after;
+
+	for (d = descriptor_list; d != nullptr; d = d_after)
 	{
+		d_after = d->next;
+
 		auto tch = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 		if (tch && tch->id == id)
 		{

@@ -3273,8 +3273,10 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (obj = object_list; obj != nullptr; obj = obj->next)
+	for (auto &owned : object_list)
 	{
+		obj = owned.get();
+
 		if (!can_see_obj(ch, obj) || !is_name(argument, obj->name) || ch->level < obj->level)
 			continue;
 
@@ -7966,10 +7968,18 @@ void do_memtest(CHAR_DATA *ch, char *argument)
 	}
 	if(!str_cmp(buf,"end"))
 	{
-		for(qch = char_list; qch; qch = qch->next)
+		// The successor has to be read before the body: extract_char frees qch,
+		// and the loop advances through it.
+		CHAR_DATA *qch_next;
+
+		for(qch = char_list; qch; qch = qch_next)
+		{
+			qch_next = qch->next;
+
 			if(is_npc(qch) && qch->pIndexData->vnum == 3001 && qch->in_room->vnum > 2399 &&
 			   qch->in_room->vnum < 2801)
 				extract_char(qch, true);
+		}
 		send_to_char("It has.. ENDED!\n\r",ch);
 	}
 }

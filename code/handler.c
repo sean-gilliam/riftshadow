@@ -2199,34 +2199,20 @@ void extract_obj(OBJ_DATA *obj)
 		extract_obj(obj_content);
 	}
 
-	// See extract_char: advance the walks before the link they are holding goes.
-	CursorRegistry<OBJ_DATA>::Advance(obj);
-
-	if (object_list == obj)
+	// An object that was never linked (the test fixtures build these) has no node
+	// to erase. Nothing owns it either, so it is the caller's to delete.
+	if (obj->globalNode == ObjectList::iterator{})
 	{
-		object_list = obj->next;
-	}
-	else
-	{
-		OBJ_DATA *prev;
-
-		for (prev = object_list; prev != nullptr; prev = prev->next)
-		{
-			if (prev->next == obj)
-			{
-				prev->next = obj->next;
-				break;
-			}
-		}
-
-		if (prev == nullptr)
-		{
-			RS.Logger.Warn("Extract_obj: obj {} not found.", obj->pIndexData->vnum);
-			return;
-		}
+		RS.Logger.Warn("Extract_obj: obj {} was not on the object list.", obj->pIndexData->vnum);
+		return;
 	}
 
-	free_obj(obj);
+	// Advance the walks before the erase, while the node still links to its
+	// successor. The erase is also the destruction point, so this is the
+	// last moment `obj` is readable.
+	OwningCursorRegistry<OBJ_DATA>::Advance(obj->globalNode);
+
+	object_list.erase(obj->globalNode);
 }
 
 void delay_extract(CHAR_DATA *ch)
@@ -2303,7 +2289,7 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 	}
 
 	// A character's room affects end with them. This is not the reference
-	// expiring -- that happens on its own now -- it is the effect itself being
+	// expiring, that happens on its own now, it is the effect itself being
 	// destroyed, which a handle cannot do: a disowned wall of fire goes on
 	// burning everyone who walks in, and every consumer of raf->owner in
 	// act_move.c and update.c hands it straight to damage_new and is_safe.
@@ -2425,12 +2411,10 @@ CHAR_DATA *get_char_world(CHAR_DATA *ch, char *argument)
  */
 OBJ_DATA *get_obj_type(OBJ_INDEX_DATA *pObjIndex)
 {
-	OBJ_DATA *obj;
-
-	for (obj = object_list; obj != nullptr; obj = obj->next)
+	for (auto &owned : object_list)
 	{
-		if (obj->pIndexData == pObjIndex)
-			return obj;
+		if (owned->pIndexData == pObjIndex)
+			return owned.get();
 	}
 
 	return nullptr;
@@ -2563,8 +2547,10 @@ OBJ_DATA *get_obj_world(CHAR_DATA *ch, char *argument)
 	number = number_argument(argument, arg);
 	count = 0;
 
-	for (obj = object_list; obj != nullptr; obj = obj->next)
+	for (auto &owned : object_list)
 	{
+		OBJ_DATA *obj = owned.get();
+
 		if (can_see_obj(ch, obj) && is_name(arg, obj->name))
 		{
 			if (++count == number)

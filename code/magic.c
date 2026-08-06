@@ -3515,8 +3515,10 @@ void spell_locate_object(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	number = 0;
 	max_found = is_immortal(ch) ? 200 : 2 * level;
 
-	for (obj = object_list; obj != nullptr; obj = obj->next)
+	for (auto &owned : object_list)
 	{
+		obj = owned.get();
+
 		if (!can_see_obj(ch, obj)
 			|| !is_name(target_name, obj->name)
 			|| is_obj_stat(obj, ITEM_NOLOCATE)

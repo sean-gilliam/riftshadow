@@ -2217,8 +2217,11 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 
 						if (!new_format)
 						{
-							obj->next = object_list;
-							object_list = obj;
+							// The legacy path builds its object with new_obj rather
+							// than create_object, so this is where the list takes
+							// ownership of it.
+							object_list.push_front(std::unique_ptr<OBJ_DATA>(obj));
+							obj->globalNode = object_list.begin();
 							obj->pIndexData->count++;
 						}
 

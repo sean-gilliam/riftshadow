@@ -40,7 +40,6 @@
 
 /* externals for counting purposes */
 extern DESCRIPTOR_DATA *descriptor_free;
-extern OBJ_DATA *obj_free;
 extern CHAR_DATA *char_free;
 
 

@@ -403,14 +403,18 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 			auto gravroom = to_room;
 
-			auto well = object_list;
-			for (; well; well = well->next)
+			OBJ_DATA *well = nullptr;
+
+			for (auto &owned : object_list)
 			{
-				if (well->item_type == ITEM_GRAVITYWELL && well->in_room && well->in_room->area == in_room->area)
+				if (owned->item_type == ITEM_GRAVITYWELL && owned->in_room && owned->in_room->area == in_room->area)
+				{
+					well = owned.get();
 					break;
+				}
 			}
 
-			if (!well)
+			if (well == nullptr)
 				return;
 
 			for (auto distance = 0; distance <= get_grav_distance(well); distance++)

@@ -95,7 +95,7 @@ char *help_greeting;
 char log_buf[2 * MAX_INPUT_LENGTH];
 KILL_DATA kill_table[MAX_LEVEL];
 NOTE_DATA *note_list;
-OBJ_DATA *object_list;
+ObjectList object_list;
 TIME_INFO_DATA time_info;
 short sun;
 short moon_berus;
@@ -1404,7 +1404,7 @@ void reset_room(ROOM_INDEX_DATA *pRoom)
 	RESET_DATA *pReset;
 	CHAR_DATA *pMob;
 	CHAR_DATA *mob;
-	OBJ_DATA *pObj, *pObj2;
+	OBJ_DATA *pObj, *pObj2, *pObj2_next;
 	CHAR_DATA *LastMob = nullptr;
 	OBJ_DATA *LastObj = nullptr;
 	EXIT_DATA *pexit = nullptr;
@@ -1520,8 +1520,12 @@ void reset_room(ROOM_INDEX_DATA *pRoom)
 					continue;
 				}
 
-				for (pObj2 = pRoomIndex->contents; pObj2; pObj2 = pObj2->next_content)
+				// The successor has to be read before the body: extract_obj frees
+				// pObj2, and the loop advances through it.
+				for (pObj2 = pRoomIndex->contents; pObj2; pObj2 = pObj2_next)
 				{
+					pObj2_next = pObj2->next_content;
+
 					if (pObj2->pIndexData->vnum == pObjIndex->vnum
 						&& !is_obj_stat(pObj2, ITEM_DONATION_PIT)
 						&& !is_obj_stat(pObj2, ITEM_CORPSE_PC)
@@ -2358,8 +2362,13 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 	}
 
 	obj->owner = palloc_string("none");
-	obj->next = object_list;
-	object_list = obj;
+
+	// The list takes ownership here, not in new_obj: an object exists unlinked
+	// between the two, and the test fixtures build objects that never get linked
+	// at all.
+	object_list.push_front(std::unique_ptr<OBJ_DATA>(obj));
+	obj->globalNode = object_list.begin();
+
 	pObjIndex->limcount += 1;
 
 	return obj;
@@ -3240,19 +3249,16 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	count = 0;
 	count2 = 0;
 
-	for (obj = object_list; obj != nullptr; obj = obj->next)
+	for (auto &owned : object_list)
 	{
 		count++;
 
-		aff_count += obj->affected.size();
+		aff_count += owned->affected.size();
 	}
 
-	for (obj = obj_free; obj != nullptr; obj = obj->next)
-	{
-		count2++;
-	}
-
-	fprintf(fp, "Objs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(*obj)), count2, count2 * (sizeof(*obj)));
+	// No free list any more -- object_list owns its objects, so a freed one is
+	// returned to the allocator rather than parked for reuse.
+	fprintf(fp, "Objs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(OBJ_DATA)), count2, count2 * (sizeof(OBJ_DATA)));
 
 	/* affects — no free list any more (affects are owned by value) */
 	count = 0;
@@ -3822,8 +3828,9 @@ void do_llimit(CHAR_DATA *ch, char *argument)
 	send_to_char("Counts set to zero....\n\r", ch);
 	send_to_char("Loading all in-game counts now (excluding PC objects).\n\r", ch);
 
-	for (obj = object_list; obj != nullptr; obj = obj->next)
+	for (auto &owned : object_list)
 	{
+		obj = owned.get();
 		carrier = Deref(obj->carried_by);
 
 		if (carrier != nullptr && !is_npc(carrier))

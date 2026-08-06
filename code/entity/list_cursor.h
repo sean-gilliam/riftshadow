@@ -2,6 +2,8 @@
 #define ENTITY_LIST_CURSOR_H
 
 #include <algorithm>
+#include <list>
+#include <memory>
 #include <vector>
 
 //
@@ -128,6 +130,97 @@ public:
 private:
 	T *current;
 	T *next;		// registered; extraction may rewrite this mid-body
+};
+
+//
+// The same idea for a list that owns what it holds.
+//
+// Once a global list is std::list<std::unique_ptr<T>>, erasing an element both
+// destroys the entity and invalidates iterators to that element. So a walk's
+// saved successor is an iterator rather than a pointer, and it needs the same
+// protection for the same reason. The hazard is if anything sharper here: the
+// entity is really freed, so a walk that carried on regardless would be reading
+// poisoned memory rather than an intact corpse.
+//
+
+/// The owning-container counterpart to CursorRegistry.
+template <class T>
+class OwningCursorRegistry
+{
+public:
+	using ListType = std::list<std::unique_ptr<T>>;
+	using Iterator = typename ListType::iterator;
+
+	static void Add(Iterator *cursor) { cursors.push_back(cursor); }
+
+	static void Remove(Iterator *cursor)
+	{
+		cursors.erase(std::remove(cursors.begin(), cursors.end(), cursor), cursors.end());
+	}
+
+	/// Moves any walk that was about to visit `erased` past it. Must be called
+	/// before the erase, while the node still links to its successor.
+	static void Advance(Iterator erased)
+	{
+		for (Iterator *cursor : cursors)
+		{
+			if (*cursor == erased)
+				*cursor = std::next(erased);
+		}
+	}
+
+	static std::size_t ActiveCount() { return cursors.size(); }
+
+private:
+	inline static std::vector<Iterator *> cursors;
+};
+
+/// A walk over an owning global entity list that extraction knows about.
+///
+///     for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
+///     {
+///         OBJ_DATA *obj = walk.Current();
+///         ...
+///     }
+///
+/// `Done` is only ever asked about the *new* current, because the loop runs
+/// Step before it, so the body is free to extract the entity it was handed.
+template <class T>
+class OwningListWalk
+{
+public:
+	using ListType = std::list<std::unique_ptr<T>>;
+	using Iterator = typename ListType::iterator;
+
+	explicit OwningListWalk(ListType &list)
+		: list(list)
+		, current(list.begin())
+		, next(current == list.end() ? current : std::next(current))
+	{
+		OwningCursorRegistry<T>::Add(&next);
+	}
+
+	~OwningListWalk() { OwningCursorRegistry<T>::Remove(&next); }
+
+	// The registry holds the address of `next`, so this object has to stay put.
+	OwningListWalk(const OwningListWalk &) = delete;
+	OwningListWalk &operator=(const OwningListWalk &) = delete;
+	OwningListWalk(OwningListWalk &&) = delete;
+	OwningListWalk &operator=(OwningListWalk &&) = delete;
+
+	bool Done() const { return current == list.end(); }
+	T *Current() const { return current->get(); }
+
+	void Step()
+	{
+		current = next;
+		next = current == list.end() ? current : std::next(current);
+	}
+
+private:
+	ListType &list;
+	Iterator current;
+	Iterator next;		// registered; extraction may rewrite this mid-body
 };
 
 #endif /* ENTITY_LIST_CURSOR_H */

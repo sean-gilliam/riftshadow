@@ -366,8 +366,14 @@ void pulse_prog_ruins_shark(AREA_DATA *area)
 	if (area->nplayer == 0)
 		return;
 
-	for (shark = char_list; shark; shark = shark->next)
+	// The successor has to be read before the body: extract_char frees shark, and
+	// the loop advances through it.
+	CHAR_DATA *shark_next;
+
+	for (shark = char_list; shark; shark = shark_next)
 	{
+		shark_next = shark->next;
+
 		if (!is_npc(shark))
 			continue;
 

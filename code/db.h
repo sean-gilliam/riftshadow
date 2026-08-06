@@ -42,6 +42,7 @@
 #include <stdlib.h>		// srandom
 #include <unistd.h>		// getpid -- replaces the OLD_RAND hand declarations
 
+#include "entity/obj_data.h"		// ObjectList: object_list owns its objects
 #include "entity/extra_descr.h"		// get_extra_descr takes a std::list<EXTRA_DESCR_DATA>&
 
 #include "entity/fwd.h"
@@ -71,7 +72,10 @@ extern CHAR_DATA *char_list;
 extern KILL_DATA kill_table[];
 extern MOB_INDEX_DATA *mindex_list;
 extern OBJ_INDEX_DATA *oIndex_list;
-extern OBJ_DATA *object_list;
+// Owns every object in the world. An object is put here by create_object (and by
+// fread_obj for the legacy format) and destroyed by extract_obj erasing its
+// node; obj_data::contains and ch->carrying are containment, and stay raw.
+extern ObjectList object_list;
 extern TIME_INFO_DATA time_info;
 extern short sun;
 extern short moon_berus;

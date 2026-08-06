@@ -366,10 +366,15 @@ void do_offer(CHAR_DATA *ch, char *argument)
 	auto offerings = OfferingRepository(RS.DbRift);
 
 	// status: 0 unread 1 rejected 2 accepted
-	for (altar = object_list; altar; altar = altar->next)
+	altar = nullptr;
+
+	for (auto &owned : object_list)
 	{
-		if (altar->in_room && altar->item_type == ITEM_ALTAR && altar->in_room == ch->in_room)
+		if (owned->in_room && owned->item_type == ITEM_ALTAR && owned->in_room == ch->in_room)
+		{
+			altar = owned.get();
 			break;
+		}
 	}
 
 	if (!altar || !altar->in_room->owner || !str_cmp(altar->in_room->owner, ""))

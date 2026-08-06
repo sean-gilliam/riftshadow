@@ -896,8 +896,10 @@ void report_cabal_items(CHAR_DATA *ch, char *argument)
 		sprintf(buf1, "%s is the guardian.", guardian->short_descr);
 		wiznet(buf1, 0, nullptr, WIZ_DEBUG, 0, 0);
 
-		for (obj = object_list; obj != nullptr; obj = obj->next)
+		for (auto &owned : object_list)
 		{
+			obj = owned.get();
+
 			if (obj->pIndexData->cabal != guardian->cabal)
 				continue;
 

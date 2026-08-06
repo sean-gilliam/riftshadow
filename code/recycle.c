@@ -58,7 +58,6 @@
 const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192, 16384};
 
 DESCRIPTOR_DATA *descriptor_free;
-OBJ_DATA *obj_free;
 CHAR_DATA *char_free;
 
 long last_pc_id;
@@ -376,50 +375,44 @@ void free_trap(TRAP_DATA *trap)
 
 OBJ_DATA *new_obj(void)
 {
-	static OBJ_DATA obj_zero;
-	OBJ_DATA *obj;
+	// The parentheses matter: obj_data has no user-provided constructor, so
+	// value-initialization zeroes every POD member before the implicit one runs.
+	// That is what `*obj = obj_zero` used to do.
+	//
+	// The object is not on object_list yet. create_object and fread_obj link it
+	// once they have filled it in, and the test fixtures never link theirs.
+	OBJ_DATA *obj = new OBJ_DATA();
 
-	if (obj_free == nullptr)
-	{
-		obj = new OBJ_DATA;
-	}
-	else
-	{
-		obj = obj_free;
-		obj_free = obj_free->next;
-	}
-
-	*obj = obj_zero;
-
-	// After the reset, which zeroes the old handle along with everything else.
 	obj->self = objectHandles.Add(obj);
 
 	return obj;
 }
 
+obj_data::~obj_data()
+{
+	// affected/charaffs/extra_descr/apply are std::lists of value types and
+	// destruct themselves; the obj owns its charaffs and apply copies, which were
+	// once shared with the index.
+
+	free_pstring(name);
+	free_pstring(description);
+	free_pstring(short_descr);
+
+	// free_pstring( owner );
+
+	// Expires every handle to this object.
+	objectHandles.Remove(self);
+}
+
+/// Destroys an object that never made it onto object_list. The list owns the
+/// ones that did, and extract_obj erasing the node is what destroys those.
+/// @param obj The object to destroy.
 void free_obj(OBJ_DATA *obj)
 {
 	if (obj == nullptr || Deref(obj->self) != obj)
 		return;
 
-	obj->affected.clear();
-	obj->charaffs.clear();	// obj owns its charaffs copy now (was shared with the index)
-	obj->extra_descr.clear();
-	obj->apply.clear();		// obj owns its apply copy now (was shared with the index)
-
-	free_pstring(obj->name);
-	free_pstring(obj->description);
-	free_pstring(obj->short_descr);
-
-	// free_pstring( obj->owner     );
-
-	// Expires every handle to this object. Must happen before it goes on the
-	// free list, since new_obj can hand the same address straight back out.
-	objectHandles.Remove(obj->self);
-	obj->self = nullptr;
-
-	obj->next = obj_free;
-	obj_free = obj;
+	delete obj;
 }
 
 /* stuff for recycling characters */

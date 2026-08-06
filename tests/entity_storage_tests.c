@@ -53,7 +53,6 @@ namespace
 	template <class T> T *&ListHead();
 
 	template <> CHAR_DATA *&ListHead<CHAR_DATA>() { return char_list; }
-	template <> OBJ_DATA *&ListHead<OBJ_DATA>() { return object_list; }
 	template <> DESCRIPTOR_DATA *&ListHead<DESCRIPTOR_DATA>() { return descriptor_list; }
 
 	/// Puts an entity on its global list, the way db.c/comm.c do it: push front.
@@ -113,6 +112,48 @@ namespace
 		}
 	}
 
+	//
+	// object_list is an owning container now, so the OBJ_DATA half of the shim is
+	// specialized. Note what collapsed: on a raw list, "take it off the list" and
+	// "free it" are two steps, and a test can do one without the other. Here
+	// erasing the node *is* the destruction, so Unlink and free_obj have no
+	// separate meaning and ExtractObj is a single operation. That collapse is the
+	// behaviour change, and this is where the file records it.
+	//
+
+	template <>
+	void Link<OBJ_DATA>(OBJ_DATA *obj)
+	{
+		object_list.push_front(std::unique_ptr<OBJ_DATA>(obj));
+		obj->globalNode = object_list.begin();
+	}
+
+	template <>
+	std::vector<OBJ_DATA *> Collect<OBJ_DATA>()
+	{
+		std::vector<OBJ_DATA *> out;
+
+		for (auto &owned : object_list)
+			out.push_back(owned.get());
+
+		return out;
+	}
+
+	/// The unprotected walk, for the same reason the raw one exists: it is what a
+	/// hand-written loop does, and section 2 needs it to show that extracting the
+	/// current element is the safe case either way.
+	template <>
+	void Walk<OBJ_DATA>(const std::function<void(OBJ_DATA *)> &body)
+	{
+		for (auto it = object_list.begin(); it != object_list.end(); )
+		{
+			OBJ_DATA *obj = it->get();
+			++it;
+
+			body(obj);
+		}
+	}
+
 	// ─── end of shim ───────────────────────────────────────────────────────
 
 	//
@@ -155,11 +196,12 @@ namespace
 		free_char(ch);
 	}
 
+	/// One operation now: the erase runs ~obj_data. Advancing the walks has to
+	/// come first, while the node still links to its successor.
 	void ExtractObj(OBJ_DATA *obj)
 	{
-		CursorRegistry<OBJ_DATA>::Advance(obj);
-		Unlink(obj);
-		free_obj(obj);
+		OwningCursorRegistry<OBJ_DATA>::Advance(obj->globalNode);
+		object_list.erase(obj->globalNode);
 	}
 
 	void ExtractDescriptor(DESCRIPTOR_DATA *d)
@@ -171,7 +213,7 @@ namespace
 
 	/// Leaves the list empty however a scenario ended.
 	void DrainChars()       { while (char_list != nullptr) ExtractChar(char_list); }
-	void DrainObjs()        { while (object_list != nullptr) ExtractObj(object_list); }
+	void DrainObjs()        { while (!object_list.empty()) ExtractObj(object_list.front().get()); }
 	void DrainDescriptors() { while (descriptor_list != nullptr) ExtractDescriptor(descriptor_list); }
 }
 
@@ -621,15 +663,16 @@ SCENARIO("a handle survives list mutation and expires exactly at extract", "[ent
 // 5. The cursor-aware walk.
 //
 // Section 3 pins what a hand-rolled walk does when its successor is extracted:
-// it leaves the live list. ListWalk registers where it keeps that successor, so
-// extraction can move it along instead. These scenarios are the same setups as
-// section 3 with the walk swapped, and they are what the walks in the game
-// become as each list converts.
+// it leaves the live list. A registered walk hands extraction somewhere to move
+// that successor to instead. These are section 3's setups with the walk swapped,
+// and they are what the walks in the game become as each list converts.
 //
-// The extraction is the same shim section 3 uses, and it advances registered
-// cursors exactly as the real extract_char/extract_obj/close_socket do. So the
-// difference between the two sections is only which walk is running: the fix is
-// opt-in at the walk, and a hand-rolled loop gets nothing.
+// object_list is converted, so its walk is OwningListWalk and its successor is a
+// list iterator. The hazard is sharper here than on the raw lists rather than
+// milder: erasing the node really frees the object, so a walk that carried on
+// regardless would be reading freed memory rather than an intact corpse. What
+// makes these pass is the same thing in both cases -- extraction advancing the
+// cursor before it destroys what the cursor names.
 //
 
 namespace
@@ -642,29 +685,33 @@ namespace
 		for (ListWalk<T> walk(head); !walk.Done(); walk.Step())
 			body(walk.Current());
 	}
+
+	/// The owning-container form. It takes the list rather than a head pointer,
+	/// which is the one call-site change the conversion forces here.
+	void CursorWalk(ObjectList &list, const std::function<void(OBJ_DATA *)> &body)
+	{
+		for (OwningListWalk<OBJ_DATA> walk(list); !walk.Done(); walk.Step())
+			body(walk.Current());
+	}
 }
 
 SCENARIO("a cursor-aware walk survives having its successor extracted", "[entity_storage]")
 {
-	GIVEN("three objects on the list and two corpses on the free list")
+	GIVEN("three objects on the list")
 	{
 		OBJ_DATA *oldest = MakeObj();
 		OBJ_DATA *middle = MakeObj();
 		OBJ_DATA *newest = MakeObj();
 
-		// Seeded after the live list: freeing first would just hand these
-		// addresses back to the MakeObj calls above.
-		OBJ_DATA *corpseA = new_obj();
-		OBJ_DATA *corpseB = new_obj();
-
-		free_obj(corpseA);
-		free_obj(corpseB);
+		// No free list to seed any more: object_list owns its objects, so
+		// extraction returns the memory to the allocator. Section 3's char_list
+		// scenarios still seed one, because char_free is still there.
 
 		WHEN("the first body call extracts the entity the walk was about to reach")
 		{
 			std::vector<OBJ_DATA *> visited;
 
-			CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *obj)
+			CursorWalk(object_list, [&](OBJ_DATA *obj)
 			{
 				visited.push_back(obj);
 
@@ -674,17 +721,14 @@ SCENARIO("a cursor-aware walk survives having its successor extracted", "[entity
 
 			THEN("the walk skips the extracted entity and finishes the live list")
 			{
-				// The comparison that matters: section 3's identical setup with
-				// a hand-rolled walk visits four entities, three of them dead,
-				// and never reaches `oldest`.
+				// The comparison that matters: section 3's equivalent setup on
+				// char_list, walked by hand, visits four entities of which three
+				// are dead and never reaches the last live one.
 				REQUIRE(visited == std::vector<OBJ_DATA *>({newest, oldest}));
 			}
 
-			THEN("nothing from the free list was handed to the body")
+			THEN("everything the body was handed was alive when it got it")
 			{
-				REQUIRE(std::find(visited.begin(), visited.end(), corpseA) == visited.end());
-				REQUIRE(std::find(visited.begin(), visited.end(), corpseB) == visited.end());
-
 				for (OBJ_DATA *seen : visited)
 					REQUIRE(Deref(seen->self) == seen);
 			}
@@ -694,7 +738,7 @@ SCENARIO("a cursor-aware walk survives having its successor extracted", "[entity
 		{
 			std::vector<OBJ_DATA *> visited;
 
-			CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *obj)
+			CursorWalk(object_list, [&](OBJ_DATA *obj)
 			{
 				visited.push_back(obj);
 				ExtractObj(obj);
@@ -711,7 +755,7 @@ SCENARIO("a cursor-aware walk survives having its successor extracted", "[entity
 		{
 			std::vector<OBJ_DATA *> visited;
 
-			CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *obj)
+			CursorWalk(object_list, [&](OBJ_DATA *obj)
 			{
 				visited.push_back(obj);
 
@@ -733,17 +777,17 @@ SCENARIO("a walk deregisters its cursor however it ends", "[entity_storage]")
 {
 	GIVEN("no walks in flight")
 	{
-		REQUIRE(CursorRegistry<OBJ_DATA>::ActiveCount() == 0);
+		REQUIRE(OwningCursorRegistry<OBJ_DATA>::ActiveCount() == 0);
 
 		MakeObj();		// something for the walks to land on
 
 		WHEN("a walk runs to completion")
 		{
-			CursorWalk<OBJ_DATA>(object_list, [](OBJ_DATA *) {});
+			CursorWalk(object_list, [](OBJ_DATA *) {});
 
 			THEN("the registry is empty again")
 			{
-				REQUIRE(CursorRegistry<OBJ_DATA>::ActiveCount() == 0);
+				REQUIRE(OwningCursorRegistry<OBJ_DATA>::ActiveCount() == 0);
 			}
 		}
 
@@ -751,18 +795,18 @@ SCENARIO("a walk deregisters its cursor however it ends", "[entity_storage]")
 		{
 			std::size_t innerDepth = 0;
 
-			CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *)
+			CursorWalk(object_list, [&](OBJ_DATA *)
 			{
-				CursorWalk<OBJ_DATA>(object_list, [&](OBJ_DATA *)
+				CursorWalk(object_list, [&](OBJ_DATA *)
 				{
-					innerDepth = CursorRegistry<OBJ_DATA>::ActiveCount();
+					innerDepth = OwningCursorRegistry<OBJ_DATA>::ActiveCount();
 				});
 			});
 
 			THEN("both were registered at once, and both cleaned up")
 			{
 				REQUIRE(innerDepth == 2);
-				REQUIRE(CursorRegistry<OBJ_DATA>::ActiveCount() == 0);
+				REQUIRE(OwningCursorRegistry<OBJ_DATA>::ActiveCount() == 0);
 			}
 		}
 
@@ -773,7 +817,7 @@ SCENARIO("a walk deregisters its cursor however it ends", "[entity_storage]")
 			// written through by the next extraction.
 			try
 			{
-				CursorWalk<OBJ_DATA>(object_list, [](OBJ_DATA *)
+				CursorWalk(object_list, [](OBJ_DATA *)
 				{
 					throw std::runtime_error("abandon the walk");
 				});
@@ -784,7 +828,7 @@ SCENARIO("a walk deregisters its cursor however it ends", "[entity_storage]")
 
 			THEN("the registry is empty again")
 			{
-				REQUIRE(CursorRegistry<OBJ_DATA>::ActiveCount() == 0);
+				REQUIRE(OwningCursorRegistry<OBJ_DATA>::ActiveCount() == 0);
 			}
 		}
 

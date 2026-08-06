@@ -2855,11 +2855,10 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			another one exists.
 			*/
 			{
-				OBJ_DATA *obj;
-				OBJ_DATA *obj_next;
-				for (obj = object_list; obj != nullptr; obj = obj_next)
+				for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
 				{
-					obj_next = obj->next;
+					OBJ_DATA *obj = walk.Current();
+
 					if (obj->carried_by == ch->self)
 					{
 						if (isCabalItem(obj))

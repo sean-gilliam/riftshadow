@@ -39,6 +39,7 @@
 #include <iterator>
 #include <algorithm>
 #include "merc.h"
+#include "entity/list_cursor.h"
 #include "update.h"
 #include "entity/handles.h"
 #include "weather_enums.h"
@@ -1506,8 +1507,10 @@ void obj_update(void)
 	OBJ_DATA *obj_next;
 	CHAR_DATA *owner, *cguard;
 
-	for (obj = object_list; obj != nullptr; obj = obj_next)
+	for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
 	{
+		obj = walk.Current();
+
 		CHAR_DATA *rch;
 		// Re-read from obj->carried_by before each use below, never cached across
 		// them: the cabal-item branch calls obj_from_char/obj_to_char, which move
@@ -1515,8 +1518,6 @@ void obj_update(void)
 		// is stale from that point on.
 		CHAR_DATA *carrier;
 		char *message;
-
-		obj_next = obj->next;
 
 		if (obj->moved)
 			obj->moved= false;
@@ -2394,9 +2395,9 @@ void affect_update(void)
 		}
 	}
 
-	for (obj = object_list; obj; obj = obj_next)
+	for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
 	{
-		obj_next = obj->next;
+		obj = walk.Current();
 
 		for (auto it = obj->affected.begin(); it != obj->affected.end(); )
 		{
@@ -2495,13 +2496,18 @@ void room_affect_update(void)
 
 			af = affect_find_room(room->affected, gsn_gravity_well);
 
-			for (well = object_list; well != nullptr; well = well->next)
+			well = nullptr;
+
+			for (auto &owned : object_list)
 			{
-				if (well->item_type == ITEM_GRAVITYWELL && well->in_room && well->in_room == room)
+				if (owned->item_type == ITEM_GRAVITYWELL && owned->in_room && owned->in_room == room)
+				{
+					well = owned.get();
 					break;
+				}
 			}
 
-			if (!well)
+			if (well == nullptr)
 				continue;
 
 			auto room_exit_size = std::size(room->exit);
@@ -2936,9 +2942,9 @@ void iprog_pulse_update(bool isTick)
 	EXIT_DATA *pexit;
 	int door;
 
-	for (obj = object_list; obj != nullptr; obj = obj_next)
+	for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
 	{
-		obj_next = obj->next;
+		obj = walk.Current();
 
 		/* items drifting/sinking in water -- Dioxide */
 		if (obj->in_room

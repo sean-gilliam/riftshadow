@@ -653,8 +653,13 @@ void spell_visceral(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	for (corpse = object_list; corpse != nullptr && corpses < 3; corpse = corpse->next)
+	for (auto &owned : object_list)
 	{
+		if (corpses >= 3)
+			break;
+
+		corpse = owned.get();
+
 		if (corpse->in_room
 			&& corpse->in_room == ch->in_room
 			&& corpse->level >= ch->level
