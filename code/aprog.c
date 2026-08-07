@@ -164,10 +164,11 @@ void aprog_set(AREA_DATA *area, const char *progtype, const char *name)
 
 void tick_prog_academy_reset(AREA_DATA *area)
 {
-	CHAR_DATA *ch;
 
-	for (ch = char_list; ch; ch = ch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *ch = walk.Current();
+
 		if (!is_npc(ch) && ch->in_room->area == area && ch->level > 10 && !Deref(ch->fighting) && !is_immortal(ch))
 		{
 			char buf[MSL];
@@ -367,11 +368,10 @@ void pulse_prog_ruins_shark(AREA_DATA *area)
 
 	// The successor has to be read before the body: extract_char frees shark, and
 	// the loop advances through it.
-	CHAR_DATA *shark_next;
 
-	for (shark = char_list; shark; shark = shark_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		shark_next = shark->next;
+		CHAR_DATA *shark = walk.Current();
 
 		if (!is_npc(shark))
 			continue;

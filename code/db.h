@@ -43,6 +43,8 @@
 #include <unistd.h>		// getpid -- replaces the OLD_RAND hand declarations
 
 #include "entity/obj_data.h"		// ObjectList: object_list owns its objects
+#include "entity/char_data.h"		// CharacterList: char_list owns its characters
+#include "entity/list_cursor.h"	// walking char_list while characters are extracted
 #include "entity/extra_descr.h"		// get_extra_descr takes a std::list<EXTRA_DESCR_DATA>&
 
 #include "entity/fwd.h"
@@ -68,7 +70,10 @@ extern SHOP_DATA *shop_last;
 extern char bug_buf[];
 extern char *help_greeting;
 extern char log_buf[];
-extern CHAR_DATA *char_list;
+// Owns every character in the world. A character is put here by create_mobile
+// and by the login handing over at CON_READ_MOTD, and destroyed by extract_char
+// erasing its node. room->people and ch->carrying are containment, and stay raw.
+extern CharacterList char_list;
 extern KILL_DATA kill_table[];
 extern MOB_INDEX_DATA *mindex_list;
 extern OBJ_INDEX_DATA *oIndex_list;

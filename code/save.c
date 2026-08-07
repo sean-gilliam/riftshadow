@@ -94,7 +94,6 @@ void save_char_obj(CHAR_DATA *ch)
 {
 	char strsave[MAX_INPUT_LENGTH], filenm[MSL], query[MSL * 2];
 	FILE *fp;
-	CHAR_DATA *search;
 
 	if (is_npc(ch) || mPort == 4000) // do not save, sir!!!
 		return;
@@ -152,8 +151,10 @@ void save_char_obj(CHAR_DATA *ch)
 		if (pet != nullptr && pet->in_room == ch->in_room)
 			fwrite_pet(pet, fp);
 
-		for (search = char_list; search != nullptr; search = search->next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
+			CHAR_DATA *search = walk.Current();
+
 			if (is_npc(search)
 				&& Deref(search->master) == ch
 				&& (IS_SET(search->act, ACT_UNDEAD)
@@ -1243,7 +1244,6 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 				if (!str_cmp(word, "Affc"))
 				{
 					AFFECT_DATA paf;
-					CHAR_DATA *wch;
 					char *owner;
 					char *afname;
 					int sn;
@@ -1265,8 +1265,10 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 					paf.aftype = fread_number(fp);
 
 					owner = fread_word(fp);
-					for (wch = char_list; wch; wch = wch->next)
+					for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 					{
+						CHAR_DATA *wch = walk.Current();
+
 						if (!str_cmp(wch->name, owner))
 						{
 							paf.owner = wch->self;
@@ -1921,8 +1923,10 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 					if (strcmp(owner, "none")) // safe default
 						paf.owner = ch->self;
 
-					for (wch = char_list; wch; wch = wch->next)
+					for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 					{
+						CHAR_DATA *wch = walk.Current();
+
 						if (!str_cmp(wch->name, owner))
 						{
 							paf.owner = wch->self;
@@ -2112,7 +2116,6 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 			case 'A':
 				if (!str_cmp(word, "Affc"))
 				{
-					CHAR_DATA *wch;
 					char *owner;
 					OBJ_AFFECT_DATA paf;
 					int sn;
@@ -2136,8 +2139,10 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 
 					owner = fread_word(fp);
 
-					for (wch = char_list; wch; wch = wch->next)
+					for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 					{
+						CHAR_DATA *wch = walk.Current();
+
 						if (!str_cmp(wch->name, owner))
 						{
 							paf.owner = wch->self;

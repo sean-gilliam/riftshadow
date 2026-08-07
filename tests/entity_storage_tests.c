@@ -20,68 +20,50 @@
 //
 // These lists are what decides an entity's lifetime. The containment chains
 // (room->people, ch->carrying, obj->contains) are a game rule about where
-// things are, not about when they die. `char_list` is still an intrusive
-// singly-linked chain through an entity's `next` field, and `free_char` pushes
-// the entity onto a free list rather than returning its memory, so an address is
-// handed straight back out to the next allocation. `object_list` and
-// `descriptor_list` are owning containers and no longer do either.
+// things are, not about when they die. All three are owning containers now, so
+// an entity's node is what holds it and erasing that node is what destroys it.
 //
-// This file characterises the storage behaviour the game currently depends on,
-// so that the same assertions can be run after the lists become owning
-// containers. Every scenario is written against the five-function shim below;
-// converting the containers means rewriting those five bodies. Anything
-// *outside* the shim that has to be edited to keep this file compiling and
-// green is a behaviour change, and finding those is the whole point.
+// This file characterised the storage behaviour the game depended on before
+// that conversion, so that the same assertions could be run after it. Every
+// scenario is written against the shim below. Anything *outside* the shim that
+// had to be edited to keep this file compiling and green was a behaviour
+// change, and finding those was the whole point.
 //
-// The interesting case is the last two scenarios. A walk that unlinks the
-// element it is looking at is safe by construction, because every walk in the
-// game captures the successor before running its body. A walk that unlinks the
-// *successor* is not, and the damage is bigger than reading stale bytes: the
-// free lists are threaded through the very same `next` field, so freeing an
-// entity overwrites the successor the walk had already saved. The walk stops
-// following the live list and starts following the free list. Section 3 pins
-// both halves of that.
+// It found three, all recorded where they happened: Unlink collapsing into the
+// erase (the shim), section 3 losing its premise with the last free list, and
+// section 5 becoming the only place the successor hazard is still observable.
 //
 
 namespace
 {
 	// ─── the storage shim ──────────────────────────────────────────────────
 	//
-	// One head accessor and four operations. These are the only bodies in this
+	// One list accessor and four operations. These are the only bodies in this
 	// file that know how the lists are built.
 	//
+	// All three lists are owning containers now, so what used to be a generic
+	// raw-list implementation plus three specializations is one generic body
+	// again. Note what fell out of it: Unlink is gone. On a raw list "take it
+	// off the list" and "free it" were two steps and a test could do one
+	// without the other. Here erasing the node *is* the destruction, so there
+	// is no "off the list but still alive" state left to construct. That
+	// collapse is the behaviour change this phase made, and this is where the
+	// file records it.
+	//
 
-	template <class T> T *&ListHead();
+	template <class T> std::list<std::unique_ptr<T>> &GlobalList();
 
-	template <> CHAR_DATA *&ListHead<CHAR_DATA>() { return char_list; }
+	template <> CharacterList &GlobalList<CHAR_DATA>() { return char_list; }
+	template <> ObjectList &GlobalList<OBJ_DATA>() { return object_list; }
+	template <> DescriptorList &GlobalList<DESCRIPTOR_DATA>() { return descriptor_list; }
 
 	/// Puts an entity on its global list, the way db.c/comm.c do it: push front.
+	/// Ownership moves to the list here, which is what the real link sites do.
 	template <class T>
 	void Link(T *entity)
 	{
-		entity->next = ListHead<T>();
-		ListHead<T>() = entity;
-	}
-
-	/// Takes an entity off its global list. Mirrors extract_char/extract_obj/
-	/// close_socket, including the linear scan for the predecessor.
-	template <class T>
-	void Unlink(T *entity)
-	{
-		if (ListHead<T>() == entity)
-		{
-			ListHead<T>() = entity->next;
-			return;
-		}
-
-		for (T *prev = ListHead<T>(); prev != nullptr; prev = prev->next)
-		{
-			if (prev->next == entity)
-			{
-				prev->next = entity->next;
-				return;
-			}
-		}
+		GlobalList<T>().push_front(std::unique_ptr<T>(entity));
+		entity->globalNode = GlobalList<T>().begin();
 	}
 
 	/// The list as a vector, head first.
@@ -90,105 +72,37 @@ namespace
 	{
 		std::vector<T *> out;
 
-		for (T *entity = ListHead<T>(); entity != nullptr; entity = entity->next)
-			out.push_back(entity);
+		for (auto &owned : GlobalList<T>())
+			out.push_back(owned.get());
 
 		return out;
 	}
 
-	/// Walks the live list the way the game does in 164 places: the successor is
-	/// read before the body runs, so the body is free to unlink the element it
-	/// was handed. `body` sees each entity the cursor lands on, including any it
-	/// should not have.
+	/// The unprotected walk. It is what a hand-written loop does, and section 2
+	/// needs it to show that extracting the current element is the safe case.
+	/// It reads its successor before running the body, exactly as the old
+	/// intrusive loops did.
 	template <class T>
 	void Walk(const std::function<void(T *)> &body)
 	{
-		T *next;
+		auto &list = GlobalList<T>();
 
-		for (T *entity = ListHead<T>(); entity != nullptr; entity = next)
+		for (auto it = list.begin(); it != list.end(); )
 		{
-			next = entity->next;
+			T *entity = it->get();
+			++it;
+
 			body(entity);
 		}
 	}
 
-	//
-	// object_list is an owning container now, so the OBJ_DATA half of the shim is
-	// specialized. Note what collapsed: on a raw list, "take it off the list" and
-	// "free it" are two steps, and a test can do one without the other. Here
-	// erasing the node *is* the destruction, so Unlink and free_obj have no
-	// separate meaning and ExtractObj is a single operation. That collapse is the
-	// behaviour change, and this is where the file records it.
-	//
-
-	template <>
-	void Link<OBJ_DATA>(OBJ_DATA *obj)
+	/// One operation now: advancing the walks has to come first, while the node
+	/// still links to its successor, and the erase runs the destructor.
+	template <class T>
+	void Extract(T *entity)
 	{
-		object_list.push_front(std::unique_ptr<OBJ_DATA>(obj));
-		obj->globalNode = object_list.begin();
-	}
-
-	template <>
-	std::vector<OBJ_DATA *> Collect<OBJ_DATA>()
-	{
-		std::vector<OBJ_DATA *> out;
-
-		for (auto &owned : object_list)
-			out.push_back(owned.get());
-
-		return out;
-	}
-
-	/// The unprotected walk, for the same reason the raw one exists: it is what a
-	/// hand-written loop does, and section 2 needs it to show that extracting the
-	/// current element is the safe case either way.
-	template <>
-	void Walk<OBJ_DATA>(const std::function<void(OBJ_DATA *)> &body)
-	{
-		for (auto it = object_list.begin(); it != object_list.end(); )
-		{
-			OBJ_DATA *obj = it->get();
-			++it;
-
-			body(obj);
-		}
-	}
-
-	//
-	// descriptor_list is an owning container now too, and the same collapse
-	// applies: close_socket erasing the node is the destruction, so there is no
-	// "off the list but still alive" state left for a test to construct.
-	//
-
-	template <>
-	void Link<DESCRIPTOR_DATA>(DESCRIPTOR_DATA *d)
-	{
-		descriptor_list.push_front(std::unique_ptr<DESCRIPTOR_DATA>(d));
-		d->globalNode = descriptor_list.begin();
-	}
-
-	template <>
-	std::vector<DESCRIPTOR_DATA *> Collect<DESCRIPTOR_DATA>()
-	{
-		std::vector<DESCRIPTOR_DATA *> out;
-
-		for (auto &owned : descriptor_list)
-			out.push_back(owned.get());
-
-		return out;
-	}
-
-	/// The unprotected walk, for the same reason the raw and object ones exist.
-	template <>
-	void Walk<DESCRIPTOR_DATA>(const std::function<void(DESCRIPTOR_DATA *)> &body)
-	{
-		for (auto it = descriptor_list.begin(); it != descriptor_list.end(); )
-		{
-			DESCRIPTOR_DATA *d = it->get();
-			++it;
-
-			body(d);
-		}
+		OwningCursorRegistry<T>::Advance(entity->globalNode);
+		GlobalList<T>().erase(entity->globalNode);
 	}
 
 	// ─── end of shim ───────────────────────────────────────────────────────
@@ -223,33 +137,15 @@ namespace
 	}
 
 	// Mirrors the order the real extract_char/extract_obj/close_socket use:
-	// advance any walk in flight first, because both the unlink and the free
-	// destroy the link that answer comes from. A walk that registered no cursor
-	// is unaffected, which is what makes section 3 and section 5 differ.
-	void ExtractChar(CHAR_DATA *ch)
-	{
-		CursorRegistry<CHAR_DATA>::Advance(ch);
-		Unlink(ch);
-		free_char(ch);
-	}
-
-	/// One operation now: the erase runs ~obj_data. Advancing the walks has to
-	/// come first, while the node still links to its successor.
-	void ExtractObj(OBJ_DATA *obj)
-	{
-		OwningCursorRegistry<OBJ_DATA>::Advance(obj->globalNode);
-		object_list.erase(obj->globalNode);
-	}
-
-	/// One operation now, as for objects: the erase runs ~descriptor_data.
-	void ExtractDescriptor(DESCRIPTOR_DATA *d)
-	{
-		OwningCursorRegistry<DESCRIPTOR_DATA>::Advance(d->globalNode);
-		descriptor_list.erase(d->globalNode);
-	}
+	// advance any walk in flight first, because the erase destroys the link
+	// that answer comes from. A walk that registered no cursor is unaffected,
+	// which is what makes section 3 and section 5 differ.
+	void ExtractChar(CHAR_DATA *ch)        { Extract(ch); }
+	void ExtractObj(OBJ_DATA *obj)         { Extract(obj); }
+	void ExtractDescriptor(DESCRIPTOR_DATA *d) { Extract(d); }
 
 	/// Leaves the list empty however a scenario ended.
-	void DrainChars()       { while (char_list != nullptr) ExtractChar(char_list); }
+	void DrainChars()       { while (!char_list.empty()) ExtractChar(char_list.front().get()); }
 	void DrainObjs()        { while (!object_list.empty()) ExtractObj(object_list.front().get()); }
 	void DrainDescriptors() { while (!descriptor_list.empty()) ExtractDescriptor(descriptor_list.front().get()); }
 }
@@ -452,161 +348,35 @@ SCENARIO("a walk may extract the entity it was handed", "[entity_storage]")
 //
 // 3. The hazard, and this file's oracle. Extracting the successor mid-walk.
 //
-// Nothing in the game documents that a walk must not extract anything but its
-// current element, and nothing enforces it. When it happens, the cursor is left
-// holding an entity that has already been freed. The damage is not that
-// the walk reads stale bytes. It is that `free_char` *overwrites* `ch->next`
-// with the free-list head on its way out, so the walk's saved successor is a
-// pointer into the free list.
+// RETIRED. This section held two scenarios that asserted the pre-conversion
+// behaviour on purpose, because that is what "no behaviour change" would have
+// meant:
 //
-// The consequences, both pinned below:
+//   - "a walk that extracts its successor abandons the rest of the list", and
+//   - "a walk that extracts its successor continues into the free list".
 //
-//   - the walk leaves the live list at that point and never comes back, so
-//     every entity after the extracted one is silently skipped;
-//   - if the free list is not empty, the walk continues *through it*, handing
-//     the loop body one dead entity after another until the free list runs out.
+// Both rested on the same mechanism. The free lists were threaded through the
+// very `next` field the global lists used, so freeing an entity overwrote the
+// successor a walk had already saved, and the walk left the live list at that
+// point. With char_list converted there is no free list left in the tree and no
+// `next` field to overwrite, so neither scenario has a premise to assert. They
+// were removed rather than rewritten because the rewrite is not a variation on
+// them: an unprotected walk over an owning list holds an iterator to an erased
+// node, which is undefined rather than merely wrong, and there is nothing a
+// test may legally observe about it.
 //
-// So a single misplaced extraction turns one pass over the living into a
-// partial pass plus a full pass over the dead. That is invisible today: the
-// memory is mapped, the fields are readable, and nothing crashes.
+// What replaced them is section 5. The hazard is not gone, it is answered, and
+// answered somewhere a test can watch: extraction advances the cursor before it
+// destroys what the cursor names. Section 5 asserts that directly, which is the
+// assertion these two were standing in for.
 //
-// ┌─ WHEN THE CONTAINERS CONVERT, THIS IS WHERE IT SHOWS ─────────────────────┐
-// │ These two scenarios assert *today's* broken behaviour on purpose, because │
-// │ that is what "no behaviour change" would mean. They are the only          │
-// │ assertions in this file expected to need editing, and editing them is the │
-// │ record of the semantic change.                                            │
-// │                                                                           │
-// │ The replacement is tombstone-and-sweep: extraction marks the entity and   │
-// │ leaves it linked where it is, and a sweep at the end of the pulse does the│
-// │ unlink and the free. Keeping the entity *alive* past the extract would not│
-// │ have been enough on its own. The walk is not following the entity, it is  │
-// │ following the pointer inside the list node, so the node is what has to    │
-// │ stay put. The price is that iteration has to skip tombstones, and these   │
-// │ two scenarios become: the walk visits the living, skips the marked entity,│
-// │ and reaches the end of the list.                                          │
-// └───────────────────────────────────────────────────────────────────────────┘
+// The box that used to sit here predicted tombstone-and-sweep as the
+// replacement. That design was costed during execution and rejected in favour
+// of cursor patching. The prediction being wrong is why it is worth recording:
+// the section named a mechanism rather than the property it wanted, and the
+// property ("keep the pointer the cursor is about to follow valid") is what
+// survived into section 5.
 //
-
-SCENARIO("a walk that extracts its successor abandons the rest of the list", "[entity_storage]")
-{
-	GIVEN("three characters on the list and an empty free list")
-	{
-		CHAR_DATA *oldest = MakeChar();
-		CHAR_DATA *middle = MakeChar();
-		CHAR_DATA *newest = MakeChar();
-
-		Handle<CHAR_DATA> middleHandle = middle->self;
-
-		REQUIRE(Deref(middleHandle) == middle);
-
-		WHEN("the first body call extracts the entity the cursor is about to reach")
-		{
-			std::vector<CHAR_DATA *> visited;
-			bool middleWasLiveWhenVisited = true;
-
-			Walk<CHAR_DATA>([&](CHAR_DATA *ch)
-			{
-				visited.push_back(ch);
-
-				if (ch == newest)
-					ExtractChar(middle);
-
-				if (ch == middle)
-					middleWasLiveWhenVisited = (Deref(middleHandle) != nullptr);
-			});
-
-			THEN("the cursor still lands on the freed entity")
-			{
-				REQUIRE(visited.size() >= 2);
-				REQUIRE(visited[0] == newest);
-				REQUIRE(visited[1] == middle);
-			}
-
-			THEN("its handle was already dead when the walk got there")
-			{
-				// Extraction expires the handle, so no supported reference can
-				// follow the raw cursor here. This is the one guarantee that
-				// does hold, and it is Phase 5's doing rather than the list's.
-				REQUIRE(middleWasLiveWhenVisited == false);
-				REQUIRE(Deref(middleHandle) == nullptr);
-			}
-
-			THEN("and the rest of the live list is never visited at all")
-			{
-				// free_char set middle->next to the free-list head, which was
-				// null, so the walk ended there. `oldest` is still linked and
-				// still alive -- it was simply skipped.
-				REQUIRE(visited.size() == 2);
-				REQUIRE(std::find(visited.begin(), visited.end(), oldest) == visited.end());
-				REQUIRE(Collect<CHAR_DATA>() == std::vector<CHAR_DATA *>({newest, oldest}));
-				REQUIRE(Deref(oldest->self) == oldest);
-			}
-		}
-
-		DrainChars();
-	}
-}
-
-SCENARIO("a walk that extracts its successor continues into the free list", "[entity_storage]")
-{
-	GIVEN("three characters on the list and two corpses on the free list")
-	{
-		CHAR_DATA *oldest = MakeChar();
-		CHAR_DATA *middle = MakeChar();
-		CHAR_DATA *newest = MakeChar();
-
-		// Seeded *after* the live list on purpose. Freeing first does not work:
-		// the MakeChar calls above would pop the corpses straight back off and
-		// reuse their addresses, which is the recycling this phase is removing.
-		CHAR_DATA *corpseA = new_char();
-		CHAR_DATA *corpseB = new_char();
-
-		free_char(corpseA);
-		free_char(corpseB);
-
-		WHEN("the first body call extracts the entity the cursor is about to reach")
-		{
-			std::vector<CHAR_DATA *> visited;
-
-			// Bounded, because the thing being characterised is a walk that has
-			// left the container it thought it was walking.
-			int guard = 0;
-
-			CHAR_DATA *next;
-
-			for (CHAR_DATA *ch = char_list; ch != nullptr && guard < 20; ch = next, guard++)
-			{
-				next = ch->next;
-				visited.push_back(ch);
-
-				if (ch == newest)
-					ExtractChar(middle);
-			}
-
-			THEN("the loop body is handed the free list's contents as if they were live")
-			{
-				// newest (live), middle (just freed), then both corpses, in
-				// free-list order. Four entities for a three-entity list.
-				REQUIRE(visited.size() == 4);
-				REQUIRE(visited[0] == newest);
-				REQUIRE(visited[1] == middle);
-				REQUIRE(visited[2] == corpseB);
-				REQUIRE(visited[3] == corpseA);
-			}
-
-			THEN("three of the four are dead, and the one live straggler was skipped")
-			{
-				REQUIRE(Deref(visited[1]->self) == nullptr);
-				REQUIRE(Deref(visited[2]->self) == nullptr);
-				REQUIRE(Deref(visited[3]->self) == nullptr);
-				REQUIRE(std::find(visited.begin(), visited.end(), oldest) == visited.end());
-				REQUIRE(Deref(oldest->self) == oldest);
-			}
-		}
-
-		DrainChars();
-	}
-}
 
 //
 // 4. Handles across list mutation.
@@ -704,27 +474,21 @@ SCENARIO("a handle survives list mutation and expires exactly at extract", "[ent
 // that successor to instead. These are section 3's setups with the walk swapped,
 // and they are what the walks in the game become as each list converts.
 //
-// object_list is converted, so its walk is OwningListWalk and its successor is a
-// list iterator. The hazard is sharper here than on the raw lists rather than
-// milder: erasing the node really frees the object, so a walk that carried on
-// regardless would be reading freed memory rather than an intact corpse. What
-// makes these pass is the same thing in both cases -- extraction advancing the
-// cursor before it destroys what the cursor names.
+// All four global lists are owning containers, so every walk here is an
+// OwningListWalk and every successor is a list iterator. The hazard is sharper
+// than it was on the raw lists rather than milder: erasing the node really frees
+// the entity, so a walk that carried on regardless would be reading freed memory
+// rather than an intact corpse. What makes these pass is extraction advancing
+// the cursor before it destroys what the cursor names.
+//
+// The raw-list form of this helper is gone with the last raw list. ListWalk and
+// CursorRegistry survive in list_cursor.h with no caller left in the tree.
 //
 
 namespace
 {
-	/// The section 3 walk, rewritten against ListWalk. Same contract: the body
-	/// sees each entity the walk lands on.
-	template <class T>
-	void CursorWalk(T *head, const std::function<void(T *)> &body)
-	{
-		for (ListWalk<T> walk(head); !walk.Done(); walk.Step())
-			body(walk.Current());
-	}
-
-	/// The owning-container form. It takes the list rather than a head pointer,
-	/// which is the one call-site change the conversion forces here.
+	/// The walk under test. Same contract as the unprotected one in the shim:
+	/// the body sees each entity the walk lands on.
 	void CursorWalk(ObjectList &list, const std::function<void(OBJ_DATA *)> &body)
 	{
 		for (OwningListWalk<OBJ_DATA> walk(list); !walk.Done(); walk.Step())

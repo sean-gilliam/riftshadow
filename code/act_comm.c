@@ -429,8 +429,10 @@ void do_newbie(CHAR_DATA *ch, char *argument)
 		act_new("[NEWBIE] $n$t", ch, buf, 0, TO_CHAR, POS_DEAD);
 	}
 
-	for (auto wch = char_list; wch != nullptr; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		DESCRIPTOR_DATA *connection = Deref(wch->desc);
 
 		if (is_npc(wch) && connection == nullptr)
@@ -499,8 +501,10 @@ void do_builder(CHAR_DATA *ch, char *argument)
 		act_new("[BUILDER] $n$t", ch, buf, 0, TO_CHAR, POS_DEAD);
 	}
 
-	for (auto wch = char_list; wch != nullptr; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		DESCRIPTOR_DATA *connection = Deref(wch->desc);
 
 		if (is_npc(wch) && connection == nullptr)
@@ -590,8 +594,10 @@ void do_immtalk(CHAR_DATA *ch, char *argument)
 		act_new("[IMM] $n$t", ch, buffer.data(), 0, TO_CHAR, POS_DEAD);
 	}
 
-	for (auto wch = char_list; wch != nullptr; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		DESCRIPTOR_DATA *connection = Deref(wch->desc);
 
 		if (is_npc(wch) && connection == nullptr)
@@ -1210,17 +1216,25 @@ void do_tell(CHAR_DATA *ch, char *argument)
 
 	auto number = number_argument(arg2, arg);
 	auto count = 0;
-	auto victim = char_list;
-	for (; victim != nullptr; victim = victim->next)
+	// A pure search, so a plain walk is enough. The result has to outlive the
+	// loop, which is why the match is captured rather than left in the cursor.
+	CHAR_DATA *victim = nullptr;
+
+	for (auto &owned : char_list)
 	{
-		if (is_name(victim->name, arg) && (is_npc(victim) && victim->pIndexData->vnum == MOB_VNUM_DECOY))
+		CHAR_DATA *candidate = owned.get();
+
+		if (is_name(candidate->name, arg) && (is_npc(candidate) && candidate->pIndexData->vnum == MOB_VNUM_DECOY))
 			continue;
 
-		if (victim->in_room == nullptr || (is_immortal(ch) ? !is_name(arg, (victim->true_name ? victim->true_name : victim->name)) : !is_name(arg, victim->name)) || !can_see(ch, victim))
+		if (candidate->in_room == nullptr || (is_immortal(ch) ? !is_name(arg, (candidate->true_name ? candidate->true_name : candidate->name)) : !is_name(arg, candidate->name)) || !can_see(ch, candidate))
 			continue;
 
 		if (++count == number)
+		{
+			victim = candidate;
 			break;
+		}
 	}
 
 	if (victim == nullptr || (is_npc(victim) && victim->in_room != ch->in_room))
@@ -1299,8 +1313,10 @@ void do_noreply(CHAR_DATA *ch, char *argument)
 {
 	send_to_char("You concentrate and momentarily close your ears to the replies of others.\n\r", ch);
 
-	for (auto vch = char_list; vch; vch = vch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *vch = walk.Current();
+
 		if (!is_npc(vch) && Deref(vch->reply) == ch)
 			vch->reply = nullptr;
 	}
@@ -1883,10 +1899,9 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 	}
 
 	/* extract all decoys */
-	CHAR_DATA *wch_next;
-	for (auto wch = char_list; wch != nullptr; wch = wch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		wch_next = wch->next;
+		CHAR_DATA *wch = walk.Current();
 
 		if (is_affected(wch, gsn_empathy))
 		{
@@ -2136,10 +2151,10 @@ void die_follower(CHAR_DATA *ch)
 
 	ch->leader = nullptr;
 
-	CHAR_DATA *fch_next;
-	for (auto fch = char_list; fch != nullptr; fch = fch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		fch_next = fch->next;
+		CHAR_DATA *fch = walk.Current();
+
 		/*if(!fch->in_room && is_npc(fch))
 		{
 			RS.Logger.Debug("Error: Mob {} in room is nullptr!",fch->pIndexData->vnum);
@@ -2273,8 +2288,10 @@ void do_group(CHAR_DATA *ch, char *argument)
 		buffer = fmt::format("{}'s group:\n\r", pers(leader, ch));
 		send_to_char(buffer.c_str(), ch);
 
-		for (auto gch = char_list; gch != nullptr; gch = gch->next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
+			CHAR_DATA *gch = walk.Current();
+
 			if (is_same_group(gch, ch))
 			{
 				if (!is_npc(gch))
@@ -2391,8 +2408,10 @@ void do_group(CHAR_DATA *ch, char *argument)
 		af.location = 0;
 		af.pulse_fun = traitor_pulse;
 
-		for (auto vch = char_list; vch; vch = vch->next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
+			CHAR_DATA *vch = walk.Current();
+
 			if (vch != ch && is_same_group(vch, ch))
 				new_affect_to_char(vch, &af);
 		}
@@ -2527,8 +2546,10 @@ void do_gtell(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "You tell the group '%s$t%s'", get_char_color(ch, "grouptells"), END_COLOR(ch));
 	act_new(buf, ch, argument, nullptr, TO_CHAR, POS_SLEEPING);
 
-	for (auto gch = char_list; gch != nullptr; gch = gch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *gch = walk.Current();
+
 		if (is_same_group(gch, ch) && !is_affected(gch, gsn_deafen))
 		{
 			sprintf(buf, "$n tells the group '%s$t%s'", get_char_color(gch, "grouptells"), END_COLOR(gch));

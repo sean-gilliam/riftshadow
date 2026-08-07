@@ -4758,7 +4758,7 @@ void execute_retreat(CHAR_DATA *ch, int dir)
 void do_disrupt_formation(CHAR_DATA *ch, char *arg)
 {
 	int skill, percent;
-	CHAR_DATA *vch, *vch_next, *gch;
+	CHAR_DATA *vch, *vch_next;
 	bool grouped = false;
 	CHAR_DATA *victim = nullptr;
 
@@ -4803,8 +4803,10 @@ void do_disrupt_formation(CHAR_DATA *ch, char *arg)
 		return;
 	}
 
-	for (gch = char_list; gch != nullptr; gch = gch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *gch = walk.Current();
+
 		if (is_same_group(gch, ch) && gch != ch)
 		{
 			grouped = true;

@@ -57,7 +57,6 @@
 /* buffer sizes */
 const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192, 16384};
 
-CHAR_DATA *char_free;
 
 long last_pc_id;
 long last_mob_id;
@@ -418,25 +417,15 @@ CHAR_DATA *new_char(void)
 	CHAR_DATA *ch;
 	int i;
 
-	if (char_free == nullptr)
-	{
-		ch = new CHAR_DATA;
+	// The parentheses matter. char_data has no user-provided constructor, so
+	// value-initialization zeroes every POD member before the implicit one
+	// runs. That is what `*ch = CHAR_DATA()` used to do to a recycled struct.
+	//
+	// The character is not on char_list yet. create_mobile links it, and the
+	// login hands it over at CON_READ_MOTD once the player is really playing.
+	// A character loaded for the login prompt is never linked at all.
+	ch = new CHAR_DATA();
 
-		// if (bDebug)
-		// 	RS.Logger.Debug("Char free is null.  . . . . !");
-	}
-	else
-	{
-		ch = char_free;
-		char_free = char_free->next;
-	}
-
-	// Reset to a pristine char. A unique_ptr member rules out the old
-	// `*ch = ch_zero` copy-assign; move-assigning a value-initialized
-	// temporary zeroes the PODs and frees/clears the owned members.
-	*ch = CHAR_DATA();
-
-	// After the reset, which zeroes the old handle along with everything else.
 	ch->self = charHandles.Add(ch);
 
 	ch->name = &str_empty[0];
@@ -481,53 +470,83 @@ CHAR_DATA *new_char(void)
 	return ch;
 }
 
-void free_char(CHAR_DATA *ch)
+char_data::~char_data()
 {
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
 
-	if (ch == nullptr || Deref(ch->self) != ch)
+	// The guard free_char carried, and it has to stay here rather than move to
+	// the callers. It answers "is this a character this module handed out",
+	// which is what decides whether the strings below are owned at all. The
+	// test fixtures build characters directly and point `name` at string
+	// literals, so running this body over one of those would free a literal.
+	if (Deref(self) != this)
 		return;
 
-	if (is_npc(ch))
+	if (is_npc(this))
 		mobile_count--;
 
-	for (obj = ch->carrying; obj != nullptr; obj = obj_next)
+	for (obj = carrying; obj != nullptr; obj = obj_next)
 	{
 		obj_next = obj->next_content;
 		extract_obj(obj);
 	}
 
-	for (auto it = ch->affected.begin(); it != ch->affected.end(); )
+	for (auto it = affected.begin(); it != affected.end(); )
 	{
 		auto next = std::next(it);
 		it->pulse_fun = nullptr;
 		it->tick_fun = nullptr;
 		it->end_fun = nullptr;
-		affect_remove(ch, &*it);
+		affect_remove(this, &*it);
 		it = next;
 	}
 
-	ch->memory.clear();
+	memory.clear();
 
-	free_pstring(ch->name);
-	free_pstring(ch->short_descr);
-	free_pstring(ch->long_descr);
-	free_pstring(ch->true_name);
-	free_pstring(ch->description);
-	free_pstring(ch->prompt);
-	free_pstring(ch->prefix);
+	free_pstring(name);
+	free_pstring(short_descr);
+	free_pstring(long_descr);
+	free_pstring(true_name);
+	free_pstring(description);
+	free_pstring(prompt);
+	free_pstring(prefix);
 
-	ch->pcdata.reset();
-	ch->gen_data.reset();
+	// pcdata and gen_data are unique_ptrs and destruct themselves.
 
-	// Expires every handle to this character. Must happen before it goes on the
-	// free list, since new_char can hand the same address straight back out.
-	charHandles.Remove(ch->self);
-	ch->self = nullptr;
+	// Expires every handle to this character, which is what makes d->character,
+	// ch->master and the rest read as nothing from here on.
+	charHandles.Remove(self);
+}
 
-	ch->next = char_free;
-	char_free = ch;
+/// Destroys a character. The list owns the ones that were linked, so those are
+/// destroyed by erasing the node. The login builds characters that never make it
+/// onto char_list, and those are deleted outright.
+///
+/// Unlike free_obj and free_descriptor, this handles both cases rather than
+/// warning on the linked one. Eight of its nine call sites are login teardown
+/// paths that free a character before CON_READ_MOTD ever links it, and the ninth
+/// is extract_char. Keeping the linked case correct means a caller cannot arm a
+/// double free by freeing a character that turned out to be in the world.
+/// @param ch The character to destroy.
+void free_char(CHAR_DATA *ch)
+{
+	// A character that was never registered has a null handle, so a stack-built
+	// one cannot be destroyed by mistake.
+	if (ch == nullptr || Deref(ch->self) != ch)
+		return;
+
+	if (ch->globalNode != CharacterList::iterator{})
+	{
+		// Advance the walks before the erase, while the node still links to its
+		// successor. The erase is also the destruction point, so this is the
+		// last moment `ch` is readable.
+		OwningCursorRegistry<CHAR_DATA>::Advance(ch->globalNode);
+		char_list.erase(ch->globalNode);
+		return;
+	}
+
+	delete ch;
 }
 
 std::unique_ptr<PC_DATA> new_pcdata(void)

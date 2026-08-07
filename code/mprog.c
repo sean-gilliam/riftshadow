@@ -3570,8 +3570,10 @@ void sucker_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 {
 	CHAR_DATA *owner;
 
-	for (owner = char_list; owner; owner = owner->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *owner = walk.Current();
+
 		if (is_npc(owner) && owner->pIndexData->vnum == 3002 && Deref(owner->hunting) == ch)
 			break;
 	}

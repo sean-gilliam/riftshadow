@@ -85,7 +85,7 @@ SHOP_DATA *shop_first;
 SHOP_DATA *shop_last;
 
 char bug_buf[2 * MAX_INPUT_LENGTH];
-CHAR_DATA *char_list;
+CharacterList char_list;
 // The same entities as char_list/object_list, indexed so a cross-reference can
 // be checked for liveness instead of trusted. See entity/handles.h.
 SlotMap<CHAR_DATA> charHandles;
@@ -1182,7 +1182,6 @@ void load_cabal_items(void)
 {
 	FILE *fp;
 	OBJ_DATA *obj;
-	CHAR_DATA *mob;
 
 	int inum, vnum;
 
@@ -1201,8 +1200,10 @@ void load_cabal_items(void)
 
 		if (!vnum)
 		{
-			for (mob = char_list; mob; mob = mob->next)
+			for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 			{
+				CHAR_DATA *mob = walk.Current();
+
 				if (mob->cabal == inum && is_cabal_guard(mob))
 					obj_to_char(obj, mob);
 			}
@@ -1210,8 +1211,10 @@ void load_cabal_items(void)
 			continue;
 		}
 
-		for (mob = char_list; mob; mob = mob->next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
+			CHAR_DATA *mob = walk.Current();
+
 			if (mob->pIndexData->vnum == vnum)
 				obj_to_char(obj, mob);
 		}
@@ -2090,9 +2093,11 @@ CHAR_DATA *create_mobile(MOB_INDEX_DATA *pMobIndex)
 	mob->home_room = nullptr;
 
 	/* link the mob to the world list */
-	mob->next = char_list;
+	// Ownership moves to the list here, not in new_char. A mob exists unlinked
+	// between the two, and the test fixtures build ones that never link at all.
+	char_list.push_front(std::unique_ptr<CHAR_DATA>(mob));
+	mob->globalNode = char_list.begin();
 
-	char_list = mob;
 	pMobIndex->count++;
 
 	return mob;
@@ -3162,7 +3167,6 @@ void do_memory(CHAR_DATA *ch, char *argument)
 void do_dump(CHAR_DATA *ch, char *argument)
 {
 	int count, count2, num_pcs, aff_count;
-	CHAR_DATA *fch;
 	MOB_INDEX_DATA *pMobIndex;
 	OBJ_DATA *obj;
 	OBJ_INDEX_DATA *pObjIndex;
@@ -3191,22 +3195,19 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	count = 0;
 	count2 = 0;
 
-	for (fch = char_list; fch != nullptr; fch = fch->next)
+	for (auto &owned : char_list)
 	{
 		count++;
 
-		if (fch->pcdata != nullptr)
+		if (owned->pcdata != nullptr)
 			num_pcs++;
 
-		aff_count += fch->affected.size();
+		aff_count += owned->affected.size();
 	}
 
-	for (fch = char_free; fch != nullptr; fch = fch->next)
-	{
-		count2++;
-	}
-
-	fprintf(fp, "Mobs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(*fch)), count2, count2 * (sizeof(*fch)));
+	// No free list any more. char_list owns its characters, so an extracted one
+	// is destroyed rather than parked for reuse.
+	fprintf(fp, "Mobs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(CHAR_DATA)), count2, count2 * (sizeof(CHAR_DATA)));
 
 	/* pcdata — no free list any more (pcdata is owned by unique_ptr) */
 	count = 0;
@@ -3691,7 +3692,6 @@ void do_force_reset(CHAR_DATA *ch, char *argument)
 {
 	AREA_DATA *pArea;
 	char buf[MAX_STRING_LENGTH];
-	CHAR_DATA *ich, *ich_next;
 
 	if (get_trust(ch) < LEVEL_IMMORTAL && !is_heroimm(ch))
 	{
@@ -3707,9 +3707,9 @@ void do_force_reset(CHAR_DATA *ch, char *argument)
 
 	pArea = ch->in_room->area;
 
-	for (ich = char_list; ich; ich = ich_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		ich_next = ich->next;
+		CHAR_DATA *ich = walk.Current();
 
 		if (is_npc(ich) && ich->in_room && ich->in_room->area == pArea && pArea->area_type == ARE_UNOPENED)
 			extract_char(ich, true);

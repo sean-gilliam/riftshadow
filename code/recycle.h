@@ -39,7 +39,6 @@
 #include "entity/fwd.h"
 
 /* externals for counting purposes */
-extern CHAR_DATA *char_free;
 
 
 /* stuff for providing a crash-proof buffer */

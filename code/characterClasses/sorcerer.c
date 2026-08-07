@@ -2805,9 +2805,9 @@ void spell_anchor(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	for (wch = char_list; wch != nullptr; wch = wch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		wch_next = wch->next;
+		CHAR_DATA *wch = walk.Current();
 
 		if (is_npc(wch) && wch->pIndexData->vnum == MOB_VNUM_ANCHOR && Deref(wch->hunting) == ch)
 		{
@@ -2850,9 +2850,9 @@ void spell_aerial_transferrence(int sn, int level, CHAR_DATA *ch, void *vo, int 
 		return;
 	}
 
-	for (wch = char_list; wch != nullptr; wch = wch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		wch_next = wch->next;
+		CHAR_DATA *wch = walk.Current();
 
 		if (is_npc(wch) && wch->pIndexData->vnum == MOB_VNUM_ANCHOR && Deref(wch->hunting) == ch)
 		{

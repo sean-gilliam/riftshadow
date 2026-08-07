@@ -1670,9 +1670,11 @@ void do_pload(CHAR_DATA *ch, char *argument)
 	victim = Deref(d->character);
 
 	victim->desc = nullptr;
-	victim->next = char_list;
 
-	char_list = victim;
+	// The loaded character joins the world here, so the list takes it over from
+	// the descriptor that loaded it.
+	char_list.push_front(std::unique_ptr<CHAR_DATA>(victim));
+	victim->globalNode = char_list.begin();
 
 	d->outsize = 2000;
 	d->outbuf = new char[d->outsize];

@@ -111,8 +111,8 @@ void do_pswitch(CHAR_DATA *ch, char *argument)
 	victim = Deref(d->character);
 
 	victim->desc = nullptr;
-	victim->next = char_list;
-	char_list = victim;
+	char_list.push_front(std::unique_ptr<CHAR_DATA>(victim));
+	victim->globalNode = char_list.begin();
 	d->outsize = 2000;
 	d->outbuf = new char[d->outsize];
 	d->connected = CON_PLAYING;
@@ -3098,8 +3098,10 @@ OBJ_DATA *make_cosmetic(char *name, char *wearloc, char *underloc, char *cosmeti
 	CHAR_DATA *ch;
 	OBJ_DATA *obj;
 
-	for (ch = char_list; ch->next; ch = ch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *ch = walk.Current();
+
 		if (is_npc(ch))
 			break;
 	}

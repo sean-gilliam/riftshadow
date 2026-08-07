@@ -983,7 +983,7 @@ void traitor_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 
 void spell_dark_familiar(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
-	CHAR_DATA *fam, *check;
+	CHAR_DATA *fam;
 	AFFECT_DATA af;
 	char buf[MSL];
 	int devil = -1;
@@ -992,8 +992,10 @@ void spell_dark_familiar(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	float hp_mod = 1;
 	bool found = false;
 
-	for (check = char_list; check != nullptr; check = check->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *check = walk.Current();
+
 		if (is_npc(check) && Deref(check->leader) == ch)
 		{
 			found = true;

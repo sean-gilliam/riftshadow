@@ -2309,34 +2309,18 @@ void extract_char(CHAR_DATA *ch, bool fPull)
 		}
 	}
 
-	// Before the unlink, and before the free below it: any walk in flight that
-	// was about to visit this character moves past it instead. Both of those
-	// steps destroy the `next` the advance reads.
-	CursorRegistry<CHAR_DATA>::Advance(ch);
-
-	if (ch == char_list)
+	// A character that was never linked has no node to erase. Nothing owns it
+	// either, so it is the caller's to destroy, and extracting it stops here
+	// rather than freeing something it does not own. This is the early return
+	// the predecessor scan used to take when it fell off the end of the list.
+	if (ch->globalNode == CharacterList::iterator{})
 	{
-		char_list = ch->next;
-	}
-	else
-	{
-		CHAR_DATA *prev;
-		for (prev = char_list; prev != nullptr; prev = prev->next)
-		{
-			if (prev->next == ch)
-			{
-				prev->next = ch->next;
-				break;
-			}
-		}
-
-		if (prev == nullptr)
-		{
-			RS.Logger.Warn("Extract_char: char not found.");
-			return;
-		}
+		RS.Logger.Warn("Extract_char: char not found.");
+		return;
 	}
 
+	// Advances the walks in flight and then erases the node, which is what
+	// destroys the character.
 	free_char(ch);
 }
 
@@ -2385,8 +2369,10 @@ CHAR_DATA *get_char_world(CHAR_DATA *ch, char *argument)
 	number = number_argument(argument, arg);
 	count = 0;
 
-	for (wch = char_list; wch != nullptr; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		if (is_immortal(ch) && !is_npc(wch))
 			sprintf(name, "%s", wch->true_name);
 		else

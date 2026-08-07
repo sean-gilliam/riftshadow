@@ -1700,7 +1700,6 @@ void spell_charm_person(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	CHAR_DATA *victim = (CHAR_DATA *)vo;
 	AFFECT_DATA af;
-	CHAR_DATA *check;
 	int count;
 
 	count = 0;
@@ -1724,8 +1723,10 @@ void spell_charm_person(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	for (check = char_list; check != nullptr; check = check->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *check = walk.Current();
+
 		if (Deref(check->leader) == ch && is_affected_by(check, AFF_CHARM))
 			count++;
 	}
@@ -4545,8 +4546,10 @@ void spell_turn_undead(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	}
 	else
 	{
-		for (follower = char_list; follower != nullptr; follower = follower->next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
+			CHAR_DATA *follower = walk.Current();
+
 			if (Deref(follower->master) == ch && IS_SET(follower->act, ACT_UNDEAD) && follower != ch)
 			{
 				num++;

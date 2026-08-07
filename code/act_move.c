@@ -3472,8 +3472,10 @@ void do_bear_call(CHAR_DATA *ch, char *argument)
 	}
 
 	auto found = false;
-	for (auto check = char_list; check != nullptr; check = check->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *check = walk.Current();
+
 		if (Deref(check->master) == ch && check->pIndexData->vnum == MOB_VNUM_BEAR)
 			found = true;
 	}
@@ -3613,17 +3615,23 @@ void do_animal_call(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	auto mob = char_list;
-	for (; mob != nullptr; mob = mob->next)
+	// A pure search, so a plain walk is enough. The result has to outlive the
+	// loop, which is why the match is captured rather than left in the cursor.
+	CHAR_DATA *mob = nullptr;
+
+	for (auto &owned : char_list)
 	{
-		if (is_npc(mob)
-			&& is_affected_by(mob, AFF_CHARM)
-			&& (Deref(mob->master) == ch)
-			&& ((mob->pIndexData->vnum == MOB_VNUM_FALCON)
-				|| (mob->pIndexData->vnum == MOB_VNUM_WOLF)
-				|| (mob->pIndexData->vnum == MOB_VNUM_BEAR)
-				|| (mob->pIndexData->vnum == MOB_VNUM_LION)))
+		CHAR_DATA *candidate = owned.get();
+
+		if (is_npc(candidate)
+			&& is_affected_by(candidate, AFF_CHARM)
+			&& (Deref(candidate->master) == ch)
+			&& ((candidate->pIndexData->vnum == MOB_VNUM_FALCON)
+				|| (candidate->pIndexData->vnum == MOB_VNUM_WOLF)
+				|| (candidate->pIndexData->vnum == MOB_VNUM_BEAR)
+				|| (candidate->pIndexData->vnum == MOB_VNUM_LION)))
 		{
+			mob = candidate;
 			break;
 		}
 	}

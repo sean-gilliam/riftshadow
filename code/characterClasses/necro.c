@@ -331,7 +331,6 @@ void spell_hex(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void spell_animate_dead(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
-	CHAR_DATA *search;
 	OBJ_DATA *corpse;
 	char *obj_name;
 	int chance, control = 0;
@@ -345,8 +344,10 @@ void spell_animate_dead(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	for (search = char_list; search != nullptr; search = search->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *search = walk.Current();
+
 		if (is_npc(search)
 			&& Deref(search->master) == ch
 			&& (search->pIndexData->vnum == MOB_VNUM_ZOMBIE
@@ -596,7 +597,6 @@ void spell_vampiric_touch(int sn, int level, CHAR_DATA *ch, void *vo, int target
 
 void spell_black_circle(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
-	CHAR_DATA *pet;
 	AFFECT_DATA af;
 	bool found= false;
 	if (is_affected(ch, sn))
@@ -605,8 +605,10 @@ void spell_black_circle(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	act("$n draws a black circle on the ground and falls into deep concentration.", ch, 0, 0, TO_ROOM);
 	act("You draw a black circle on the ground and fall into deep concentration.", ch, 0, 0, TO_CHAR);
 
-	for (pet = char_list; pet != nullptr; pet = pet->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *pet = walk.Current();
+
 		if (is_npc(pet) && is_affected_by(pet, AFF_CHARM) && Deref(pet->master) && Deref(pet->master) == ch)
 		{
 			stop_fighting(pet, true);
@@ -783,8 +785,10 @@ void spell_ritual_soul(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	CHAR_DATA *search, *victim = (CHAR_DATA *)vo;
 
-	for (search = char_list; search != nullptr; search = search->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *search = walk.Current();
+
 		if (is_npc(search)
 			&& Deref(search->master) == ch
 			&& search->pIndexData->vnum > 2939
@@ -913,8 +917,10 @@ void spell_ritual_flesh(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
 	CHAR_DATA *search, *victim = (CHAR_DATA *)vo;
 
-	for (search = char_list; search != nullptr; search = search->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *search = walk.Current();
+
 		if (is_npc(search)
 			&& Deref(search->master) == ch
 			&& search->pIndexData->vnum > 2944
@@ -1340,7 +1346,6 @@ void spell_lesser_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	float dmgMultiplier = 1;
 	char type[MSL];
 	int num;
-	CHAR_DATA *check;
 	AFFECT_DATA af;
 
 	target_name = one_argument(target_name, type);
@@ -1378,8 +1383,10 @@ void spell_lesser_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	for (check = char_list; check != nullptr; check = check->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *check = walk.Current();
+
 		if (is_npc(check)
 			&& Deref(check->master) == ch
 			&& (check->pIndexData->vnum == 2955 || check->pIndexData->vnum == 2956 || check->pIndexData->vnum == 2957))
@@ -1447,7 +1454,7 @@ void spell_lesser_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 
 void spell_greater_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 {
-	CHAR_DATA *mob, *check;
+	CHAR_DATA *mob;
 	AFFECT_DATA af;
 	char type[MSL];
 	char arg[MSL];
@@ -1469,8 +1476,10 @@ void spell_greater_golem(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	for (check = char_list; check != nullptr; check = check->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *check = walk.Current();
+
 		if (is_npc(check)
 			&& Deref(check->master) == ch
 			&& (check->pIndexData->vnum == 2959 || check->pIndexData->vnum == 2960 || check->pIndexData->vnum == 2961))
@@ -1681,13 +1690,14 @@ bool check_bond(CHAR_DATA *ch, CHAR_DATA *mob)
 
 bool check_zombie_summon(CHAR_DATA *ch)
 {
-	CHAR_DATA *mob;
 
 	if (get_skill(ch, gsn_unholy_bond) < 1)
 		return false;
 
-	for (mob = char_list; mob != nullptr; mob = mob->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *mob = walk.Current();
+
 		if (is_npc(mob)
 			&& is_affected_by(mob, AFF_CHARM)
 			&& Deref(mob->master)

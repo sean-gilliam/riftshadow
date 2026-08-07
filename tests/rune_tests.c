@@ -262,15 +262,22 @@ SCENARIO("a rune does not remember a caster who has left the world", "[rune]")
 				REQUIRE(RuneOwner(rune) == nullptr);
 			}
 
-			THEN("it still names nobody once the address is reissued")
+			THEN("it still names nobody once the slot is reissued")
 			{
 				// The damage this does is misattribution rather than a crash:
 				// the readers pass the owner to is_safe_new and damage_new, so
-				// a recycled address makes an unrelated character the author of
-				// a stasis wall they never cast.
+				// a recycled reference makes an unrelated character the author
+				// of a stasis wall they never cast.
+				//
+				// The slot rather than the address, because a destroyed
+				// character is really deleted now. SlotCount holding steady is
+				// what proves the freed slot really was handed back out, which
+				// is what keeps the assertion below from being trivially true.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == caster);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(RuneOwner(rune) != newcomer);
 
 				free_char(newcomer);

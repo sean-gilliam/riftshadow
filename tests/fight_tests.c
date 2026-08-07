@@ -63,23 +63,17 @@ namespace
 		ch->hit = 100;
 		ch->position = POS_FIGHTING;
 
-		ch->next = char_list;
-		char_list = ch;
+		char_list.push_front(std::unique_ptr<CHAR_DATA>(ch));
+		ch->globalNode = char_list.begin();
 
 		return ch;
 	}
 
 	void ClearCombatants()
 	{
-		CHAR_DATA *next;
-
-		for (CHAR_DATA *ch = char_list; ch != nullptr; ch = next)
-		{
-			next = ch->next;
-			free_char(ch);
-		}
-
-		char_list = nullptr;
+		// Erasing the node is what destroys the character now, so clearing the
+		// list is the whole teardown.
+		char_list.clear();
 	}
 }
 

@@ -3790,8 +3790,10 @@ void do_where(CHAR_DATA *ch, char *argument)
 	}
 	else
 	{
-		for (auto victim = char_list; victim != nullptr; victim = victim->next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
+			CHAR_DATA *victim = walk.Current();
+
 			if (victim->in_room != nullptr
 				&& (victim->in_room->area == ch->in_room->area
 					|| (is_adjacent_area(victim->in_room->area, ch->in_room->area) && is_immortal(ch)))
@@ -4921,8 +4923,10 @@ void do_records(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "Listing of current active players :\n\r");
 
 	auto count = 0;
-	for (auto victim = char_list; victim != nullptr; victim = victim->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *victim = walk.Current();
+
 		if (is_npc(victim))
 			continue;
 

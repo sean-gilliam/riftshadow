@@ -1238,8 +1238,10 @@ void greet_prog_corpse_explode(OBJ_DATA *obj, CHAR_DATA *ch)
 {
 	CHAR_DATA *owner;
 
-	for (owner = char_list; owner != nullptr; owner = owner->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *owner = walk.Current();
+
 		if (!is_npc(owner) && (!str_cmp(owner->true_name, obj->owner)))
 			break;
 	}
@@ -3271,15 +3273,14 @@ void verb_prog_pull_book(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 void trapdoor_end(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 {
 	EXIT_DATA *pexit = room->exit[Directions::Down];
-	CHAR_DATA *ch, *ch_next;
 
 	SET_BIT(pexit->exit_info, EX_CLOSED);
 	SET_BIT(pexit->exit_info, EX_LOCKED);
 	SET_BIT(pexit->exit_info, EX_NONOBVIOUS);
 
-	for (ch = char_list; ch != nullptr; ch = ch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		ch_next = ch->next;
+		CHAR_DATA *ch = walk.Current();
 
 		if (ch->in_room == room)
 			act("A creaking sound fills the air, and a trap door in the floor swings shut.", ch, 0, 0, TO_CHAR);
@@ -3291,8 +3292,10 @@ bool open_prog_beef_balls(OBJ_DATA *obj, CHAR_DATA *ch)
 	CHAR_DATA *mob;
 	bool found= false;
 
-	for (mob = char_list; mob != nullptr; mob = mob->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *mob = walk.Current();
+
 		if (is_npc(mob))
 		{
 			if (mob->pIndexData->vnum == 24549)
@@ -3472,13 +3475,15 @@ void verb_prog_join_guild(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 
 void verb_prog_pull_lever(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 {
-	CHAR_DATA *mob, *check;
+	CHAR_DATA *mob;
 	int vnum = 0;
 	char buf[MSL], buf2[MSL];
 	bool found= false;
 
-	for (check = char_list; check != nullptr; check = check->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *check = walk.Current();
+
 		if (is_npc(check) && check->in_room == ch->in_room &&
 			(check->pIndexData->vnum == 24538 || check->pIndexData->vnum == 24539 || check->pIndexData->vnum == 24540))
 		{

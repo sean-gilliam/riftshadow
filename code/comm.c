@@ -2715,8 +2715,11 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			}
 
 			write_to_buffer(d, "\n\rWelcome to Riftshadow! Remember to wipe your feet!\n\r\n\r", 0);
-			ch->next = char_list;
-			char_list = ch;
+			// The login hands the character over to the world here. Everything
+			// before this point can still reject it and free it outright.
+			char_list.push_front(std::unique_ptr<CHAR_DATA>(ch));
+			ch->globalNode = char_list.begin();
+
 			d->connected = CON_PLAYING;
 			reset_char(ch);
 
@@ -3001,7 +3004,6 @@ bool check_parse_name(char *name)
  */
 bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 {
-	CHAR_DATA *ch, *fch, *fch_next;
 	OBJ_DATA *obj;
 
 	// The half-built character sitting on the login screen, which this function
@@ -3010,8 +3012,10 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 	// life, and nothing reads it after that.
 	CHAR_DATA *pending = Deref(d->character);
 
-	for (ch = char_list; ch != nullptr; ch = ch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *ch = walk.Current();
+
 		if (!is_npc(ch)
 			&& (!fConn || Deref(ch->desc) == nullptr)
 			&& !str_cmp((pending->true_name ? pending->true_name : pending->name), (ch->true_name ? ch->true_name : ch->name)))
@@ -3023,9 +3027,10 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 			}
 			else
 			{
-				for (fch = char_list; fch; fch = fch_next)
+				for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 				{
-					fch_next = fch->next;
+					CHAR_DATA *fch = walk.Current();
+
 					if (is_npc(fch)
 						&& (is_affected(fch, gsn_animate_dead) || is_affected_by(fch, AFF_CHARM))
 						&& Deref(fch->master) == pending)

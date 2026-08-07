@@ -1445,7 +1445,6 @@ void do_at(CHAR_DATA *ch, char *argument)
 	// one that destroys this object. A handle that outlives what it names simply
 	// stops resolving, where the pointer this replaced would have dangled.
 	Handle<OBJ_DATA> on;
-	CHAR_DATA *wch;
 
 	argument = one_argument(argument, arg);
 
@@ -1486,8 +1485,10 @@ void do_at(CHAR_DATA *ch, char *argument)
 	 * See if 'ch' still exists before continuing!
 	 * Handles 'at XXXX quit' case.
 	 */
-	for (wch = char_list; wch != nullptr; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		if (wch == ch)
 		{
 			char_from_room(ch);
@@ -3391,8 +3392,10 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 
 	found = false;
 
-	for (victim = char_list; victim != nullptr; victim = victim->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *victim = walk.Current();
+
 		if (victim->in_room != nullptr && can_see(ch, victim) && is_name(argument, victim->name))
 		{
 			found = true;
@@ -6087,7 +6090,6 @@ void do_lagout(CHAR_DATA *ch, char *argument)
  */
 void do_force(CHAR_DATA *ch, char *argument)
 {
-	CHAR_DATA *vch, *vch_next;
 	char buf[MAX_STRING_LENGTH];
 	char arg[MAX_INPUT_LENGTH];
 	char arg2[MAX_INPUT_LENGTH];
@@ -6118,9 +6120,9 @@ void do_force(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		for (vch = char_list; vch != nullptr; vch = vch_next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
-			vch_next = vch->next;
+			CHAR_DATA *vch = walk.Current();
 
 			if (!is_npc(vch) && get_trust(vch) < get_trust(ch))
 			{
@@ -6140,9 +6142,9 @@ void do_force(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		for (vch = char_list; vch != nullptr; vch = vch_next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
-			vch_next = vch->next;
+			CHAR_DATA *vch = walk.Current();
 
 			if (!is_npc(vch) && get_trust(vch) < get_trust(ch) && vch->level < LEVEL_HERO)
 			{
@@ -6159,9 +6161,9 @@ void do_force(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		for (vch = char_list; vch != nullptr; vch = vch_next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
-			vch_next = vch->next;
+			CHAR_DATA *vch = walk.Current();
 
 			if (!is_npc(vch) && get_trust(vch) < get_trust(ch) && vch->level >= LEVEL_HERO)
 			{
@@ -7947,7 +7949,6 @@ void do_racedump(CHAR_DATA *ch, char *argument)
 void do_memtest(CHAR_DATA *ch, char *argument)
 {
 	char buf[MSL];
-	CHAR_DATA *qch;
 	argument = one_argument(argument, buf);
 	RS.Queue.AddToQueue(6, "do_memtest", "do_bash_queue", do_bash_queue, ch, "Calenduil");
 	return;
@@ -7964,34 +7965,30 @@ void do_memtest(CHAR_DATA *ch, char *argument)
 	return;
 	if(!str_cmp(buf,"dammod"))
 	{
-		for(qch = char_list; qch; qch = qch->next)
-			if(is_npc(qch) && qch->pIndexData->vnum == 3001)
-				qch->dam_mod = atoi(argument);
+		for (auto &owned : char_list)
+			if(is_npc(owned.get()) && owned->pIndexData->vnum == 3001)
+				owned->dam_mod = atoi(argument);
 		send_to_char("Dammod changed.\n\r",ch);
 	}
 	if(!str_cmp(buf,"hp"))
 	{
-		for(qch = char_list; qch; qch = qch->next)
-			if(is_npc(qch) && qch->pIndexData->vnum == 3001)
-				qch->max_hit = std::max(qch->max_hit - atoi(argument), 100);
+		for (auto &owned : char_list)
+			if(is_npc(owned.get()) && owned->pIndexData->vnum == 3001)
+				owned->max_hit = std::max(owned->max_hit - atoi(argument), 100);
 		send_to_char("Maxhit changed.\n\r",ch);
 	}
 	if(!str_cmp(buf,"begin"))
 	{
-		for(qch = char_list; qch; qch = qch->next)
-			if(is_npc(qch) && qch->pIndexData->vnum == 3001 && !is_affected_by(qch, AFF_DETECT_MAGIC))
-				SET_BIT(qch->affected_by, AFF_DETECT_MAGIC);
+		for (auto &owned : char_list)
+			if(is_npc(owned.get()) && owned->pIndexData->vnum == 3001 && !is_affected_by(owned.get(), AFF_DETECT_MAGIC))
+				SET_BIT(owned->affected_by, AFF_DETECT_MAGIC);
 		send_to_char("It HAS BEGUN!\n\r",ch);
 	}
 	if(!str_cmp(buf,"end"))
 	{
-		// The successor has to be read before the body: extract_char frees qch,
-		// and the loop advances through it.
-		CHAR_DATA *qch_next;
-
-		for(qch = char_list; qch; qch = qch_next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
-			qch_next = qch->next;
+			CHAR_DATA *qch = walk.Current();
 
 			if(is_npc(qch) && qch->pIndexData->vnum == 3001 && qch->in_room->vnum > 2399 &&
 			   qch->in_room->vnum < 2801)

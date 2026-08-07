@@ -84,17 +84,16 @@
  */
 void violence_update(void)
 {
-	CHAR_DATA *ch;
-	CHAR_DATA *ch_next;
 	CHAR_DATA *victim;
 	CHAR_DATA *opponent;
 	int regen = 0;
 	OBJ_DATA *obj;
 	AFFECT_DATA *af;
 
-	for (ch = char_list; ch != nullptr; ch = ch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		ch_next = ch->next;
+		CHAR_DATA *ch = walk.Current();
+
 		if (ch->regen_rate != 0)
 		{
 			if (ch->regen_rate > 0)
@@ -305,7 +304,7 @@ void check_assist(CHAR_DATA *ch, CHAR_DATA *victim)
 					if (number_bits(1) == 0)
 						continue;
 
-					for (vch = ch->in_room->people; vch; vch = vch->next)
+					for (vch = ch->in_room->people; vch; vch = vch->next_in_room)
 					{
 						if (can_see(rch, vch) && is_same_group(vch, victim))
 							number++;
@@ -314,7 +313,7 @@ void check_assist(CHAR_DATA *ch, CHAR_DATA *victim)
 					tnumber = number_range(1, number);
 					number = 1;
 
-					for (vch = ch->in_room->people; vch; vch = vch->next)
+					for (vch = ch->in_room->people; vch; vch = vch->next_in_room)
 					{
 						if (can_see(rch, vch) && is_same_group(vch, victim) && number++ == tnumber)
 							target = vch;
@@ -672,7 +671,7 @@ void mob_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	{
 		for (vch = ch->in_room->people; vch != nullptr; vch = vch_next)
 		{
-			vch_next = vch->next;
+			vch_next = vch->next_in_room;
 
 			if (vch != victim && Deref(vch->fighting) == ch)
 				one_hit(ch, vch, dt);
@@ -2983,10 +2982,11 @@ void combat_alert(CHAR_DATA *victim, int type, CHAR_DATA *ch)
  */
 void stop_fighting(CHAR_DATA *ch, bool fBoth)
 {
-	CHAR_DATA *fch;
 
-	for (fch = char_list; fch != nullptr; fch = fch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *fch = walk.Current();
+
 		if (fch == ch || (fBoth && Deref(fch->fighting) == ch))
 		{
 			fch->fighting = nullptr;
@@ -3307,7 +3307,6 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 	AFFECT_DATA af;
 	ROOM_AFFECT_DATA raf;
 	AREA_AFFECT_DATA aaf;
-	CHAR_DATA *gch, *gch_next;
 	OBJ_DATA *obj, *obj2, *corpse;
 	char wizbuf[MSL], *cname, buf[MSL], buf2[MSL];
 	bool infidels = false;
@@ -3415,9 +3414,9 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 			wiznet(wizbuf, nullptr, nullptr, WIZ_DEATHS, 0, 0);
 	}
 
-	for (gch = char_list; gch != nullptr; gch = gch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		gch_next = gch->next;
+		CHAR_DATA *gch = walk.Current();
 
 		if (is_npc(gch) && Deref(gch->master) == victim && gch->pIndexData->vnum != ACADEMY_PET && !is_npc(victim))
 			extract_char(gch, true);
@@ -3463,8 +3462,10 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 	// leaves a slain player alive, so the references stay live and something
 	// else has to drop them); this is the half that answers it. Deleting it
 	// will not fail a build or a test, it will quietly restore a bug.
-	for (CHAR_DATA *wch = char_list; wch != nullptr; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		if (Deref(wch->last_fight_opponent) == victim)
 			wch->last_fight_opponent = nullptr;
 
@@ -3630,7 +3631,6 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 
 void pk_record(CHAR_DATA *ch, CHAR_DATA *victim)
 {
-	CHAR_DATA *wch;
 	int killer_group = 0, victim_group = 0;
 	int killer_in_room = 0;
 	float killer_credit, victim_credit;
@@ -3639,8 +3639,10 @@ void pk_record(CHAR_DATA *ch, CHAR_DATA *victim)
 	if (is_npc(victim) || is_npc(ch))
 		return;
 
-	for (wch = char_list; wch; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		if (is_same_group(wch, ch) && !is_npc(wch) && (wch->in_room == ch->in_room || wch->ghost > 0))
 		{
 			RS.Logger.Info("Adding {} to killer_group", wch->name);
@@ -3669,8 +3671,10 @@ void pk_record(CHAR_DATA *ch, CHAR_DATA *victim)
 	killer_credit = killer_credit / killer_in_room;
 	victim->pcdata->fragged += victim_credit;
 
-	for (wch = char_list; wch; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		if (is_same_group(wch, ch) && can_pk(wch, victim) && !is_npc(wch) && wch->in_room == ch->in_room)
 		{
 			wch->pcdata->frags[PK_KILLS] += killer_credit;
@@ -4035,8 +4039,10 @@ int xp_compute(CHAR_DATA *gch, CHAR_DATA *victim, int group_amount, int glevel)
 
 	if (!is_npc(gch))
 	{
-		for (cPeers = char_list; cPeers; cPeers = cPeers->next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
+			CHAR_DATA *cPeers = walk.Current();
+
 			if (!is_npc(cPeers)
 				&& cPeers != gch
 				&& cPeers->level > gch->level - PEER_BALANCE_DISTANCE
@@ -7431,7 +7437,6 @@ void do_enlist(CHAR_DATA *ch, char *argument)
 	char buf[MAX_STRING_LENGTH];
 	AFFECT_DATA af;
 	int chance;
-	CHAR_DATA *check;
 
 	chance = get_skill(ch, gsn_enlist);
 
@@ -7475,8 +7480,10 @@ void do_enlist(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (check = char_list; check != nullptr; check = check->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *check = walk.Current();
+
 		if (is_affected(check, gsn_enlist) && Deref(check->master) == ch)
 		{
 			send_to_char("You already have a devoted recruit following you.\n\r", ch);
@@ -8816,8 +8823,10 @@ bool check_parting_blow(CHAR_DATA *ch, CHAR_DATA *victim)
 
 CHAR_DATA *get_cabal_guardian(int cabal)
 {
-	for (CHAR_DATA *cabalguardian = char_list; cabalguardian != nullptr; cabalguardian = cabalguardian->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *cabalguardian = walk.Current();
+
 		if (is_npc(cabalguardian) && cabalguardian->cabal == cabal && is_cabal_guard(cabalguardian))
 			return cabalguardian;
 	}
