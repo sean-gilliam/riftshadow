@@ -604,8 +604,10 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (in_room->area != to_room->area)
 	{
-		for (auto d = descriptor_list; d; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr

@@ -308,44 +308,7 @@ struct rune_data
 	RUNE_END *end_fun;
 };
 
-struct descriptor_data
-{
-	DESCRIPTOR_DATA *next;
-	// This connection's own handle, handed out so a character can name it
-	// without holding a pointer into a recycled struct. Registered by
-	// new_descriptor and retired by free_descriptor.
-	Handle<DESCRIPTOR_DATA> self;
-	// The connection watching this one, if any. Non-owning; it expires by
-	// itself when that connection closes, which is what close_socket's
-	// hand-written sweep over descriptor_list used to do.
-	Handle<DESCRIPTOR_DATA> snoop_by;
-	// The body this connection drives, and -- while an immortal is switched
-	// into a mob -- the immortal's own body parked behind it. Non-owning both
-	// ways: a character can be extracted while the connection lives on, so
-	// these are handles rather than pointers. `character` used to be nulled by
-	// hand on each of the five paths that free it; `original` was nulled on
-	// none of them, and check_playing reads its `true_name` for every open
-	// connection on every login attempt.
-	Handle<CHAR_DATA> character;
-	Handle<CHAR_DATA> original;
-	char *host;
-	short descriptor;
-	short connected;
-	bool fcommand;
-	char inbuf[4 * MAX_INPUT_LENGTH];
-	char incomm[MAX_INPUT_LENGTH];
-	char inlast[MAX_INPUT_LENGTH];
-	int repeat;
-	char *outbuf;
-	int outsize;
-	int outtop;
-	char *showstr_head;
-	char *showstr_point;
-	void *pEdit;	// OLC
-	char **pString;	// OLC
-	int editor;		// OLC
-	short type;
-};
+#include "entity/descriptor_data.h"
 
 struct bounty
 {

@@ -39,7 +39,6 @@
 #include "entity/fwd.h"
 
 /* externals for counting purposes */
-extern DESCRIPTOR_DATA *descriptor_free;
 extern CHAR_DATA *char_free;
 
 

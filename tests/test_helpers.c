@@ -28,13 +28,9 @@ void TestHelperCleanupPlayerObject(CHAR_DATA *player)
 	if (player == nullptr)
 		return;
 
-	if (Deref(player->desc) != nullptr)
-	{
-		if (Deref(player->desc)->outbuf != nullptr)
-			delete[] Deref(player->desc)->outbuf;
-		
-		delete Deref(player->desc);
-	}
+	// ~descriptor_data frees the output buffer and retires the handle, so this
+	// is one delete and not the hand-rolled teardown it used to be.
+	delete Deref(player->desc);
 
 	if(player->pIndexData != nullptr)
 	{

@@ -132,7 +132,6 @@ void do_ghost(CHAR_DATA *ch, char *argument)
 	char arg1[MAX_INPUT_LENGTH];
 	char arg2[MAX_INPUT_LENGTH];
 	CHAR_DATA *victim;
-	DESCRIPTOR_DATA *d;
 
 	argument = one_argument(argument, arg1);
 	argument = one_argument(argument, arg2);
@@ -153,8 +152,10 @@ void do_ghost(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(arg1, "all"))
 	{
-		for (d = descriptor_list; d; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			CHAR_DATA *wch = Deref(d->character);
 
 			if (d->connected == CON_PLAYING
@@ -181,8 +182,10 @@ void do_ghost(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(arg1, "zone"))
 	{
-		for (d = descriptor_list; d; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			CHAR_DATA *wch = Deref(d->character);
 
 			if (d->connected == CON_PLAYING
@@ -495,7 +498,6 @@ void do_ccb(CHAR_DATA *ch, char *argument)
 	char arg1[MAX_STRING_LENGTH];
 	char arg2[MAX_STRING_LENGTH];
 	int cabal;
-	DESCRIPTOR_DATA *d;
 
 	/*
 	if (!is_immortal(ch))
@@ -536,8 +538,10 @@ void do_ccb(CHAR_DATA *ch, char *argument)
 
 	send_to_char(buffer.c_str(), ch);
 
-	for (d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d->connected == CON_PLAYING)
 		{
 			CHAR_DATA *wch = Deref(d->character);
@@ -1613,8 +1617,10 @@ int count_carried(CHAR_DATA *ch, bool limited)
 
 bool auto_check_multi(DESCRIPTOR_DATA *d_check, char *host)
 {
-	for (DESCRIPTOR_DATA *d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d == d_check || Deref(d->character) == nullptr)
 			continue;
 
@@ -1732,8 +1738,10 @@ void zone_echo(AREA_DATA *area, char *echo)
 {
 	char buffer[MSL * 2];
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING && wch->in_room != nullptr && wch->in_room->area == area)

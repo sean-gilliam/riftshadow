@@ -1048,8 +1048,10 @@ void mob_recho(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING
@@ -1070,8 +1072,10 @@ void area_echo(CHAR_DATA *ch, char *echo)
 {
 	char buffer[MAX_STRING_LENGTH * 2];
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING
@@ -1090,8 +1094,10 @@ void rarea_echo(ROOM_INDEX_DATA *room, char *echo)
 {
 	char buffer[MAX_STRING_LENGTH * 2];
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING
@@ -1110,8 +1116,10 @@ void outdoors_echo(AREA_DATA *area, char *echo)
 {
 	char buffer[MSL * 2];
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING

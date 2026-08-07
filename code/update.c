@@ -751,7 +751,6 @@ void time_update(void)
 {
 	char buf[MSL], colbuf[MSL];
 	char bw1[MSL], bw2[MSL], bw3[MSL], bw4[MSL];
-	DESCRIPTOR_DATA *d;
 	AREA_DATA *area;
 
 	buf[0] = '\0';
@@ -901,8 +900,10 @@ void time_update(void)
 
 	if (buf[0] != '\0')
 	{
-		for (d = descriptor_list; d != nullptr; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			CHAR_DATA *wch = Deref(d->character);
 
 			if (d->connected == CON_PLAYING

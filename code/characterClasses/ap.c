@@ -1155,7 +1155,6 @@ void communion_end(CHAR_DATA *ch, AFFECT_DATA *af)
 
 void check_unholy_communion(CHAR_DATA *ch, char *argument)
 {
-	DESCRIPTOR_DATA *d;
 	AFFECT_DATA *af;
 	int demon = -1, type = -1;
 	int i;
@@ -1209,8 +1208,10 @@ void check_unholy_communion(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d->connected == CON_PLAYING 
 			&& !is_immortal(Deref(d->character))
 			&& !is_npc(Deref(d->character))

@@ -1449,7 +1449,6 @@ void fight_prog_ruins_sword(OBJ_DATA *obj, CHAR_DATA *ch)
 
 void verb_prog_check_bounties(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 {
-	DESCRIPTOR_DATA *d;
 	char buf[MSL];
 	bool found= false;
 	CHAR_DATA *mob;
@@ -1489,8 +1488,10 @@ void verb_prog_check_bounties(OBJ_DATA *obj, CHAR_DATA *ch, char *argument)
 	do_say(mob, "Now then..");
 	do_emote(mob, "studies his list of bounties.");
 
-	for (d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d->connected == CON_PLAYING && Deref(d->character) && Deref(d->character)->in_room != nullptr)
 		{
 			if (Deref(d->character)->pcdata && Deref(d->character)->pcdata->bounty)

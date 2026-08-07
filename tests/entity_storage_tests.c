@@ -20,10 +20,11 @@
 //
 // These lists are what decides an entity's lifetime. The containment chains
 // (room->people, ch->carrying, obj->contains) are a game rule about where
-// things are, not about when they die. Today each global list is an intrusive
-// singly-linked chain through an entity's `next` field, and `free_char` and
-// friends push the entity onto a free list rather than returning its memory,
-// so an address is handed straight back out to the next allocation.
+// things are, not about when they die. `char_list` is still an intrusive
+// singly-linked chain through an entity's `next` field, and `free_char` pushes
+// the entity onto a free list rather than returning its memory, so an address is
+// handed straight back out to the next allocation. `object_list` and
+// `descriptor_list` are owning containers and no longer do either.
 //
 // This file characterises the storage behaviour the game currently depends on,
 // so that the same assertions can be run after the lists become owning
@@ -53,7 +54,6 @@ namespace
 	template <class T> T *&ListHead();
 
 	template <> CHAR_DATA *&ListHead<CHAR_DATA>() { return char_list; }
-	template <> DESCRIPTOR_DATA *&ListHead<DESCRIPTOR_DATA>() { return descriptor_list; }
 
 	/// Puts an entity on its global list, the way db.c/comm.c do it: push front.
 	template <class T>
@@ -154,6 +154,43 @@ namespace
 		}
 	}
 
+	//
+	// descriptor_list is an owning container now too, and the same collapse
+	// applies: close_socket erasing the node is the destruction, so there is no
+	// "off the list but still alive" state left for a test to construct.
+	//
+
+	template <>
+	void Link<DESCRIPTOR_DATA>(DESCRIPTOR_DATA *d)
+	{
+		descriptor_list.push_front(std::unique_ptr<DESCRIPTOR_DATA>(d));
+		d->globalNode = descriptor_list.begin();
+	}
+
+	template <>
+	std::vector<DESCRIPTOR_DATA *> Collect<DESCRIPTOR_DATA>()
+	{
+		std::vector<DESCRIPTOR_DATA *> out;
+
+		for (auto &owned : descriptor_list)
+			out.push_back(owned.get());
+
+		return out;
+	}
+
+	/// The unprotected walk, for the same reason the raw and object ones exist.
+	template <>
+	void Walk<DESCRIPTOR_DATA>(const std::function<void(DESCRIPTOR_DATA *)> &body)
+	{
+		for (auto it = descriptor_list.begin(); it != descriptor_list.end(); )
+		{
+			DESCRIPTOR_DATA *d = it->get();
+			++it;
+
+			body(d);
+		}
+	}
+
 	// ─── end of shim ───────────────────────────────────────────────────────
 
 	//
@@ -204,17 +241,17 @@ namespace
 		object_list.erase(obj->globalNode);
 	}
 
+	/// One operation now, as for objects: the erase runs ~descriptor_data.
 	void ExtractDescriptor(DESCRIPTOR_DATA *d)
 	{
-		CursorRegistry<DESCRIPTOR_DATA>::Advance(d);
-		Unlink(d);
-		free_descriptor(d);
+		OwningCursorRegistry<DESCRIPTOR_DATA>::Advance(d->globalNode);
+		descriptor_list.erase(d->globalNode);
 	}
 
 	/// Leaves the list empty however a scenario ended.
 	void DrainChars()       { while (char_list != nullptr) ExtractChar(char_list); }
 	void DrainObjs()        { while (!object_list.empty()) ExtractObj(object_list.front().get()); }
-	void DrainDescriptors() { while (descriptor_list != nullptr) ExtractDescriptor(descriptor_list); }
+	void DrainDescriptors() { while (!descriptor_list.empty()) ExtractDescriptor(descriptor_list.front().get()); }
 }
 
 //

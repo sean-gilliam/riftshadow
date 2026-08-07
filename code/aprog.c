@@ -359,7 +359,6 @@ void reset_prog_cimsewer(AREA_DATA *area)
 
 void pulse_prog_ruins_shark(AREA_DATA *area)
 {
-	DESCRIPTOR_DATA *d;
 	CHAR_DATA *shark, *ch = nullptr;
 	int count = 0;
 
@@ -389,8 +388,10 @@ void pulse_prog_ruins_shark(AREA_DATA *area)
 	if (count > 5)
 		return;
 
-	for (d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d->connected == CON_PLAYING
 			&& Deref(d->character)->in_room != nullptr
 			&& Deref(d->character)->in_room->area == area

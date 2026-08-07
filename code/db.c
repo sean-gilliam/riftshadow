@@ -3168,7 +3168,6 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	OBJ_INDEX_DATA *pObjIndex;
 	ROOM_INDEX_DATA *room;
 	EXIT_DATA *exit;
-	DESCRIPTOR_DATA *d;
 	FILE *fp;
 	int vnum, nMatch = 0;
 
@@ -3215,20 +3214,12 @@ void do_dump(CHAR_DATA *ch, char *argument)
 	fprintf(fp, "Pcdata	%4d (%8lu bytes), %2d free (%lu bytes)\n", num_pcs, num_pcs * (sizeof(PC_DATA)), count, count * (sizeof(PC_DATA)));
 
 	/* descriptors */
-	count = 0;
+	// No free list any more. descriptor_list owns its connections, so a closed
+	// one is destroyed rather than parked for reuse.
+	count = descriptor_list.size();
 	count2 = 0;
 
-	for (d = descriptor_list; d != nullptr; d = d->next)
-	{
-		count++;
-	}
-
-	for (d = descriptor_free; d != nullptr; d = d->next)
-	{
-		count2++;
-	}
-
-	fprintf(fp, "Descs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(*d)), count2, count2 * (sizeof(*d)));
+	fprintf(fp, "Descs	%4d (%8lu bytes), %2d free (%lu bytes)\n", count, count * (sizeof(DESCRIPTOR_DATA)), count2, count2 * (sizeof(DESCRIPTOR_DATA)));
 
 	/* object prototypes */
 	for (vnum = 0; nMatch < top_obj_index; vnum++)

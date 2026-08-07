@@ -57,56 +57,52 @@
 /* buffer sizes */
 const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192, 16384};
 
-DESCRIPTOR_DATA *descriptor_free;
 CHAR_DATA *char_free;
 
 long last_pc_id;
 long last_mob_id;
 
-/* stuff for recycling descriptors */
 DESCRIPTOR_DATA *new_descriptor(void)
 {
-	static DESCRIPTOR_DATA d_zero;
-	DESCRIPTOR_DATA *d;
+	// The parentheses matter: descriptor_data has no user-provided constructor,
+	// so value-initialization zeroes every POD member before the implicit one
+	// runs. That is what `*d = d_zero` used to do.
+	//
+	// The descriptor is not on descriptor_list yet. init_descriptor links it
+	// once it has survived the ban checks, and the test fixtures never link
+	// theirs.
+	DESCRIPTOR_DATA *d = new DESCRIPTOR_DATA();
 
-	if (descriptor_free == nullptr)
-		d = new DESCRIPTOR_DATA;
-	else
-	{
-		d = descriptor_free;
-		descriptor_free = descriptor_free->next;
-	}
-
-	*d = d_zero;
-
-	// After the reset, which zeroes the old handle along with everything else.
 	d->self = descriptorHandles.Add(d);
 
 	return d;
 }
 
+descriptor_data::~descriptor_data()
+{
+	free_pstring(host);
+
+	if (outbuf)
+		delete[] outbuf;
+
+	// Expires every handle to this connection, which is what makes ch->desc and
+	// another descriptor's snoop_by read as nothing from here on.
+	descriptorHandles.Remove(self);
+}
+
+/// Destroys a descriptor that never made it onto descriptor_list. The list owns
+/// the ones that did, and close_socket erasing the node is what destroys those.
+/// @param d The descriptor to destroy.
 void free_descriptor(DESCRIPTOR_DATA *d)
 {
 	// The slot map answers "is this a live connection this module handed out",
 	// which is what the old `valid` bool was for and one thing more: a
 	// descriptor that was never registered has a null handle, so a stack-built
-	// one cannot be pushed onto the free list by mistake.
+	// one cannot be deleted by mistake.
 	if (d == nullptr || Deref(d->self) != d)
 		return;
 
-	free_pstring(d->host);
-
-	if (d->outbuf)
-		delete[] d->outbuf;
-
-	// Expires every handle to this connection. Must happen before it goes on
-	// the free list, since new_descriptor can hand the same address straight
-	// back out.
-	descriptorHandles.Remove(d->self);
-	d->self = nullptr;
-
-	d->next = descriptor_free;
-	descriptor_free = d;
+	delete d;
 }
 
 /* Trophy list elements own their victname string (rule-of-5). */

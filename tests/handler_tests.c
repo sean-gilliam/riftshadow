@@ -798,7 +798,7 @@ SCENARIO("a recycled character address does not resurrect an old handle", "[hand
 
 			THEN("the old handle stays expired even though the address matches")
 			{
-				// The free list really did hand back the same memory -- if it
+				// The free list really did hand back the same memory. If it
 				// ever stops doing so this test is still correct, just less
 				// pointed, so it is asserted rather than assumed.
 				REQUIRE(second == first);
@@ -1076,9 +1076,9 @@ SCENARIO("a character is not left pointing at furniture that was destroyed", "[o
 		WHEN("the object is destroyed without going through obj_from_room")
 		{
 			// obj_from_room clears the reference for anyone in the room, so it
-			// hides this case. The paths that do not run it -- extract_obj's
-			// not-found bail-out, or an object freed while held -- are the ones
-			// that used to leave a pointer into a recycled object behind.
+			// hides this case. Two paths do not run it: extract_obj's not-found
+			// bail-out, and an object freed while held. Those are the ones that
+			// used to leave a pointer into a recycled object behind.
 			free_obj(chair);
 
 			THEN("the reference reads as nothing rather than as freed memory")
@@ -1961,13 +1961,14 @@ SCENARIO("a switched immortal's original body does not outlive it", "[descriptor
 //     else
 //         free_char(dclose->original ? dclose->original : dclose->character);
 //     ...
-//     free_descriptor(dclose);
+//     descriptor_list.erase(dclose->globalNode);
 //
 // Take the else branch with an immortal switched into a mob and it frees the
-// immortal, never touches the mob, and then frees the descriptor -- leaving the
-// mob naming a descriptor on the free list. DESCRIPTOR_DATA is recycled through
-// descriptor_free, so the next connection gets that address and the mob is
-// suddenly holding a live player's socket.
+// immortal, never touches the mob, and then destroys the descriptor, leaving
+// the mob naming one that is gone. The address is no longer handed straight back
+// out, but the slot map does recycle the freed slot, so an index-only reference
+// would still find the next connection there and the mob would be holding a live
+// player's socket.
 //
 // Narrow: it needs a shutdown or a non-CON_PLAYING close with a switch in
 // effect. It is the least severe dangle in the graph, not the worst.
@@ -2042,13 +2043,22 @@ SCENARIO("a possessed mob does not outlive the connection driving it", "[chdesc]
 				REQUIRE(Connection(mob) == nullptr);
 			}
 
-			THEN("the next connection to take the address is not adopted")
+			THEN("the next connection to take the slot is not adopted")
 			{
 				// Every reader of this field asks "is this a player with a live
 				// connection", so a recycled descriptor turns a mob into one.
+				//
+				// The address is no longer what gets recycled, because a closed
+				// descriptor is really destroyed now. But the slot map still
+				// hands the freed slot to the next Add, and the slot is what a
+				// handle names. Holding SlotCount steady across the reissue is
+				// what proves the reuse happened, and so keeps the assertion
+				// below from passing for the trivial reason.
+				std::size_t slotsBefore = descriptorHandles.SlotCount();
+
 				DESCRIPTOR_DATA *newcomer = new_descriptor();
 
-				REQUIRE(newcomer == d);
+				REQUIRE(descriptorHandles.SlotCount() == slotsBefore);
 				REQUIRE(Connection(mob) != newcomer);
 
 				free_descriptor(newcomer);
@@ -2703,15 +2713,18 @@ SCENARIO("a snoop does not outlive the connection running it", "[snoop]")
 				REQUIRE(SnoopedBy(watched) == nullptr);
 			}
 
-			THEN("it still names none once the address is reissued")
+			THEN("it still names none once the slot is reissued")
 			{
 				// This is the part the sweep could not have given: a reused
-				// descriptor address would have satisfied a raw pointer, and
-				// every reader of this field writes the snooped output
-				// straight into whatever it names.
+				// descriptor slot would have satisfied an index-only reference,
+				// and every reader of this field writes the snooped output
+				// straight into whatever it names. SlotCount holding steady is
+				// what proves the freed slot really was handed back out.
+				std::size_t slotsBefore = descriptorHandles.SlotCount();
+
 				DESCRIPTOR_DATA *newcomer = new_descriptor();
 
-				REQUIRE(newcomer == snooper);
+				REQUIRE(descriptorHandles.SlotCount() == slotsBefore);
 				REQUIRE(SnoopedBy(watched) != newcomer);
 
 				free_descriptor(newcomer);

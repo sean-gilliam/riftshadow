@@ -336,8 +336,10 @@ void do_cb(CHAR_DATA *ch, char *argument)
 
 	send_to_char(buf, ch);
 
-	for (auto d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		// Read once: this loop only formats and sends, and nothing in it can
 		// extract a listener.
 		CHAR_DATA *listener = Deref(d->character);
@@ -1131,8 +1133,10 @@ void do_pray(CHAR_DATA *ch, char *argument)
 		fclose(fp);
 	}
 
-	for (auto d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		auto victim = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 
 		if (d->connected == CON_PLAYING && Deref(d->character) != ch && !IS_SET(victim->comm, COMM_SHOUTSOFF) && !IS_SET(victim->comm, COMM_QUIET) && victim->level >= 52)
@@ -1462,8 +1466,10 @@ void do_yell(CHAR_DATA *ch, char *argument)
 		act("You yell '$t'", ch, argument, nullptr, TO_CHAR);
 	}
 
-	for (auto d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		// Read once: command_execute below can extract the listener, but it is
 		// the last thing this iteration does with it.
 		CHAR_DATA *listener = Deref(d->character);
@@ -1494,8 +1500,10 @@ void do_myell(CHAR_DATA *ch, char *argument, CHAR_DATA *attacker)
 	/*
 	if(is_shifted(ch))
 	{
-		for (d = descriptor_list; d; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			if (d->connected == CON_PLAYING
 				&&  Deref(d->character)->in_room != nullptr && ch->in_room != nullptr
 				&&  Deref(d->character)->in_room->area == ch->in_room->area
@@ -1922,13 +1930,9 @@ void do_quit_new(CHAR_DATA *ch, char *argument, bool autoq)
 		close_socket(d);
 
 	/* toast evil cheating bastards */
-	// The successor has to be read before the body: close_socket frees d, and the
-	// loop advances through it.
-	DESCRIPTOR_DATA *d_after;
-
-	for (d = descriptor_list; d != nullptr; d = d_after)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
-		d_after = d->next;
+		DESCRIPTOR_DATA *d = walk.Current();
 
 		auto tch = Deref(d->original) ? Deref(d->original) : Deref(d->character);
 		if (tch && tch->id == id)
