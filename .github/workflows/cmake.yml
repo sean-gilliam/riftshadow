@@ -76,8 +76,13 @@ jobs:
         run: cmake --build build-asan
 
       # ASAN halts on memory errors by default
-      # detect_leaks=0: the codebase intentionally never frees; leak reports
-      #   would be pure noise for now.
+      # detect_leaks=0: entity teardown really frees now that the free lists are
+      #   gone, so LeakSanitizer has become informative. It reports a standing
+      #   backlog of roughly 1.3 MB across 232 reports, and every one of them is
+      #   test-fixture memory that the fixtures allocate and never release. That
+      #   backlog is pre-existing and tracked, so turning this on would gate CI
+      #   on test hygiene rather than on the code under test. Revisit once the
+      #   fixtures clean up after themselves.
       # UBSAN halt_on_error=1: the known UB this waited on was the queue
       #   re-entrancy UAF, fixed in the queue safety commit. UB now gates CI.
       - name: Test under sanitizers
