@@ -1300,14 +1300,15 @@ bool death_prog_inner_guardian(CHAR_DATA *mob, CHAR_DATA *killer)
 
 void pulse_prog_tahlu_mist_ward(CHAR_DATA *mob)
 {
-	DESCRIPTOR_DATA *d;
 	CHAR_DATA *mist, *ch;
 
 	if (!mob->in_room->area->nplayer || number_percent() <= 90)
 		return;
 
-	for (d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d->connected == CON_PLAYING
 			&& Deref(d->character)->in_room != nullptr
 			&& Deref(d->character)->in_room->area == mob->in_room->area
@@ -3212,7 +3213,6 @@ void pulse_prog_troopers(CHAR_DATA *mob)
 
 void pulse_prog_area_echo_ward(CHAR_DATA *mob)
 {
-	DESCRIPTOR_DATA *d;
 
 	// hightime = armor[3] lowtime = armor[0]
 	if (!mob->in_room->area->nplayer || time_info.hour < mob->armor[2] || time_info.hour > mob->armor[3])
@@ -3229,8 +3229,10 @@ void pulse_prog_area_echo_ward(CHAR_DATA *mob)
 	if (mob->regen_rate)
 		return;
 
-	for (d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d->connected != CON_PLAYING
 			|| !Deref(d->character)->in_room
 			|| Deref(d->character)->in_room->area != mob->in_room->area
@@ -3568,8 +3570,10 @@ void sucker_pulse(CHAR_DATA *ch, AFFECT_DATA *af)
 {
 	CHAR_DATA *owner;
 
-	for (owner = char_list; owner; owner = owner->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *owner = walk.Current();
+
 		if (is_npc(owner) && owner->pIndexData->vnum == 3002 && Deref(owner->hunting) == ch)
 			break;
 	}

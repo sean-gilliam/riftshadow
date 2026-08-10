@@ -807,14 +807,15 @@ bool aggress_prog_ilopheth_hermit(CHAR_DATA *mob, CHAR_DATA *attacker)
 
 void pulse_prog_ilopheth_hermit(CHAR_DATA *mob)
 {
-	DESCRIPTOR_DATA *d;
 	char buf[MSL];
 
 	if (mob->in_room->area->nplayer == 0)
 		return;
 
-	for (d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d->connected == CON_PLAYING && !is_npc(Deref(d->character)) && Deref(d->character)->in_room != nullptr &&
 			Deref(d->character)->in_room->area != nullptr && Deref(d->character)->in_room->area == mob->in_room->area &&
 			Deref(d->character)->pcdata->quests[TALISMANIC_QUEST] == 5 && number_percent() < 5)

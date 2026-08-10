@@ -39,6 +39,7 @@
 #include <iterator>
 #include <algorithm>
 #include "merc.h"
+#include "entity/list_cursor.h"
 #include "update.h"
 #include "entity/handles.h"
 #include "weather_enums.h"
@@ -630,15 +631,13 @@ void gain_condition(CHAR_DATA *ch, int iCond, int value)
  */
 void mobile_update(void)
 {
-	CHAR_DATA *ch;
-	CHAR_DATA *ch_next;
 	EXIT_DATA *pexit = nullptr;
 	int door;
 
 	/* Examine all mobs. */
-	for (ch = char_list; ch != nullptr; ch = ch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		ch_next = ch->next;
+		CHAR_DATA *ch = walk.Current();
 
 		if (!is_npc(ch) || ch->in_room == nullptr)
 			continue;
@@ -750,7 +749,6 @@ void time_update(void)
 {
 	char buf[MSL], colbuf[MSL];
 	char bw1[MSL], bw2[MSL], bw3[MSL], bw4[MSL];
-	DESCRIPTOR_DATA *d;
 	AREA_DATA *area;
 
 	buf[0] = '\0';
@@ -900,8 +898,10 @@ void time_update(void)
 
 	if (buf[0] != '\0')
 	{
-		for (d = descriptor_list; d != nullptr; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			CHAR_DATA *wch = Deref(d->character);
 
 			if (d->connected == CON_PLAYING
@@ -933,15 +933,16 @@ void time_update(void)
 
 void gold_update(void)
 {
-	CHAR_DATA *mob;
 	long mob_gold;
 	long gold;
 
 	if (total_wealth == 0)
 		return;
 
-	for (mob = char_list; mob; mob = mob->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *mob = walk.Current();
+
 		if (!is_npc(mob) || mob->stolen_from)
 			continue;
 
@@ -1160,8 +1161,6 @@ void calabren_update(void)
  */
 void char_update(void)
 {
-	CHAR_DATA *ch;
-	CHAR_DATA *ch_next;
 	CHAR_DATA *ch_quit;
 	int hgain;
 	bool ghost= false;
@@ -1174,12 +1173,13 @@ void char_update(void)
 	if (save_number > 2)
 		save_number = 0;
 
-	for (ch = char_list; ch != nullptr; ch = ch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *ch = walk.Current();
+
 		CHAR_DATA *master;
 		bool charm_gone;
 
-		ch_next = ch->next;
 		master = nullptr;
 
 		if (is_npc(ch)
@@ -1485,9 +1485,9 @@ void char_update(void)
 	 * Autosave and autoquit.
 	 * Check that these chars still exist.
 	 */
-	for (ch = char_list; ch != nullptr; ch = ch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		ch_next = ch->next;
+		CHAR_DATA *ch = walk.Current();
 
 		DESCRIPTOR_DATA *connection = Deref(ch->desc);
 
@@ -1504,10 +1504,12 @@ void obj_update(void)
 {
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
-	CHAR_DATA *owner, *cguard;
+	CHAR_DATA *cguard;
 
-	for (obj = object_list; obj != nullptr; obj = obj_next)
+	for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
 	{
+		obj = walk.Current();
+
 		CHAR_DATA *rch;
 		// Re-read from obj->carried_by before each use below, never cached across
 		// them: the cabal-item branch calls obj_from_char/obj_to_char, which move
@@ -1515,8 +1517,6 @@ void obj_update(void)
 		// is stale from that point on.
 		CHAR_DATA *carrier;
 		char *message;
-
-		obj_next = obj->next;
 
 		if (obj->moved)
 			obj->moved= false;
@@ -1696,8 +1696,10 @@ void obj_update(void)
 			if (obj->in_room != nullptr && is_explore(obj->in_room))
 			{
 				// Gear to char
-				for (owner = char_list; owner != nullptr; owner = owner->next)
+				for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 				{
+					CHAR_DATA *owner = walk.Current();
+
 					if (!is_npc(owner) && !str_cmp(owner->true_name, obj->owner))
 					{
 						if (obj->contains)
@@ -1771,13 +1773,11 @@ void track_attack(CHAR_DATA *mob, CHAR_DATA *victim)
 
 void track_update(void)
 {
-	CHAR_DATA *tch;
-	CHAR_DATA *tch_next;
 	char buf[MAX_STRING_LENGTH];
 
-	for (tch = char_list; tch != nullptr; tch = tch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		tch_next = tch->next;
+		CHAR_DATA *tch = walk.Current();
 
 		if (!is_npc(tch))
 			continue;
@@ -1851,8 +1851,6 @@ void track_update(void)
  */
 void aggr_update(void)
 {
-	CHAR_DATA *wch;
-	CHAR_DATA *wch_next;
 	CHAR_DATA *ch;
 	CHAR_DATA *ch_next;
 	CHAR_DATA *vch;
@@ -1862,9 +1860,9 @@ void aggr_update(void)
 	int timer;
 	char buf[MAX_STRING_LENGTH];
 
-	for (wch = char_list; wch != nullptr; wch = wch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		wch_next = wch->next;
+		CHAR_DATA *wch = walk.Current();
 
 		if (!wch->name)
 			continue;
@@ -2165,14 +2163,12 @@ char *get_age_name(CHAR_DATA *ch)
 void age_update(void)
 {
 
-	CHAR_DATA *ch;
-	CHAR_DATA *ch_next;
 	bool timedied= false;
 	std::string cname;
 
-	for (ch = char_list; ch != nullptr; ch = ch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		ch_next = ch->next;
+		CHAR_DATA *ch = walk.Current();
 
 		if (is_npc(ch))
 			continue;
@@ -2359,14 +2355,13 @@ void do_forcetick(CHAR_DATA *ch, char *argument)
 
 void affect_update(void)
 {
-	CHAR_DATA *ch, *ch_next;
 	OBJ_DATA *obj, *obj_next;
 	ROOM_INDEX_DATA *room;
 	AREA_DATA *area;
 
-	for (ch = char_list; ch; ch = ch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		ch_next = ch->next;
+		CHAR_DATA *ch = walk.Current();
 
 		// Dev's super-fly cheap name hax!
 		if (!is_npc(ch) && strcmp(ch->true_name, ch->backup_true_name))
@@ -2394,9 +2389,9 @@ void affect_update(void)
 		}
 	}
 
-	for (obj = object_list; obj; obj = obj_next)
+	for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
 	{
-		obj_next = obj->next;
+		obj = walk.Current();
 
 		for (auto it = obj->affected.begin(); it != obj->affected.end(); )
 		{
@@ -2475,7 +2470,7 @@ void room_update(void)
 void room_affect_update(void)
 {
 	ROOM_INDEX_DATA *room, *to_room;
-	CHAR_DATA *victim, *v_next, *vch, *ch;
+	CHAR_DATA *victim, *v_next, *vch;
 	int i, dam, chance, roomcount = 0;
 	AREA_AFFECT_DATA *aaf;
 	ROOM_AFFECT_DATA *af, *af2;
@@ -2495,13 +2490,18 @@ void room_affect_update(void)
 
 			af = affect_find_room(room->affected, gsn_gravity_well);
 
-			for (well = object_list; well != nullptr; well = well->next)
+			well = nullptr;
+
+			for (auto &owned : object_list)
 			{
-				if (well->item_type == ITEM_GRAVITYWELL && well->in_room && well->in_room == room)
+				if (owned->item_type == ITEM_GRAVITYWELL && owned->in_room && owned->in_room == room)
+				{
+					well = owned.get();
 					break;
+				}
 			}
 
-			if (!well)
+			if (well == nullptr)
 				continue;
 
 			auto room_exit_size = std::size(room->exit);
@@ -2904,8 +2904,10 @@ void room_affect_update(void)
 			}
 		}
 	}
-	for (ch = char_list; ch != nullptr; ch = ch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *ch = walk.Current();
+
 		dam = 0;
 
 		for (obj = ch->carrying; obj != nullptr; obj = obj->next_content)
@@ -2936,9 +2938,9 @@ void iprog_pulse_update(bool isTick)
 	EXIT_DATA *pexit;
 	int door;
 
-	for (obj = object_list; obj != nullptr; obj = obj_next)
+	for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
 	{
-		obj_next = obj->next;
+		obj = walk.Current();
 
 		/* items drifting/sinking in water -- Dioxide */
 		if (obj->in_room
@@ -3317,11 +3319,14 @@ void save_demos()
 
 void rune_update()
 {
-	RUNE_DATA *rune, *rune_next;
-
-	for (rune = rune_list; rune; rune = rune_next)
+	// Advance before the body runs: extract_rune erases the rune it is given, so
+	// the cursor has to be off it already. Same reason the old walk saved
+	// rune->next first.
+	for (auto it = rune_list.begin(); it != rune_list.end(); )
 	{
-		rune_next = rune->next;
+		RUNE_DATA *rune = it->get();
+		++it;
+
 		rune->duration--;
 
 		if (rune->duration <= 0)

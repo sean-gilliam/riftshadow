@@ -1425,7 +1425,7 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 
 			THEN("it should display a message notifying the player")
 			{
-				char_list = player2;
+				TestHelperLinkToCharList(player2);
 				player->Profs()->InterpCommand("track", "player2");
 
 				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rTrack who?\n\r");
@@ -1452,7 +1452,7 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 
 			THEN("it should display a message notifying the player")
 			{
-				char_list = player2;
+				TestHelperLinkToCharList(player2);
 				player->Profs()->InterpCommand("track", "player2");
 
 				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou cannot attempt to track them again yet.\n\r");
@@ -1479,7 +1479,7 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 
 			THEN("it should display a message notifying the player")
 			{
-				char_list = player2;
+				TestHelperLinkToCharList(player2);
 				player->Profs()->InterpCommand("track", "player2");
 
 				auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rEven if they had been here, there would be no suitable tracks left for you to follow.\n\r");
@@ -1509,7 +1509,7 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 
 			THEN("it should display a message notifying the player")
 			{
-				char_list = player2;
+				TestHelperLinkToCharList(player2);
 				player->Profs()->InterpCommand("track", "player2");
 
 				//auto result = !str_cmp(Deref(player->desc)->outbuf,"\n\rYou were unable to find any sign of player2 here.\n\r");
@@ -1539,7 +1539,7 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 
 			THEN("it should display a message notifying the player")
 			{
-				char_list = player2;
+				TestHelperLinkToCharList(player2);
 				player->Profs()->InterpCommand("track", "player2");
 
 				// TODO: complete reset of test

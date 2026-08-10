@@ -784,24 +784,30 @@ SCENARIO("new_char registers a character and free_char expires it", "[handles]")
 	}
 }
 
-SCENARIO("a recycled character address does not resurrect an old handle", "[handles]")
+SCENARIO("a recycled character slot does not resurrect an old handle", "[handles]")
 {
-	GIVEN("a character that has been freed back onto the free list")
+	GIVEN("a character that has been destroyed")
 	{
 		CHAR_DATA *first = new_char();
 		Handle<CHAR_DATA> stale = first->self;
+
 		free_char(first);
 
-		WHEN("a new character is allocated, reusing that address")
+		WHEN("a new character is allocated, reusing that slot")
 		{
+			// The address is no longer what gets recycled, because a destroyed
+			// character is really deleted now. But the slot map still hands the
+			// freed slot to the next Add, and the slot is what a handle names.
+			// Holding SlotCount steady across the allocation is what proves the
+			// reuse happened, and so keeps the assertions below from passing
+			// for the trivial reason.
+			std::size_t slotsBefore = charHandles.SlotCount();
+
 			CHAR_DATA *second = new_char();
 
-			THEN("the old handle stays expired even though the address matches")
+			THEN("the old handle stays expired even though the slot matches")
 			{
-				// The free list really did hand back the same memory -- if it
-				// ever stops doing so this test is still correct, just less
-				// pointed, so it is asserted rather than assumed.
-				REQUIRE(second == first);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 
 				REQUIRE(Deref(stale) == nullptr);
 				REQUIRE(stale != second->self);
@@ -813,33 +819,40 @@ SCENARIO("a recycled character address does not resurrect an old handle", "[hand
 	}
 }
 
-SCENARIO("freeing a character twice is a silent no-op", "[handles]")
+// Freeing the same character twice used to be spelled with a raw pointer, and
+// the free list is what made that legal to write: the struct stayed mapped, so
+// the second call could still read `ch->self`, find the slot retired and bail
+// out. Now the first free really deletes, and reading `ch->self` afterwards is
+// a use-after-free before any guard gets a chance to run.
+//
+// What survives is the property production actually relies on. Every one of the
+// nine free_char call sites reaches its character through Deref of a handle, so
+// once the first free expires the slot the second call is handed nullptr. The
+// handle is the guard, and it is a guard against the double free rather than a
+// recovery from it.
+SCENARIO("freeing a character twice through its handle is a silent no-op", "[handles]")
 {
 	GIVEN("a character that has already been freed")
 	{
 		CHAR_DATA *ch = new_char();
+		Handle<CHAR_DATA> handle = ch->self;
 
 		free_char(ch);
 
-		WHEN("it is freed again, as the old `valid` bool used to allow")
+		WHEN("the same handle is freed again, as the login paths do")
 		{
-			// This is the half of `valid` that was never about weak references:
-			// it guarded free_char against running twice over the same struct,
-			// which would free its strings twice and put it on char_free twice.
-			// The handle answers the same question -- `Deref(ch->self) != ch`
-			// once the slot is retired -- so the bool became redundant rather
-			// than merely replaceable.
-			free_char(ch);
+			REQUIRE(Deref(handle) == nullptr);
 
-			THEN("the character is on the free list exactly once")
+			free_char(Deref(handle));
+
+			THEN("nothing was destroyed twice and allocation carries on")
 			{
-				// If the guard had failed, ch would be its own ->next and
-				// new_char would return the same address twice running.
 				CHAR_DATA *first = new_char();
 				CHAR_DATA *second = new_char();
 
-				REQUIRE(first == ch);
-				REQUIRE(second != first);
+				REQUIRE(first != second);
+				REQUIRE(Deref(first->self) == first);
+				REQUIRE(Deref(second->self) == second);
 
 				free_char(first);
 				free_char(second);
@@ -858,11 +871,15 @@ SCENARIO("freeing a character the slot maps never issued does nothing", "[handle
 		{
 			// It has a null self handle, so it never resolves to itself and the
 			// guard rejects it. The old bool did the same by being false, but
-			// only because value-initialisation happened to zero it; here it is
+			// only because value-initialisation happened to zero it. Here it is
 			// the type's stated invariant rather than a coincidence.
+			//
+			// The guard matters more now than it did. Getting it wrong used to
+			// mean adopting a stack address onto the free list. It now means
+			// calling delete on one.
 			free_char(&ch);
 
-			THEN("it is not adopted onto the free list")
+			THEN("it is neither destroyed nor handed back out")
 			{
 				CHAR_DATA *fresh = new_char();
 
@@ -1076,9 +1093,9 @@ SCENARIO("a character is not left pointing at furniture that was destroyed", "[o
 		WHEN("the object is destroyed without going through obj_from_room")
 		{
 			// obj_from_room clears the reference for anyone in the room, so it
-			// hides this case. The paths that do not run it -- extract_obj's
-			// not-found bail-out, or an object freed while held -- are the ones
-			// that used to leave a pointer into a recycled object behind.
+			// hides this case. Two paths do not run it: extract_obj's not-found
+			// bail-out, and an object freed while held. Those are the ones that
+			// used to leave a pointer into a recycled object behind.
 			free_obj(chair);
 
 			THEN("the reference reads as nothing rather than as freed memory")
@@ -1129,8 +1146,8 @@ namespace
 		mob->next_in_room = room->people;
 		room->people = mob;
 
-		mob->next = char_list;
-		char_list = mob;
+		char_list.push_front(std::unique_ptr<CHAR_DATA>(mob));
+		mob->globalNode = char_list.begin();
 
 		return mob;
 	}
@@ -1145,15 +1162,9 @@ namespace
 
 	void ClearTrackers()
 	{
-		CHAR_DATA *next;
-
-		for (CHAR_DATA *ch = char_list; ch != nullptr; ch = next)
-		{
-			next = ch->next;
-			free_char(ch);
-		}
-
-		char_list = nullptr;
+		// Erasing the node is what destroys the character now, so clearing the
+		// list is the whole teardown.
+		char_list.clear();
 	}
 }
 
@@ -1593,11 +1604,17 @@ SCENARIO("a secret trailer does not outlive the master it was trailing", "[follo
 				REQUIRE(Master(trailer) == nullptr);
 			}
 
-			THEN("the address really was reissued, which is what made this silent")
+			THEN("the slot really was reissued, which is what made this silent")
 			{
+				// The slot rather than the address: a destroyed character is really
+				// deleted now, so reuse of the memory is an allocator accident. The
+				// slot map does still recycle the freed slot, and the slot is what a
+				// handle names, so this is what keeps the assertion below honest.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == master);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(Master(trailer) == nullptr);
 			}
 		}
@@ -1695,11 +1712,17 @@ SCENARIO("defending and analyzePC do not outlive their target", "[defending]")
 				REQUIRE(Analyzing(analyzer) == nullptr);
 			}
 
-			THEN("they stay nothing even once the address is reissued")
+			THEN("they stay nothing even once the slot is reissued")
 			{
+				// The slot rather than the address: a destroyed character is really
+				// deleted now, so reuse of the memory is an allocator accident. The
+				// slot map does still recycle the freed slot, and the slot is what a
+				// handle names, so this is what keeps the assertion below honest.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == target);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(Defending(protector) == nullptr);
 				REQUIRE(Analyzing(analyzer) == nullptr);
 			}
@@ -1789,15 +1812,21 @@ SCENARIO("a mob's quarry does not outlive it", "[hunting]")
 				REQUIRE(Hunting(anchor) == nullptr);
 			}
 
-			THEN("the next character to take the address is not mistaken for it")
+			THEN("the next character to take the slot is not mistaken for it")
 			{
 				// The whole defect, in three lines. Every reachable reader of
 				// this field walks char_list asking "is this the mob hunting
 				// me?" and answers with ==, so the newcomer used to inherit the
 				// dead character's anchor rather than crash on it.
+				// The slot rather than the address: a destroyed character is really
+				// deleted now, so reuse of the memory is an allocator accident. The
+				// slot map does still recycle the freed slot, and the slot is what a
+				// handle names, so this is what keeps the assertion below honest.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == quarry);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(Hunting(anchor) != newcomer);
 				REQUIRE(Hunting(anchor) == nullptr);
 			}
@@ -1893,11 +1922,17 @@ SCENARIO("a descriptor's body reference does not outlive the body", "[descriptor
 				REQUIRE(Body(d) == nullptr);
 			}
 
-			THEN("the next character to take the address is not adopted")
+			THEN("the next character to take the slot is not adopted")
 			{
+				// The slot rather than the address: a destroyed character is really
+				// deleted now, so reuse of the memory is an allocator accident. The
+				// slot map does still recycle the freed slot, and the slot is what a
+				// handle names, so this is what keeps the assertion below honest.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == player);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(Body(d) != newcomer);
 			}
 		}
@@ -1938,9 +1973,15 @@ SCENARIO("a switched immortal's original body does not outlive it", "[descriptor
 				// check_playing reads `dold->original->true_name` for every
 				// descriptor on every login, so this one is dereferenced, not
 				// just compared.
+				// The slot rather than the address: a destroyed character is really
+				// deleted now, so reuse of the memory is an allocator accident. The
+				// slot map does still recycle the freed slot, and the slot is what a
+				// handle names, so this is what keeps the assertion below honest.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == immortal);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(OriginalBody(d) != newcomer);
 			}
 		}
@@ -1961,13 +2002,14 @@ SCENARIO("a switched immortal's original body does not outlive it", "[descriptor
 //     else
 //         free_char(dclose->original ? dclose->original : dclose->character);
 //     ...
-//     free_descriptor(dclose);
+//     descriptor_list.erase(dclose->globalNode);
 //
 // Take the else branch with an immortal switched into a mob and it frees the
-// immortal, never touches the mob, and then frees the descriptor -- leaving the
-// mob naming a descriptor on the free list. DESCRIPTOR_DATA is recycled through
-// descriptor_free, so the next connection gets that address and the mob is
-// suddenly holding a live player's socket.
+// immortal, never touches the mob, and then destroys the descriptor, leaving
+// the mob naming one that is gone. The address is no longer handed straight back
+// out, but the slot map does recycle the freed slot, so an index-only reference
+// would still find the next connection there and the mob would be holding a live
+// player's socket.
 //
 // Narrow: it needs a shutdown or a non-CON_PLAYING close with a switch in
 // effect. It is the least severe dangle in the graph, not the worst.
@@ -2042,13 +2084,22 @@ SCENARIO("a possessed mob does not outlive the connection driving it", "[chdesc]
 				REQUIRE(Connection(mob) == nullptr);
 			}
 
-			THEN("the next connection to take the address is not adopted")
+			THEN("the next connection to take the slot is not adopted")
 			{
 				// Every reader of this field asks "is this a player with a live
 				// connection", so a recycled descriptor turns a mob into one.
+				//
+				// The address is no longer what gets recycled, because a closed
+				// descriptor is really destroyed now. But the slot map still
+				// hands the freed slot to the next Add, and the slot is what a
+				// handle names. Holding SlotCount steady across the reissue is
+				// what proves the reuse happened, and so keeps the assertion
+				// below from passing for the trivial reason.
+				std::size_t slotsBefore = descriptorHandles.SlotCount();
+
 				DESCRIPTOR_DATA *newcomer = new_descriptor();
 
-				REQUIRE(newcomer == d);
+				REQUIRE(descriptorHandles.SlotCount() == slotsBefore);
 				REQUIRE(Connection(mob) != newcomer);
 
 				free_descriptor(newcomer);
@@ -2269,9 +2320,15 @@ SCENARIO("trust does not outlive the trusted player", "[trusting]")
 
 			THEN("it stays nothing once the address is reissued")
 			{
+				// The slot rather than the address: a destroyed character is really
+				// deleted now, so reuse of the memory is an allocator accident. The
+				// slot map does still recycle the freed slot, and the slot is what a
+				// handle names, so this is what keeps the assertion below honest.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == trusted);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(Trusting(truster) != newcomer);
 			}
 		}
@@ -2484,9 +2541,15 @@ SCENARIO("an affect does not remember a caster who has left the world", "[affect
 				// The whole point. free_char pushes onto a free list, so the
 				// next new_char hands back the caster's address; a raw
 				// back-reference would silently start naming the newcomer.
+				// The slot rather than the address: a destroyed character is really
+				// deleted now, so reuse of the memory is an allocator accident. The
+				// slot map does still recycle the freed slot, and the slot is what a
+				// handle names, so this is what keeps the assertion below honest.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == caster);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(AffectOwner(af) != newcomer);
 				REQUIRE(AffectOwner(af) == nullptr);
 			}
@@ -2523,9 +2586,15 @@ SCENARIO("an object's affect does not remember a caster who has left the world",
 
 			THEN("it still names nobody once the address is reissued")
 			{
+				// The slot rather than the address: a destroyed character is really
+				// deleted now, so reuse of the memory is an allocator accident. The
+				// slot map does still recycle the freed slot, and the slot is what a
+				// handle names, so this is what keeps the assertion below honest.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == caster);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(AffectOwner(oaf) != newcomer);
 			}
 		}
@@ -2560,9 +2629,15 @@ SCENARIO("an area's affect does not remember a caster who has left the world", "
 
 			THEN("it still names nobody once the address is reissued")
 			{
+				// The slot rather than the address: a destroyed character is really
+				// deleted now, so reuse of the memory is an allocator accident. The
+				// slot map does still recycle the freed slot, and the slot is what a
+				// handle names, so this is what keeps the assertion below honest.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == caster);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(AffectOwner(aaf) != newcomer);
 			}
 		}
@@ -2703,15 +2778,18 @@ SCENARIO("a snoop does not outlive the connection running it", "[snoop]")
 				REQUIRE(SnoopedBy(watched) == nullptr);
 			}
 
-			THEN("it still names none once the address is reissued")
+			THEN("it still names none once the slot is reissued")
 			{
 				// This is the part the sweep could not have given: a reused
-				// descriptor address would have satisfied a raw pointer, and
-				// every reader of this field writes the snooped output
-				// straight into whatever it names.
+				// descriptor slot would have satisfied an index-only reference,
+				// and every reader of this field writes the snooped output
+				// straight into whatever it names. SlotCount holding steady is
+				// what proves the freed slot really was handed back out.
+				std::size_t slotsBefore = descriptorHandles.SlotCount();
+
 				DESCRIPTOR_DATA *newcomer = new_descriptor();
 
-				REQUIRE(newcomer == snooper);
+				REQUIRE(descriptorHandles.SlotCount() == slotsBefore);
 				REQUIRE(SnoopedBy(watched) != newcomer);
 
 				free_descriptor(newcomer);

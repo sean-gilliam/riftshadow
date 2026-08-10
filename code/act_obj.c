@@ -103,7 +103,7 @@ bool check_arms(CHAR_DATA *ch, OBJ_DATA *obj)
 
 bool can_loot(CHAR_DATA *ch, OBJ_DATA *obj)
 {
-	CHAR_DATA *owner, *wch;
+	CHAR_DATA *owner;
 
 	if (obj->item_type == ITEM_CORPSE_PC
 		&& (!is_npc(ch) || is_affected_by(ch, AFF_CHARM)))
@@ -138,8 +138,10 @@ bool can_loot(CHAR_DATA *ch, OBJ_DATA *obj)
 	}
 
 	owner = nullptr;
-	for (wch = char_list; wch != nullptr; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		if (!is_npc(wch) && obj->owner && !str_cmp(wch->true_name, obj->owner))
 			owner = wch;
 	}
@@ -4490,8 +4492,10 @@ void do_embalm(CHAR_DATA *ch, char *argument)
 
 void cabal_shudder(int cabal, bool itemloss)
 {
-	for (CHAR_DATA *ch = char_list; ch != nullptr; ch = ch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *ch = walk.Current();
+
 		if (ch->cabal == cabal)
 		{
 			if (IS_SET(ch->comm, COMM_ANSI) && itemloss)
@@ -4515,10 +4519,15 @@ bool cabal_down_new(CHAR_DATA *ch, int cabal, bool show)
 	bool is_down= false;
 	int objvnum = cabal_table[ch->cabal].item_vnum;
 
-	for (obj = object_list; obj != nullptr; obj = obj->next)
+	obj = nullptr;
+
+	for (auto &owned : object_list)
 	{
-		if (obj->pIndexData->vnum == objvnum)
+		if (owned->pIndexData->vnum == objvnum)
+		{
+			obj = owned.get();
 			break;
+		}
 	}
 
 	CHAR_DATA *carrier = obj != nullptr ? Deref(obj->carried_by) : nullptr;
@@ -4937,8 +4946,10 @@ void save_cabal_items(void)
 		if (vnum == 0)
 			continue;
 
-		for (obj = object_list; obj != nullptr; obj = obj->next)
+		for (auto &owned : object_list)
 		{
+			obj = owned.get();
+
 			if (obj->pIndexData->vnum == vnum)
 			{
 				CHAR_DATA *carrier = Deref(obj->carried_by);

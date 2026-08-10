@@ -192,8 +192,10 @@ void wiznet(char *string, CHAR_DATA *ch, OBJ_DATA *obj, long flag, long flag_ski
 {
 	char str[MAX_STRING_LENGTH];
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING
@@ -1035,7 +1037,6 @@ void do_deny(CHAR_DATA *ch, char *argument)
 void do_disconnect(CHAR_DATA *ch, char *argument)
 {
 	char arg[MAX_INPUT_LENGTH];
-	DESCRIPTOR_DATA *d;
 	CHAR_DATA *victim;
 
 	one_argument(argument, arg);
@@ -1049,8 +1050,10 @@ void do_disconnect(CHAR_DATA *ch, char *argument)
 	if (is_number(arg))
 	{
 		int desc = atoi(arg);
-		for (d = descriptor_list; d != nullptr; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			if (d->descriptor == desc)
 			{
 				close_socket(d);
@@ -1080,8 +1083,10 @@ void do_disconnect(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d == Deref(victim->desc))
 		{
 			close_socket(d);
@@ -1154,7 +1159,6 @@ void do_pardon(CHAR_DATA *ch, char *argument)
 
 void do_echo(CHAR_DATA *ch, char *argument)
 {
-	DESCRIPTOR_DATA *d;
 	char buffer[MAX_STRING_LENGTH * 2];
 
 	if (argument[0] == '\0')
@@ -1163,8 +1167,10 @@ void do_echo(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING)
@@ -1185,7 +1191,6 @@ void do_echo(CHAR_DATA *ch, char *argument)
 
 void do_immecho(CHAR_DATA *ch, char *argument)
 {
-	DESCRIPTOR_DATA *d;
 	char buffer[MAX_STRING_LENGTH * 2];
 
 	if (argument[0] == '\0')
@@ -1194,8 +1199,10 @@ void do_immecho(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING && (wch->level > 51))
@@ -1209,7 +1216,6 @@ void do_immecho(CHAR_DATA *ch, char *argument)
 
 void do_recho(CHAR_DATA *ch, char *argument)
 {
-	DESCRIPTOR_DATA *d;
 	char buffer[MAX_STRING_LENGTH * 2];
 
 	if (argument[0] == '\0')
@@ -1218,8 +1224,10 @@ void do_recho(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING && wch->in_room == ch->in_room)
@@ -1238,7 +1246,6 @@ void do_recho(CHAR_DATA *ch, char *argument)
 void do_zecho(CHAR_DATA *ch, char *argument)
 {
 	char buffer[MAX_STRING_LENGTH * 2];
-	DESCRIPTOR_DATA *d;
 
 	if (argument[0] == '\0')
 	{
@@ -1246,8 +1253,10 @@ void do_zecho(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING
@@ -1327,7 +1336,6 @@ void do_transfer(CHAR_DATA *ch, char *argument)
 	char arg1[MAX_INPUT_LENGTH];
 	char arg2[MAX_INPUT_LENGTH];
 	ROOM_INDEX_DATA *location;
-	DESCRIPTOR_DATA *d;
 	CHAR_DATA *victim;
 
 	argument = one_argument(argument, arg1);
@@ -1341,8 +1349,10 @@ void do_transfer(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(arg1, "all"))
 	{
-		for (d = descriptor_list; d != nullptr; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			CHAR_DATA *wch = Deref(d->character);
 
 			if (d->connected == CON_PLAYING
@@ -1435,7 +1445,6 @@ void do_at(CHAR_DATA *ch, char *argument)
 	// one that destroys this object. A handle that outlives what it names simply
 	// stops resolving, where the pointer this replaced would have dangled.
 	Handle<OBJ_DATA> on;
-	CHAR_DATA *wch;
 
 	argument = one_argument(argument, arg);
 
@@ -1476,8 +1485,10 @@ void do_at(CHAR_DATA *ch, char *argument)
 	 * See if 'ch' still exists before continuing!
 	 * Handles 'at XXXX quit' case.
 	 */
-	for (wch = char_list; wch != nullptr; wch = wch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *wch = walk.Current();
+
 		if (wch == ch)
 		{
 			char_from_room(ch);
@@ -3273,8 +3284,10 @@ void do_owhere(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (obj = object_list; obj != nullptr; obj = obj->next)
+	for (auto &owned : object_list)
 	{
+		obj = owned.get();
+
 		if (!can_see_obj(ch, obj) || !is_name(argument, obj->name) || ch->level < obj->level)
 			continue;
 
@@ -3332,12 +3345,13 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 
 	if (argument[0] == '\0')
 	{
-		DESCRIPTOR_DATA *d;
 
 		/* show characters logged */
 
-		for (d = descriptor_list; d != nullptr; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			victim = Deref(d->character);
 
 			if (victim != nullptr
@@ -3378,8 +3392,10 @@ void do_mwhere(CHAR_DATA *ch, char *argument)
 
 	found = false;
 
-	for (victim = char_list; victim != nullptr; victim = victim->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *victim = walk.Current();
+
 		if (victim->in_room != nullptr && can_see(ch, victim) && is_name(argument, victim->name))
 		{
 			found = true;
@@ -3410,7 +3426,6 @@ void do_reboo(CHAR_DATA *ch, char *argument)
 
 void reboot_now(CHAR_DATA *ch)
 {
-	DESCRIPTOR_DATA *d, *d_next;
 	CHAR_DATA *vch;
 
 	/*
@@ -3451,9 +3466,11 @@ void reboot_now(CHAR_DATA *ch)
 	do_force(ch, "all save");
 	do_echo(ch, "*** REBOOTING NOW ***");
 
-	for (d = descriptor_list; d != nullptr; d = d_next)
+	// Closes every connection in the list as it goes, so the walk has to be one
+	// extraction can steer.
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
-		d_next = d->next;
+		DESCRIPTOR_DATA *d = walk.Current();
 		CHAR_DATA *original = Deref(d->original);
 
 		vch = original ? original : Deref(d->character);
@@ -3627,8 +3644,10 @@ void do_snoop(CHAR_DATA *ch, char *argument)
 
 		// A game rule, not lifetime: "snoop self" means "drop every snoop I am
 		// running", and nobody is leaving the world.
-		for (d = descriptor_list; d != nullptr; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			if (Deref(d->snoop_by) == Deref(ch->desc))
 				d->snoop_by = nullptr;
 		}
@@ -4310,7 +4329,6 @@ void do_restore(CHAR_DATA *ch, char *argument)
 	char arg[MAX_INPUT_LENGTH], buf[MAX_STRING_LENGTH];
 	CHAR_DATA *victim;
 	CHAR_DATA *vch;
-	DESCRIPTOR_DATA *d;
 
 	argument = one_argument(argument, arg);
 
@@ -4347,8 +4365,10 @@ void do_restore(CHAR_DATA *ch, char *argument)
 	{
 		/* cure all */
 
-		for (d = descriptor_list; d != nullptr; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			victim = Deref(d->character);
 
 			if (victim == nullptr || is_npc(victim))
@@ -5850,7 +5870,6 @@ void do_sockets(CHAR_DATA *ch, char *argument)
 	char buf[2 * MAX_STRING_LENGTH];
 	char buf2[MAX_STRING_LENGTH];
 	char arg[MAX_INPUT_LENGTH];
-	DESCRIPTOR_DATA *d;
 	int count;
 	bool bDis = false; // displinary
 
@@ -5862,8 +5881,10 @@ void do_sockets(CHAR_DATA *ch, char *argument)
 
 	one_argument(argument, arg);
 
-	for (d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 		CHAR_DATA *original = Deref(d->original);
 
@@ -5950,14 +5971,15 @@ void do_multicheck(CHAR_DATA *ch, char *argument)
 {
 	char buf[2 * MAX_STRING_LENGTH];
 	char buf2[MAX_STRING_LENGTH];
-	DESCRIPTOR_DATA *d;
 	int count = 0, i = 0, j = 0;
 	MULTDATA CHARLIST[80];
 
 	buf[0] = '\0';
 
-	for (d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (wch != nullptr && can_see(ch, wch))
@@ -6068,7 +6090,6 @@ void do_lagout(CHAR_DATA *ch, char *argument)
  */
 void do_force(CHAR_DATA *ch, char *argument)
 {
-	CHAR_DATA *vch, *vch_next;
 	char buf[MAX_STRING_LENGTH];
 	char arg[MAX_INPUT_LENGTH];
 	char arg2[MAX_INPUT_LENGTH];
@@ -6099,9 +6120,9 @@ void do_force(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		for (vch = char_list; vch != nullptr; vch = vch_next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
-			vch_next = vch->next;
+			CHAR_DATA *vch = walk.Current();
 
 			if (!is_npc(vch) && get_trust(vch) < get_trust(ch))
 			{
@@ -6121,9 +6142,9 @@ void do_force(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		for (vch = char_list; vch != nullptr; vch = vch_next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
-			vch_next = vch->next;
+			CHAR_DATA *vch = walk.Current();
 
 			if (!is_npc(vch) && get_trust(vch) < get_trust(ch) && vch->level < LEVEL_HERO)
 			{
@@ -6140,9 +6161,9 @@ void do_force(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		for (vch = char_list; vch != nullptr; vch = vch_next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
-			vch_next = vch->next;
+			CHAR_DATA *vch = walk.Current();
 
 			if (!is_npc(vch) && get_trust(vch) < get_trust(ch) && vch->level >= LEVEL_HERO)
 			{
@@ -7928,7 +7949,6 @@ void do_racedump(CHAR_DATA *ch, char *argument)
 void do_memtest(CHAR_DATA *ch, char *argument)
 {
 	char buf[MSL];
-	CHAR_DATA *qch;
 	argument = one_argument(argument, buf);
 	RS.Queue.AddToQueue(6, "do_memtest", "do_bash_queue", do_bash_queue, ch, "Calenduil");
 	return;
@@ -7945,31 +7965,35 @@ void do_memtest(CHAR_DATA *ch, char *argument)
 	return;
 	if(!str_cmp(buf,"dammod"))
 	{
-		for(qch = char_list; qch; qch = qch->next)
-			if(is_npc(qch) && qch->pIndexData->vnum == 3001)
-				qch->dam_mod = atoi(argument);
+		for (auto &owned : char_list)
+			if(is_npc(owned.get()) && owned->pIndexData->vnum == 3001)
+				owned->dam_mod = atoi(argument);
 		send_to_char("Dammod changed.\n\r",ch);
 	}
 	if(!str_cmp(buf,"hp"))
 	{
-		for(qch = char_list; qch; qch = qch->next)
-			if(is_npc(qch) && qch->pIndexData->vnum == 3001)
-				qch->max_hit = std::max(qch->max_hit - atoi(argument), 100);
+		for (auto &owned : char_list)
+			if(is_npc(owned.get()) && owned->pIndexData->vnum == 3001)
+				owned->max_hit = std::max(owned->max_hit - atoi(argument), 100);
 		send_to_char("Maxhit changed.\n\r",ch);
 	}
 	if(!str_cmp(buf,"begin"))
 	{
-		for(qch = char_list; qch; qch = qch->next)
-			if(is_npc(qch) && qch->pIndexData->vnum == 3001 && !is_affected_by(qch, AFF_DETECT_MAGIC))
-				SET_BIT(qch->affected_by, AFF_DETECT_MAGIC);
+		for (auto &owned : char_list)
+			if(is_npc(owned.get()) && owned->pIndexData->vnum == 3001 && !is_affected_by(owned.get(), AFF_DETECT_MAGIC))
+				SET_BIT(owned->affected_by, AFF_DETECT_MAGIC);
 		send_to_char("It HAS BEGUN!\n\r",ch);
 	}
 	if(!str_cmp(buf,"end"))
 	{
-		for(qch = char_list; qch; qch = qch->next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
+		{
+			CHAR_DATA *qch = walk.Current();
+
 			if(is_npc(qch) && qch->pIndexData->vnum == 3001 && qch->in_room->vnum > 2399 &&
 			   qch->in_room->vnum < 2801)
 				extract_char(qch, true);
+		}
 		send_to_char("It has.. ENDED!\n\r",ch);
 	}
 }

@@ -39,9 +39,6 @@
 #include "entity/fwd.h"
 
 /* externals for counting purposes */
-extern DESCRIPTOR_DATA *descriptor_free;
-extern OBJ_DATA *obj_free;
-extern CHAR_DATA *char_free;
 
 
 /* stuff for providing a crash-proof buffer */
@@ -72,8 +69,6 @@ void free_race_data(RACE_DATA *race_specs);
 /* apply — value type owned by parents in std::list; see entity/affect_data.h */
 TRAP_DATA *new_trap(void);
 void free_trap(TRAP_DATA *trap);
-RUNE_DATA *new_rune(void);
-void free_rune(RUNE_DATA *rune);
 /* object recycling */
 OBJ_DATA *new_obj(void);
 void free_obj(OBJ_DATA *obj);
@@ -81,8 +76,6 @@ void free_obj(OBJ_DATA *obj);
 CHAR_DATA *new_char(void);
 void free_char(CHAR_DATA *ch);
 std::unique_ptr<PC_DATA> new_pcdata(void);
-OLD_CHAR *new_oldchar(void);
-void free_oldchar(OLD_CHAR *old);
 /* mob id procedures */
 long get_pc_id(void);
 long get_mob_id(void);

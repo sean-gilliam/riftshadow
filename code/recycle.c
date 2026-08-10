@@ -57,59 +57,51 @@
 /* buffer sizes */
 const int buf_size[MAX_BUF_LIST] = {16, 32, 64, 128, 256, 1024, 2048, 4096, 8192, 16384};
 
-DESCRIPTOR_DATA *descriptor_free;
-RUNE_DATA *rune_free;
-OBJ_DATA *obj_free;
-CHAR_DATA *char_free;
-OLD_CHAR *oldtype_free;
 
 long last_pc_id;
 long last_mob_id;
 
-/* stuff for recycling descriptors */
 DESCRIPTOR_DATA *new_descriptor(void)
 {
-	static DESCRIPTOR_DATA d_zero;
-	DESCRIPTOR_DATA *d;
+	// The parentheses matter: descriptor_data has no user-provided constructor,
+	// so value-initialization zeroes every POD member before the implicit one
+	// runs. That is what `*d = d_zero` used to do.
+	//
+	// The descriptor is not on descriptor_list yet. init_descriptor links it
+	// once it has survived the ban checks, and the test fixtures never link
+	// theirs.
+	DESCRIPTOR_DATA *d = new DESCRIPTOR_DATA();
 
-	if (descriptor_free == nullptr)
-		d = new DESCRIPTOR_DATA;
-	else
-	{
-		d = descriptor_free;
-		descriptor_free = descriptor_free->next;
-	}
-
-	*d = d_zero;
-
-	// After the reset, which zeroes the old handle along with everything else.
 	d->self = descriptorHandles.Add(d);
 
 	return d;
 }
 
+descriptor_data::~descriptor_data()
+{
+	free_pstring(host);
+
+	if (outbuf)
+		delete[] outbuf;
+
+	// Expires every handle to this connection, which is what makes ch->desc and
+	// another descriptor's snoop_by read as nothing from here on.
+	descriptorHandles.Remove(self);
+}
+
+/// Destroys a descriptor that never made it onto descriptor_list. The list owns
+/// the ones that did, and close_socket erasing the node is what destroys those.
+/// @param d The descriptor to destroy.
 void free_descriptor(DESCRIPTOR_DATA *d)
 {
 	// The slot map answers "is this a live connection this module handed out",
 	// which is what the old `valid` bool was for and one thing more: a
 	// descriptor that was never registered has a null handle, so a stack-built
-	// one cannot be pushed onto the free list by mistake.
+	// one cannot be deleted by mistake.
 	if (d == nullptr || Deref(d->self) != d)
 		return;
 
-	free_pstring(d->host);
-
-	if (d->outbuf)
-		delete[] d->outbuf;
-
-	// Expires every handle to this connection. Must happen before it goes on
-	// the free list, since new_descriptor can hand the same address straight
-	// back out.
-	descriptorHandles.Remove(d->self);
-	d->self = nullptr;
-
-	d->next = descriptor_free;
-	descriptor_free = d;
+	delete d;
 }
 
 /* Trophy list elements own their victname string (rule-of-5). */
@@ -374,79 +366,48 @@ void free_trap(TRAP_DATA *trap)
 	delete trap;
 }
 
-RUNE_DATA *new_rune(void)
-{
-	static RUNE_DATA rune_zero;
-	RUNE_DATA *rune;
-
-	if (rune_free == nullptr)
-	{
-		rune = new RUNE_DATA;
-	}
-	else
-	{
-		rune = rune_free;
-		rune_free = rune->next;
-	}
-
-	*rune = rune_zero;
-	return rune;
-}
-
-void free_rune(RUNE_DATA *rune)
-{
-	rune->next = rune_free;
-	rune_free = rune;
-}
-
 /* stuff for recycling objects */
 
 OBJ_DATA *new_obj(void)
 {
-	static OBJ_DATA obj_zero;
-	OBJ_DATA *obj;
+	// The parentheses matter: obj_data has no user-provided constructor, so
+	// value-initialization zeroes every POD member before the implicit one runs.
+	// That is what `*obj = obj_zero` used to do.
+	//
+	// The object is not on object_list yet. create_object and fread_obj link it
+	// once they have filled it in, and the test fixtures never link theirs.
+	OBJ_DATA *obj = new OBJ_DATA();
 
-	if (obj_free == nullptr)
-	{
-		obj = new OBJ_DATA;
-	}
-	else
-	{
-		obj = obj_free;
-		obj_free = obj_free->next;
-	}
-
-	*obj = obj_zero;
-
-	// After the reset, which zeroes the old handle along with everything else.
 	obj->self = objectHandles.Add(obj);
 
 	return obj;
 }
 
+obj_data::~obj_data()
+{
+	// affected/charaffs/extra_descr/apply are std::lists of value types and
+	// destruct themselves; the obj owns its charaffs and apply copies, which were
+	// once shared with the index.
+
+	free_pstring(name);
+	free_pstring(description);
+	free_pstring(short_descr);
+
+	// free_pstring( owner );
+
+	// Expires every handle to this object.
+	objectHandles.Remove(self);
+}
+
+/// Destroys an object that never made it onto object_list. The list owns the
+/// ones that did, and extract_obj erasing the node is what destroys those.
+/// @param obj The object to destroy.
 void free_obj(OBJ_DATA *obj)
 {
 	if (obj == nullptr || Deref(obj->self) != obj)
 		return;
 
-	obj->affected.clear();
-	obj->charaffs.clear();	// obj owns its charaffs copy now (was shared with the index)
-	obj->extra_descr.clear();
-	obj->apply.clear();		// obj owns its apply copy now (was shared with the index)
-
-	free_pstring(obj->name);
-	free_pstring(obj->description);
-	free_pstring(obj->short_descr);
-
-	// free_pstring( obj->owner     );
-
-	// Expires every handle to this object. Must happen before it goes on the
-	// free list, since new_obj can hand the same address straight back out.
-	objectHandles.Remove(obj->self);
-	obj->self = nullptr;
-
-	obj->next = obj_free;
-	obj_free = obj;
+	delete obj;
 }
 
 /* stuff for recycling characters */
@@ -456,25 +417,15 @@ CHAR_DATA *new_char(void)
 	CHAR_DATA *ch;
 	int i;
 
-	if (char_free == nullptr)
-	{
-		ch = new CHAR_DATA;
+	// The parentheses matter. char_data has no user-provided constructor, so
+	// value-initialization zeroes every POD member before the implicit one
+	// runs. That is what `*ch = CHAR_DATA()` used to do to a recycled struct.
+	//
+	// The character is not on char_list yet. create_mobile links it, and the
+	// login hands it over at CON_READ_MOTD once the player is really playing.
+	// A character loaded for the login prompt is never linked at all.
+	ch = new CHAR_DATA();
 
-		// if (bDebug)
-		// 	RS.Logger.Debug("Char free is null.  . . . . !");
-	}
-	else
-	{
-		ch = char_free;
-		char_free = char_free->next;
-	}
-
-	// Reset to a pristine char. A unique_ptr member rules out the old
-	// `*ch = ch_zero` copy-assign; move-assigning a value-initialized
-	// temporary zeroes the PODs and frees/clears the owned members.
-	*ch = CHAR_DATA();
-
-	// After the reset, which zeroes the old handle along with everything else.
 	ch->self = charHandles.Add(ch);
 
 	ch->name = &str_empty[0];
@@ -519,53 +470,83 @@ CHAR_DATA *new_char(void)
 	return ch;
 }
 
-void free_char(CHAR_DATA *ch)
+char_data::~char_data()
 {
 	OBJ_DATA *obj;
 	OBJ_DATA *obj_next;
 
-	if (ch == nullptr || Deref(ch->self) != ch)
+	// The guard free_char carried, and it has to stay here rather than move to
+	// the callers. It answers "is this a character this module handed out",
+	// which is what decides whether the strings below are owned at all. The
+	// test fixtures build characters directly and point `name` at string
+	// literals, so running this body over one of those would free a literal.
+	if (Deref(self) != this)
 		return;
 
-	if (is_npc(ch))
+	if (is_npc(this))
 		mobile_count--;
 
-	for (obj = ch->carrying; obj != nullptr; obj = obj_next)
+	for (obj = carrying; obj != nullptr; obj = obj_next)
 	{
 		obj_next = obj->next_content;
 		extract_obj(obj);
 	}
 
-	for (auto it = ch->affected.begin(); it != ch->affected.end(); )
+	for (auto it = affected.begin(); it != affected.end(); )
 	{
 		auto next = std::next(it);
 		it->pulse_fun = nullptr;
 		it->tick_fun = nullptr;
 		it->end_fun = nullptr;
-		affect_remove(ch, &*it);
+		affect_remove(this, &*it);
 		it = next;
 	}
 
-	ch->memory.clear();
+	memory.clear();
 
-	free_pstring(ch->name);
-	free_pstring(ch->short_descr);
-	free_pstring(ch->long_descr);
-	free_pstring(ch->true_name);
-	free_pstring(ch->description);
-	free_pstring(ch->prompt);
-	free_pstring(ch->prefix);
+	free_pstring(name);
+	free_pstring(short_descr);
+	free_pstring(long_descr);
+	free_pstring(true_name);
+	free_pstring(description);
+	free_pstring(prompt);
+	free_pstring(prefix);
 
-	ch->pcdata.reset();
-	ch->gen_data.reset();
+	// pcdata and gen_data are unique_ptrs and destruct themselves.
 
-	// Expires every handle to this character. Must happen before it goes on the
-	// free list, since new_char can hand the same address straight back out.
-	charHandles.Remove(ch->self);
-	ch->self = nullptr;
+	// Expires every handle to this character, which is what makes d->character,
+	// ch->master and the rest read as nothing from here on.
+	charHandles.Remove(self);
+}
 
-	ch->next = char_free;
-	char_free = ch;
+/// Destroys a character. The list owns the ones that were linked, so those are
+/// destroyed by erasing the node. The login builds characters that never make it
+/// onto char_list, and those are deleted outright.
+///
+/// Unlike free_obj and free_descriptor, this handles both cases rather than
+/// warning on the linked one. Eight of its nine call sites are login teardown
+/// paths that free a character before CON_READ_MOTD ever links it, and the ninth
+/// is extract_char. Keeping the linked case correct means a caller cannot arm a
+/// double free by freeing a character that turned out to be in the world.
+/// @param ch The character to destroy.
+void free_char(CHAR_DATA *ch)
+{
+	// A character that was never registered has a null handle, so a stack-built
+	// one cannot be destroyed by mistake.
+	if (ch == nullptr || Deref(ch->self) != ch)
+		return;
+
+	if (ch->globalNode != CharacterList::iterator{})
+	{
+		// Advance the walks before the erase, while the node still links to its
+		// successor. The erase is also the destruction point, so this is the
+		// last moment `ch` is readable.
+		OwningCursorRegistry<CHAR_DATA>::Advance(ch->globalNode);
+		char_list.erase(ch->globalNode);
+		return;
+	}
+
+	delete ch;
 }
 
 std::unique_ptr<PC_DATA> new_pcdata(void)
@@ -577,34 +558,12 @@ std::unique_ptr<PC_DATA> new_pcdata(void)
 	return pcdata;
 }
 
-OLD_CHAR *new_oldchar(void)
+old_char::~old_char()
 {
-	static OLD_CHAR oldtype_zero;
-	OLD_CHAR *oldtype;
-
-	if (oldtype_free == nullptr)
-	{
-		oldtype = new OLD_CHAR;
-	}
-	else
-	{
-		oldtype = oldtype_free;
-		oldtype_free = oldtype_free->next;
-	}
-
-	*oldtype = oldtype_zero;
-	return oldtype;
-}
-
-void free_oldchar(OLD_CHAR *old)
-{
-	free_pstring(old->name);
-	free_pstring(old->short_descr);
-	free_pstring(old->long_descr);
-	free_pstring(old->description);
-
-	old->next = oldtype_free;
-	oldtype_free = old;
+	free_pstring(name);
+	free_pstring(short_descr);
+	free_pstring(long_descr);
+	free_pstring(description);
 }
 
 pc_data::~pc_data()

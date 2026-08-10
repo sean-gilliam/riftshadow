@@ -712,8 +712,10 @@ void spell_hire_mercenary(int sn, int level, CHAR_DATA *ch, void *vo, int target
 		return;
 	}
 
-	for (merc = char_list; merc != nullptr; merc = merc->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *merc = walk.Current();
+
 		if (is_npc(merc)
 			&& merc->pIndexData->vnum >= MOB_VNUM_WARRIOR_MERCENARY
 			&& merc->pIndexData->vnum <= MOB_VNUM_SHAMAN_MERCENARY

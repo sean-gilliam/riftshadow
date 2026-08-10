@@ -164,10 +164,11 @@ void aprog_set(AREA_DATA *area, const char *progtype, const char *name)
 
 void tick_prog_academy_reset(AREA_DATA *area)
 {
-	CHAR_DATA *ch;
 
-	for (ch = char_list; ch; ch = ch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *ch = walk.Current();
+
 		if (!is_npc(ch) && ch->in_room->area == area && ch->level > 10 && !Deref(ch->fighting) && !is_immortal(ch))
 		{
 			char buf[MSL];
@@ -359,15 +360,19 @@ void reset_prog_cimsewer(AREA_DATA *area)
 
 void pulse_prog_ruins_shark(AREA_DATA *area)
 {
-	DESCRIPTOR_DATA *d;
 	CHAR_DATA *shark, *ch = nullptr;
 	int count = 0;
 
 	if (area->nplayer == 0)
 		return;
 
-	for (shark = char_list; shark; shark = shark->next)
+	// The successor has to be read before the body: extract_char frees shark, and
+	// the loop advances through it.
+
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *shark = walk.Current();
+
 		if (!is_npc(shark))
 			continue;
 
@@ -383,8 +388,10 @@ void pulse_prog_ruins_shark(AREA_DATA *area)
 	if (count > 5)
 		return;
 
-	for (d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d->connected == CON_PLAYING
 			&& Deref(d->character)->in_room != nullptr
 			&& Deref(d->character)->in_room->area == area

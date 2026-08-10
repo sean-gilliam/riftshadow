@@ -403,14 +403,18 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 			auto gravroom = to_room;
 
-			auto well = object_list;
-			for (; well; well = well->next)
+			OBJ_DATA *well = nullptr;
+
+			for (auto &owned : object_list)
 			{
-				if (well->item_type == ITEM_GRAVITYWELL && well->in_room && well->in_room->area == in_room->area)
+				if (owned->item_type == ITEM_GRAVITYWELL && owned->in_room && owned->in_room->area == in_room->area)
+				{
+					well = owned.get();
 					break;
+				}
 			}
 
-			if (!well)
+			if (well == nullptr)
 				return;
 
 			for (auto distance = 0; distance <= get_grav_distance(well); distance++)
@@ -600,8 +604,10 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 
 	if (in_room->area != to_room->area)
 	{
-		for (auto d = descriptor_list; d; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr
@@ -3466,8 +3472,10 @@ void do_bear_call(CHAR_DATA *ch, char *argument)
 	}
 
 	auto found = false;
-	for (auto check = char_list; check != nullptr; check = check->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *check = walk.Current();
+
 		if (Deref(check->master) == ch && check->pIndexData->vnum == MOB_VNUM_BEAR)
 			found = true;
 	}
@@ -3607,17 +3615,23 @@ void do_animal_call(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	auto mob = char_list;
-	for (; mob != nullptr; mob = mob->next)
+	// A pure search, so a plain walk is enough. The result has to outlive the
+	// loop, which is why the match is captured rather than left in the cursor.
+	CHAR_DATA *mob = nullptr;
+
+	for (auto &owned : char_list)
 	{
-		if (is_npc(mob)
-			&& is_affected_by(mob, AFF_CHARM)
-			&& (Deref(mob->master) == ch)
-			&& ((mob->pIndexData->vnum == MOB_VNUM_FALCON)
-				|| (mob->pIndexData->vnum == MOB_VNUM_WOLF)
-				|| (mob->pIndexData->vnum == MOB_VNUM_BEAR)
-				|| (mob->pIndexData->vnum == MOB_VNUM_LION)))
+		CHAR_DATA *candidate = owned.get();
+
+		if (is_npc(candidate)
+			&& is_affected_by(candidate, AFF_CHARM)
+			&& (Deref(candidate->master) == ch)
+			&& ((candidate->pIndexData->vnum == MOB_VNUM_FALCON)
+				|| (candidate->pIndexData->vnum == MOB_VNUM_WOLF)
+				|| (candidate->pIndexData->vnum == MOB_VNUM_BEAR)
+				|| (candidate->pIndexData->vnum == MOB_VNUM_LION)))
 		{
+			mob = candidate;
 			break;
 		}
 	}

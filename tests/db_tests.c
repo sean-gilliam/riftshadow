@@ -1,5 +1,7 @@
+#include <cstring>
+
 #include "catch.hpp"
-#include "../code/db.c"
+#include "../code/db.h"
 
 // TEST_CASE("Test capitalization", "[string]" )
 // {
@@ -119,13 +121,13 @@ SCENARIO("Testing random number generator", "[random_mm]")
 	{
 		WHEN("rgiState has not been initialized properly")
 		{
-			THEN("init_mm() should be called to ensure rgiState is not filled with zeros")
+			THEN("number_mm() should self-initialize instead of streaming zeros")
 			{
-				auto number = number_mm();
 				bool anyNonZero = false;
-				for(auto i = 0; i < std::size(rgiState); i++)
+
+				for (auto i = 0; i < 8; i++)
 				{
-					if(rgiState[i] != 0)
+					if (number_mm() != 0)
 					{
 						anyNonZero = true;
 						break;

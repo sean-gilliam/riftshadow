@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+#include <algorithm>
 #include "../merc.h"
 #include "chrono.h"
 #include "../magic.h"
@@ -75,12 +76,17 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	// finalises it, so it needs a lifetime of its own rather than any kind of
 	// scratch storage the next caller can reuse.
 	//
-	// new_rune gives it that lifetime, and draw_rune ends that lifetime on
-	// every path out. The one hole left is a queue entry cancelled rather than
-	// run (DeleteQueuedEventsInvolving, which extract_char calls for NPCs):
-	// that leaks the struct, because the queue cancels with a tombstone and has
-	// no hook to run on the way. A leaked rune is the better failure.
-	RUNE_DATA *rune = new_rune();
+	// The queue captures its arguments by value into a std::function, so it
+	// cannot hold a move-only type: ownership is released into it here and
+	// adopted back by draw_rune, whose signature takes the unique_ptr so that
+	// every path out of it frees by scope.
+	//
+	// The one hole left is a queue entry cancelled rather than run
+	// (DeleteQueuedEventsInvolving, which extract_char calls for NPCs): that
+	// leaks the struct, because the queue cancels with a tombstone and has no
+	// hook to run on the way. A leaked rune is the better failure and it is
+	// now a leak LeakSanitizer can see rather than an orphan on a free list.
+	auto rune = std::make_unique<RUNE_DATA>();
 
 	rune->level = level;
 	rune->placed_on = (ROOM_INDEX_DATA *)ch->in_room;
@@ -94,12 +100,10 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	rune->drawn_in = ch->in_room->vnum;
 	rune->function = activate_stasis_wall;
 
-	/*
-		this checks lose_conc and stuff before finalizing the rune,
-		usually make sure the lag on the rune
-		is at least as long as the lag on the draw_rune queue
-	*/
-	RS.Queue.AddToQueue(9, "spell_stasis_wall", "draw_rune_queue", draw_rune_queue, rune, ch);
+	// this checks lose_conc and stuff before finalizing the rune,
+	// usually make sure the lag on the rune is at least as long 
+	// as the lag on the draw_rune queue
+	RS.Queue.AddToQueue(9, "spell_stasis_wall", "draw_rune_queue", draw_rune_queue, rune.release(), ch);
 }
 
 bool trigger_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
@@ -122,7 +126,11 @@ bool trigger_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 
 bool activate_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 {
-	RUNE_DATA *rune = (RUNE_DATA *)vo, new_rune;
+	// Zero-initialized, like the sibling template in spell_stasis_wall: this sets
+	// nine of the twelve fields and apply_rune copies the whole struct, so
+	// leaving it default-initialized handed `extra`, `drawn_in` and
+	// `next_content` to the copy as indeterminate values.
+	RUNE_DATA *rune = (RUNE_DATA *)vo, new_rune = {};
 	CHAR_DATA *victim = (CHAR_DATA *)vo2, *ch = Deref(rune->owner);
 	int dir = reverse_d((int)*(int *)vo3);
 
@@ -157,28 +165,24 @@ bool activate_stasis_wall(void *vo, void *vo2, void *vo3, void *vo4)
 	return false;
 }
 
-// Consumes the rune spell_stasis_wall queued. Every path out of here frees it,
-// including the ones that decide the draw failed: the queue held the only
-// reference, and apply_rune takes a copy rather than the struct itself.
-void draw_rune(void *vo, void *vo2)
+// Consumes the rune spell_stasis_wall queued. Taking the unique_ptr by value is
+// the point: the queue held the only reference, so every path out of here has to
+// end the rune's life, and now the ones that decide the draw failed do it by
+// returning. apply_rune takes a copy rather than the struct itself.
+void draw_rune(std::unique_ptr<RUNE_DATA> rune)
 {
-	RUNE_DATA *rune = (RUNE_DATA *)vo;
 	CHAR_DATA *ch = Deref(rune->owner);
 
 	// Nine ticks pass between the queue entry being made and this running, and
 	// extract_char only cancels pending events for NPCs -- so the caster may
 	// simply be gone by now.
 	if (ch == nullptr)
-	{
-		free_rune(rune);
 		return;
-	}
 
 	if (ch->in_room->vnum != rune->drawn_in)
 	{
 		send_to_char("A backlash of energy whips through you as your uncompleted rune overloads!\n\r", ch);
 		damage_new(ch, ch, dice(rune->level, 4), TYPE_UNDEFINED, DAM_ENERGY, true, HIT_UNBLOCKABLE, 0, 1, "mana surge");
-		free_rune(rune);
 		return;
 	}
 
@@ -186,18 +190,20 @@ void draw_rune(void *vo, void *vo2)
 	{
 		act("The rune flares brightly before vanishing!", ch, 0, 0, TO_ROOM);
 		send_to_char("The improperly scribed rune flares brightly before vanishing!\n\r", ch);
-		free_rune(rune);
 		return;
 	}
 
 	act("The rune flares $t!", ch, skill_table[rune->type].msg_off, 0, TO_ALL);
-	apply_rune(rune);
-	free_rune(rune);
+	apply_rune(rune.get());
 }
 
+// The queue's entry point. `ch` is unused here but has to stay in the signature:
+// CQueue::GetCharacterData scrapes the argument list for CHAR_DATA pointers to
+// build the cancellation index, so dropping it would make this entry
+// uncancellable by DeleteQueuedEventsInvolving.
 void draw_rune_queue(RUNE_DATA *rune, CHAR_DATA *ch)
 {
-	draw_rune(rune, nullptr);
+	draw_rune(std::unique_ptr<RUNE_DATA>(rune));
 }
 
 void do_rune(CHAR_DATA *ch, char *argument)
@@ -436,9 +442,11 @@ void extract_rune(RUNE_DATA *rune)
 {
 	RUNE_DATA *rune_prev;
 
-	// Unlink from the container's chain. Every rune is on two lists and this is
-	// the one keyed by what it was placed on, so a rune that stays linked here
-	// after free_rune has recycled it is a chain find_rune will walk into.
+	// Unlink from the container's chain first. Every rune is on two lists, and
+	// erasing it from rune_list below destroys it. This has to happen while
+	// the node is still readable, or the chain find_rune walks is left pointing
+	// at freed memory. The ordering was load-bearing by accident before
+	// rune_list owned its runes; it is load-bearing on purpose now.
 	RUNE_DATA **head = rune_container_head(rune);
 
 	if (head != nullptr)
@@ -460,34 +468,26 @@ void extract_rune(RUNE_DATA *rune)
 		}
 	}
 
-	if (rune_list == rune)
-	{
-		rune_list = rune_list->next;
-	}
-	else
-	{
-		for (rune_prev = rune_list; rune_prev; rune_prev = rune_prev->next)
-		{
-			if (rune_prev->next == rune)
-			{
-				rune_prev->next = rune->next;
-				break;
-			}
-		}
-	}
+	// And this is the destruction point.
+	auto owned = std::find_if(rune_list.begin(), rune_list.end(),
+		[rune](const std::unique_ptr<RUNE_DATA> &candidate) { return candidate.get() == rune; });
 
-	free_rune(rune);
+	if (owned != rune_list.end())
+		rune_list.erase(owned);
 }
+
 void apply_rune(RUNE_DATA *rune)
 {
-	RUNE_DATA *rune_new;
 	OBJ_DATA *obj;
 	EXIT_DATA *pexit;
 	ROOM_INDEX_DATA *room;
-	rune_new = new_rune();
-	*rune_new = *rune;
-	rune_new->next = rune_list;
-	rune_list = rune_new;
+
+	// The caller's rune is a template it owns itself, often a stack struct,
+	// so the copy is what goes on the lists. push_front keeps the order the
+	// hand-rolled link had.
+	rune_list.push_front(std::make_unique<RUNE_DATA>(*rune));
+
+	RUNE_DATA *rune_new = rune_list.front().get();
 	rune_new->next_content = nullptr;
 
 	switch (rune_new->target_type)

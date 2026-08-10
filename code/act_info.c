@@ -2962,8 +2962,10 @@ void do_whois(CHAR_DATA *ch, char *argument)
 
 	BUFFER output;
 	auto found = false;
-	for (auto d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		char const *class_name;
 		char const *imm_lvl;
 
@@ -3309,8 +3311,10 @@ void do_who(CHAR_DATA *ch, char *argument)
 
 	auto nMatch = 0;
 	BUFFER output;
-	for (auto d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		/*
 		 * Check for match against restrictions.
 		 * Don't use trust as that exposes trusted mortals.
@@ -3513,8 +3517,10 @@ void do_count(CHAR_DATA *ch, char *argument)
 	auto not_seen = 0;
 	auto count = 0;
 
-	for (auto d = descriptor_list; d != nullptr; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		if (d->connected == CON_PLAYING)
 		{
 			if (can_see(ch, Deref(d->character)) && !is_switched(Deref(d->character)))
@@ -3712,8 +3718,10 @@ void do_where(CHAR_DATA *ch, char *argument)
 	{
 		send_to_char("Players near you:\n\r", ch);
 
-		for (auto d = descriptor_list; d; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr
@@ -3747,8 +3755,10 @@ void do_where(CHAR_DATA *ch, char *argument)
 	}
 	else if (!str_prefix(arg, "pk"))
 	{
-		for (auto d = descriptor_list; d; d = d->next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			auto victim = Deref(d->character);
 			if (d->connected == CON_PLAYING
 				&& victim != nullptr
@@ -3780,8 +3790,10 @@ void do_where(CHAR_DATA *ch, char *argument)
 	}
 	else
 	{
-		for (auto victim = char_list; victim != nullptr; victim = victim->next)
+		for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 		{
+			CHAR_DATA *victim = walk.Current();
+
 			if (victim->in_room != nullptr
 				&& (victim->in_room->area == ch->in_room->area
 					|| (is_adjacent_area(victim->in_room->area, ch->in_room->area) && is_immortal(ch)))
@@ -4911,8 +4923,10 @@ void do_records(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "Listing of current active players :\n\r");
 
 	auto count = 0;
-	for (auto victim = char_list; victim != nullptr; victim = victim->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *victim = walk.Current();
+
 		if (is_npc(victim))
 			continue;
 

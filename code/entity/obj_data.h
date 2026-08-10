@@ -2,6 +2,7 @@
 #define ENTITY_OBJ_DATA_H
 
 #include <list>
+#include <memory>
 
 #include "fwd.h"
 #include "limits.h"
@@ -13,13 +14,25 @@
 // One object.
 //
 
+/// The global object list owns every object in the world. Declared here rather
+/// than in db.h because an object caches its own node in it.
+using ObjectList = std::list<std::unique_ptr<OBJ_DATA>>;
+
 struct obj_data
 {
+	// Frees the owned strings and expires every handle to this object. Runs when
+	// object_list erases the node (which is how a real object dies) or when
+	// free_obj deletes an object that was never linked.
+	~obj_data();
+
 	// A handle naming this object, issued by new_obj and retired by free_obj.
 	// It is how another entity refers to this one without risking a pointer
 	// into a recycled slot; null for an object that never came from new_obj.
 	Handle<OBJ_DATA> self;
-	OBJ_DATA *next;
+	// This object's node in the global object list, valid while it is on it.
+	// Caching it is what makes extraction O(1) instead of a scan for the
+	// predecessor, and erasing it is what destroys the object.
+	ObjectList::iterator globalNode {};
 	OBJ_DATA *next_content;
 	OBJ_DATA *contains;
 	// The container this object sits inside, if any. Kept in step with in_room

@@ -1474,7 +1474,7 @@ void do_disguise(CHAR_DATA *ch, char *argument)
 
 	if (number_percent() < skill)
 	{
-		ch->pcdata->old = new_oldchar();
+		ch->pcdata->old = std::make_unique<OLD_CHAR>();
 		ch->pcdata->old->name = palloc_string(ch->true_name);
 		ch->pcdata->old->short_descr = palloc_string(ch->short_descr);
 		ch->pcdata->old->long_descr = palloc_string(ch->long_descr);
@@ -1551,8 +1551,7 @@ void disguise_remove(CHAR_DATA *ch)
 	free_pstring(ch->description);
 	ch->description = palloc_string(ch->pcdata->old->description);
 
-	free_oldchar(ch->pcdata->old);
-	ch->pcdata->old = nullptr;
+	ch->pcdata->old.reset();
 }
 
 void do_undisguise(CHAR_DATA *ch, char *argument)

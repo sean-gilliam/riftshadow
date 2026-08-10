@@ -23,18 +23,24 @@ void TestHelperSetupTrainer(CHAR_DATA *trainer, char *name = "trainer1")
 	memset(trainer->pIndexData->profs_taught, -1, sizeof(short) * MAX_PROFS_TAUGHT_BY_MOB);
 }
 
+/// Puts a fixture character on char_list so the code under test can find it
+/// through get_char_world and friends. Ownership moves to the list, exactly as
+/// it does at the real link sites, so cleanup goes through the list rather than
+/// deleting the character directly.
+void TestHelperLinkToCharList(CHAR_DATA *ch)
+{
+	char_list.push_front(std::unique_ptr<CHAR_DATA>(ch));
+	ch->globalNode = char_list.begin();
+}
+
 void TestHelperCleanupPlayerObject(CHAR_DATA *player)
 {
 	if (player == nullptr)
 		return;
 
-	if (Deref(player->desc) != nullptr)
-	{
-		if (Deref(player->desc)->outbuf != nullptr)
-			delete[] Deref(player->desc)->outbuf;
-		
-		delete Deref(player->desc);
-	}
+	// ~descriptor_data frees the output buffer and retires the handle, so this
+	// is one delete and not the hand-rolled teardown it used to be.
+	delete Deref(player->desc);
 
 	if(player->pIndexData != nullptr)
 	{
@@ -46,5 +52,11 @@ void TestHelperCleanupPlayerObject(CHAR_DATA *player)
 	if (player->in_room != nullptr)
 		delete player->in_room;
 
-	delete player;
+	// Same routing free_char uses. A character that was linked is owned by
+	// char_list, so erasing the node is what destroys it. One that was never
+	// linked is this helper's to delete.
+	if (player->globalNode != CharacterList::iterator{})
+		char_list.erase(player->globalNode);
+	else
+		delete player;
 }

@@ -23,15 +23,28 @@
 
 extern CProficiencies prof_none; //empty proficiencies for jackasses who are going to ref ch->Profs() without checking IS_NPC
 
+/// The global character list owns every character in the world. Declared here
+/// rather than in db.h because a character caches its own node in it.
+using CharacterList = std::list<std::unique_ptr<CHAR_DATA>>;
+
 class	char_data
 {
 public:
-	// A handle naming this character, issued by new_char and retired by
-	// free_char. It is how another entity refers to this one without risking a
-	// pointer into a recycled slot; null for a character that never came from
-	// new_char.
+	// Releases the carried objects and the affects, frees the owned strings and
+	// expires every handle to this character. Runs when char_list erases the
+	// node, which is how a real character dies, or when free_char destroys one
+	// that was never linked.
+	~char_data();
+
+	// A handle naming this character, issued by new_char and retired when the
+	// character is destroyed. It is how another entity refers to this one
+	// without risking a pointer into a recycled slot. Null for a character that
+	// never came from new_char.
 	Handle<CHAR_DATA> self;
-	CHAR_DATA *next;
+	// This character's node in the global character list, valid while it is on
+	// it. Caching it is what makes extraction O(1) instead of a scan for the
+	// predecessor, and erasing it is what destroys the character.
+	CharacterList::iterator globalNode {};
 	CHAR_DATA *next_in_room;
 	// The follower graph. All non-owning, and any of the three can be
 	// extracted independently of the others, so they are handles rather than

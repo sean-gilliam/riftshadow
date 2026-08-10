@@ -15,15 +15,17 @@
 //
 // RUNE_DATA, and the two lists every rune is on at once.
 //
-// apply_rune puts a rune on the global `rune_list` (via `next`) AND on a
-// per-container chain hanging off obj->rune / exit->rune / room->rune (via
-// `next_content`). update.c ticks runes off the global list and calls
+// apply_rune puts a rune on the global `rune_list`, which owns it, AND on a
+// non-owning per-container chain hanging off obj->rune / exit->rune / room->rune
+// (via `next_content`). update.c ticks runes off the global list and calls
 // extract_rune when one expires; find_rune walks the per-container chain to
 // decide whether entering a room or opening a door should trigger anything.
 //
-// So the global list decides *when* a rune fires and the container chain
-// decides *whether*, and extract_rune has to unlink from both. These scenarios
-// are about the container half, because that is the half it gets wrong.
+// So the global list decides *when* a rune fires and holds it alive, and the
+// container chain decides *whether*. extract_rune has to unlink from both, and
+// the container chain strictly first, since leaving rune_list destroys the rune.
+// These scenarios are about the container half, because that is the half it
+// gets wrong.
 //
 
 namespace
@@ -40,7 +42,7 @@ namespace
 		rune.owner = owner->self;
 	}
 
-	// apply_rune copies its argument into a fresh new_rune(), so the caller's
+	// apply_rune copies its argument into a rune rune_list owns, so the caller's
 	// struct is a template rather than the thing that ends up on the lists.
 	RUNE_DATA *PlaceRuneOnObj(OBJ_DATA *obj, int type, int trigger, CHAR_DATA *owner = nullptr)
 	{
@@ -60,15 +62,14 @@ namespace
 		temp.type = type;
 		temp.extra = 0;
 		temp.drawn_in = 0;
-		temp.next = nullptr;
 		temp.next_content = nullptr;
 		temp.end_fun = nullptr;
 
 		apply_rune(&temp);
 
 		// apply_rune pushes onto both heads, so the rune it just made is the
-		// head of the global list.
-		return rune_list;
+		// front of the global list.
+		return rune_list.front().get();
 	}
 
 	// The container chain as a list of rune `type`s, read the way find_rune
@@ -85,18 +86,13 @@ namespace
 
 	int GlobalListLength()
 	{
-		int count = 0;
-
-		for (RUNE_DATA *rune = rune_list; rune != nullptr; rune = rune->next)
-			count++;
-
-		return count;
+		return (int)rune_list.size();
 	}
 
 	void ClearRunes(OBJ_DATA *obj)
 	{
-		while (rune_list != nullptr)
-			extract_rune(rune_list);
+		while (!rune_list.empty())
+			extract_rune(rune_list.front().get());
 
 		obj->rune = nullptr;
 	}
@@ -227,9 +223,8 @@ SCENARIO("extracting the last rune leaves the container naming nothing", "[rune]
 
 			THEN("the object names no rune at all")
 			{
-				// free_rune pushes onto the rune free list, so a container left
-				// pointing at an extracted rune is pointing at something
-				// new_rune can hand straight back out.
+				// Leaving rune_list destroys the rune, so a container left pointing
+				// at an extracted one is pointing at freed memory.
 				REQUIRE(obj->rune == nullptr);
 				REQUIRE(GlobalListLength() == 0);
 			}
@@ -267,15 +262,22 @@ SCENARIO("a rune does not remember a caster who has left the world", "[rune]")
 				REQUIRE(RuneOwner(rune) == nullptr);
 			}
 
-			THEN("it still names nobody once the address is reissued")
+			THEN("it still names nobody once the slot is reissued")
 			{
 				// The damage this does is misattribution rather than a crash:
 				// the readers pass the owner to is_safe_new and damage_new, so
-				// a recycled address makes an unrelated character the author of
-				// a stasis wall they never cast.
+				// a recycled reference makes an unrelated character the author
+				// of a stasis wall they never cast.
+				//
+				// The slot rather than the address, because a destroyed
+				// character is really deleted now. SlotCount holding steady is
+				// what proves the freed slot really was handed back out, which
+				// is what keeps the assertion below from being trivially true.
+				std::size_t slotsBefore = charHandles.SlotCount();
+
 				CHAR_DATA *newcomer = new_char();
 
-				REQUIRE(newcomer == caster);
+				REQUIRE(charHandles.SlotCount() == slotsBefore);
 				REQUIRE(RuneOwner(rune) != newcomer);
 
 				free_char(newcomer);
@@ -327,32 +329,45 @@ SCENARIO("a recycled exit does not inherit the last one's rune", "[rune]")
 // A drawn rune waits nine ticks before draw_rune finalises it. It used to live
 // in the temp-struct pool, which is a bump allocator over a fixed buffer that
 // wraps without regard for outstanding pointers -- so the queue entry named
-// memory any other pool caller could take back. It comes from new_rune now, and
-// the queue owns it until draw_rune runs.
+// memory any other pool caller could take back. Ownership is now released into
+// the queue and adopted back by draw_rune, which takes a unique_ptr by value.
+//
+// That last part is why this scenario no longer asserts on the freeing. It used
+// to read `REQUIRE(new_rune() == drawn)` -- the free list handing the same
+// address back was the only observable proof that a bail-out path had not
+// stranded the struct. There is no free list to ask any more, and the property
+// it was testing is now enforced by the signature rather than at runtime: every
+// path out of draw_rune destroys the rune because the parameter owns it. A path
+// that failed to would not compile into a leak, it would not exist.
+//
+// What is still worth pinning is the game-visible half: a draw that bails must
+// not leave a rune applied. LeakSanitizer covers the other half.
 //
 
-SCENARIO("a drawn rune is returned to the recycler however the draw ends", "[rune]")
+SCENARIO("a draw that cannot complete applies nothing", "[rune]")
 {
 	GIVEN("a rune queued for drawing whose caster then leaves")
 	{
 		CHAR_DATA *caster = new_char();
-		RUNE_DATA *drawn = new_rune();
+		auto drawn = std::make_unique<RUNE_DATA>();
 
 		drawn->owner = caster->self;
 		drawn->drawn_in = 1;
 
 		free_char(caster);
 
+		REQUIRE(GlobalListLength() == 0);
+
 		WHEN("the draw comes due with nobody left to complete it")
 		{
-			draw_rune(drawn, nullptr);
+			draw_rune(std::move(drawn));
 
-			THEN("the rune is back on the free list rather than stranded")
+			THEN("the draw is abandoned rather than applied")
 			{
-				// The bail-out paths are the ones worth pinning: the queue held
-				// the only reference, so an early return that skips the free
-				// strands the struct for the rest of the run.
-				REQUIRE(new_rune() == drawn);
+				// The owner handle expired with the caster, so draw_rune takes
+				// its first bail-out path. Nothing reaches apply_rune, so
+				// rune_list -- which owns applied runes -- stays empty.
+				REQUIRE(GlobalListLength() == 0);
 			}
 		}
 	}

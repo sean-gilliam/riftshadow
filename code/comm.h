@@ -23,6 +23,8 @@
 
 #include "entity/fwd.h"
 #include "entity/limits.h"
+#include "entity/descriptor_data.h"	// DescriptorList: descriptor_list owns its connections
+#include "entity/list_cursor.h"		// walking descriptor_list while connections close
 #include "telnet.h"
 
 #define CHAR_WRAP			85
@@ -69,7 +71,10 @@
 	int	socket (int domain, int type, int protocol);
 #endif
 
-extern DESCRIPTOR_DATA *descriptor_list;
+// Owns every open connection. A descriptor is put here by init_descriptor once
+// it has survived the ban checks, and destroyed by close_socket erasing its
+// node. ch->desc and d->snoop_by name a connection without owning it.
+extern DescriptorList descriptor_list;
 extern bool merc_down;
 extern bool rebooting;
 extern int reboot_num;

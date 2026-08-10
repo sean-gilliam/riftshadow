@@ -58,6 +58,7 @@
 #include <algorithm>
 #include "merc.h"
 #include "entity/handles.h"
+#include "entity/list_cursor.h"
 #include "comm.h"
 #include "recycle.h"
 #include "tables.h"
@@ -96,8 +97,7 @@
 /*
  * Global variables.
  */
-DESCRIPTOR_DATA *descriptor_list; /* All open descriptors		*/
-DESCRIPTOR_DATA *d_next;		  /* Next descriptor in loop	*/
+DescriptorList descriptor_list;	/* All open descriptors		*/
 bool god;						  /* All new chars are gods!	*/
 bool merc_down;					  /* Shutdown					*/
 bool rebooting= false;
@@ -196,7 +196,6 @@ void game_loop_unix(int control)
 		fd_set in_set;
 		fd_set out_set;
 		fd_set exc_set;
-		DESCRIPTOR_DATA *d;
 		int maxdesc;
 
 #ifdef MALLOC_DEBUG
@@ -214,12 +213,13 @@ void game_loop_unix(int control)
 
 		maxdesc = control;
 
-		for (d = descriptor_list; d; d = d->next)
+		for (auto &owned : descriptor_list)
 		{
-			maxdesc = std::max(maxdesc, (int)d->descriptor);
-			FD_SET(d->descriptor, &in_set);
-			FD_SET(d->descriptor, &out_set);
-			FD_SET(d->descriptor, &exc_set);
+			// Nothing here can close a connection, so a plain walk is enough.
+			maxdesc = std::max(maxdesc, (int)owned->descriptor);
+			FD_SET(owned->descriptor, &in_set);
+			FD_SET(owned->descriptor, &out_set);
+			FD_SET(owned->descriptor, &exc_set);
 		}
 
 		if (select(maxdesc + 1, &in_set, &out_set, &exc_set, &null_time) < 0)
@@ -237,9 +237,9 @@ void game_loop_unix(int control)
 		/*
 		 * Kick out the freaky folks.
 		 */
-		for (d = descriptor_list; d != nullptr; d = d_next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
-			d_next = d->next;
+			DESCRIPTOR_DATA *d = walk.Current();
 
 			if (FD_ISSET(d->descriptor, &exc_set))
 			{
@@ -259,9 +259,10 @@ void game_loop_unix(int control)
 		/*
 		 * Process input.
 		 */
-		for (d = descriptor_list; d != nullptr; d = d_next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
-			d_next = d->next;
+			DESCRIPTOR_DATA *d = walk.Current();
+
 			d->fcommand= false;
 
 			// Nothing between here and the interpret() below can free the
@@ -389,9 +390,9 @@ void game_loop_unix(int control)
 		/*
 		 * Output.
 		 */
-		for (d = descriptor_list; d != nullptr; d = d_next)
+		for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 		{
-			d_next = d->next;
+			DESCRIPTOR_DATA *d = walk.Current();
 
 			if ((d->fcommand || d->outtop > 0) && FD_ISSET(d->descriptor, &out_set))
 			{
@@ -569,8 +570,10 @@ void init_descriptor(int control)
 	/*
 	 * Init descriptor data.
 	 */
-	dnew->next = descriptor_list;
-	descriptor_list = dnew;
+	// Ownership moves to the list here, not in new_descriptor: everything above
+	// this point can still reject the connection and delete it outright.
+	descriptor_list.push_back(std::unique_ptr<DESCRIPTOR_DATA>(dnew));
+	dnew->globalNode = std::prev(descriptor_list.end());
 
 	/*
 	 * Send the greeting.
@@ -623,28 +626,25 @@ void close_socket(DESCRIPTOR_DATA *dclose)
 		}
 	}
 
-	if (d_next == dclose)
-		d_next = d_next->next;
-
-	if (dclose == descriptor_list)
-	{
-		descriptor_list = descriptor_list->next;
-	}
-	else
-	{
-		DESCRIPTOR_DATA *d;
-
-		for (d = descriptor_list; d && d->next != dclose; d = d->next);
-
-		if (d != nullptr)
-			d->next = dclose->next;
-		else
-			RS.Logger.Warn("Close_socket: dclose not found.");
-	}
-
 	close(dclose->descriptor);
-	free_descriptor(dclose);
-	return;
+
+	// A descriptor that was never linked (init_descriptor's ban paths build
+	// these, as do the test fixtures) has no node to erase. Nothing owns it
+	// either, so it is the caller's to delete.
+	if (dclose->globalNode == DescriptorList::iterator{})
+	{
+		RS.Logger.Warn("Close_socket: dclose was not on the descriptor list.");
+		return;
+	}
+
+	// Advance the walks before the erase, while the node still links to its
+	// successor. The erase is also the destruction point, so this is the last
+	// moment `dclose` is readable. This subsumes the hand-written
+	// `if (d_next == dclose) d_next = d_next->next;` that guarded exactly one
+	// loop. Every walk over descriptor_list is covered now.
+	OwningCursorRegistry<DESCRIPTOR_DATA>::Advance(dclose->globalNode);
+
+	descriptor_list.erase(dclose->globalNode);
 }
 
 bool read_from_descriptor(DESCRIPTOR_DATA *d)
@@ -933,7 +933,6 @@ void bust_a_prompt(CHAR_DATA *ch)
 	bool found;
 	const char *dir_name[] = {"N", "E", "S", "W", "U", "D"};
 	int door;
-	DESCRIPTOR_DATA *d;
 	point = buf;
 
 	if (is_npc(ch)
@@ -1106,11 +1105,12 @@ void bust_a_prompt(CHAR_DATA *ch)
 				{
 					number_people = 0;
 
-					for (d = descriptor_list; d != nullptr; d = d->next)
+					// Counting only. Nothing here can close a connection.
+					for (auto &owned : descriptor_list)
 					{
-						CHAR_DATA *wch = Deref(d->character);
+						CHAR_DATA *wch = Deref(owned->character);
 
-						if (d->connected == CON_PLAYING
+						if (owned->connected == CON_PLAYING
 							&& wch->in_room != nullptr
 							&& wch->in_room->area == ch->in_room->area
 							&& !is_immortal(wch))
@@ -1132,11 +1132,11 @@ void bust_a_prompt(CHAR_DATA *ch)
 				if (is_immortal(ch) && ch->in_room != nullptr)
 				{
 					number_people = 0;
-					for (d = descriptor_list; d != nullptr; d = d->next)
+					for (auto &owned : descriptor_list)
 					{
-						CHAR_DATA *wch = Deref(d->character);
+						CHAR_DATA *wch = Deref(owned->character);
 
-						if (d->connected == CON_PLAYING
+						if (owned->connected == CON_PLAYING
 							&& wch->in_room != nullptr
 							&& wch->in_room->area == ch->in_room->area
 							&& can_see(ch, wch))
@@ -1159,9 +1159,9 @@ void bust_a_prompt(CHAR_DATA *ch)
 				{
 					number_people = 0;
 
-					for (d = descriptor_list; d != nullptr; d = d->next)
+					for (auto &owned : descriptor_list)
 					{
-						if (d->connected == CON_PLAYING && can_see(ch, Deref(d->character)))
+						if (owned->connected == CON_PLAYING && can_see(ch, Deref(owned->character)))
 							number_people++;
 					}
 
@@ -1478,7 +1478,6 @@ bool write_to_descriptor(int desc, char *txt, int length)
  */
 void nanny(DESCRIPTOR_DATA *d, char *argument)
 {
-	DESCRIPTOR_DATA *d_old, *d_next;
 	char buf[MAX_STRING_LENGTH], word[200], tword[200], cword[200];
 	std::string buffer, namebuf;
 	char arg[MAX_INPUT_LENGTH];
@@ -1699,9 +1698,9 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				case 'y':
 				case 'Y':
 				{
-					for (d_old = descriptor_list; d_old != nullptr; d_old = d_next)
+					for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 					{
-						d_next = d_old->next;
+						DESCRIPTOR_DATA *d_old = walk.Current();
 						CHAR_DATA *oldDriving = Deref(d_old->character);
 						CHAR_DATA *oldSwitchedFrom = Deref(d_old->original);
 						char *oldName;
@@ -2716,8 +2715,11 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			}
 
 			write_to_buffer(d, "\n\rWelcome to Riftshadow! Remember to wipe your feet!\n\r\n\r", 0);
-			ch->next = char_list;
-			char_list = ch;
+			// The login hands the character over to the world here. Everything
+			// before this point can still reject it and free it outright.
+			char_list.push_front(std::unique_ptr<CHAR_DATA>(ch));
+			ch->globalNode = char_list.begin();
+
 			d->connected = CON_PLAYING;
 			reset_char(ch);
 
@@ -2850,11 +2852,10 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			another one exists.
 			*/
 			{
-				OBJ_DATA *obj;
-				OBJ_DATA *obj_next;
-				for (obj = object_list; obj != nullptr; obj = obj_next)
+				for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
 				{
-					obj_next = obj->next;
+					OBJ_DATA *obj = walk.Current();
+
 					if (obj->carried_by == ch->self)
 					{
 						if (isCabalItem(obj))
@@ -3003,7 +3004,6 @@ bool check_parse_name(char *name)
  */
 bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 {
-	CHAR_DATA *ch, *fch, *fch_next;
 	OBJ_DATA *obj;
 
 	// The half-built character sitting on the login screen, which this function
@@ -3012,8 +3012,10 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 	// life, and nothing reads it after that.
 	CHAR_DATA *pending = Deref(d->character);
 
-	for (ch = char_list; ch != nullptr; ch = ch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *ch = walk.Current();
+
 		if (!is_npc(ch)
 			&& (!fConn || Deref(ch->desc) == nullptr)
 			&& !str_cmp((pending->true_name ? pending->true_name : pending->name), (ch->true_name ? ch->true_name : ch->name)))
@@ -3025,9 +3027,10 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
 			}
 			else
 			{
-				for (fch = char_list; fch; fch = fch_next)
+				for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 				{
-					fch_next = fch->next;
+					CHAR_DATA *fch = walk.Current();
+
 					if (is_npc(fch)
 						&& (is_affected(fch, gsn_animate_dead) || is_affected_by(fch, AFF_CHARM))
 						&& Deref(fch->master) == pending)
@@ -3072,10 +3075,12 @@ bool check_reconnect(DESCRIPTOR_DATA *d, char *name, bool fConn)
  */
 bool check_playing(DESCRIPTOR_DATA *d, char *name)
 {
-	DESCRIPTOR_DATA *dold;
-
-	for (dold = descriptor_list; dold; dold = dold->next)
+	// Protected rather than plain: the write_to_buffer below can overflow and
+	// close a connection, which erases a node in the list being walked.
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *dold = walk.Current();
+
 		// A switched immortal answers to the name of their own body, not the
 		// mob they are driving -- hence the original-first pick. The guard
 		// stays on `character`, as it always has: this loop is looking for
@@ -3250,7 +3255,6 @@ void act_area(const char *format, CHAR_DATA *ch, CHAR_DATA *victim)
 	const char *str;
 	const char *i;
 	char *point;
-	DESCRIPTOR_DATA *d;
 
 	/*
 	 * Discard null and zero-length messages.
@@ -3259,8 +3263,12 @@ void act_area(const char *format, CHAR_DATA *ch, CHAR_DATA *victim)
 		return;
 
 	/*colorconv(format, format, ch);*/
-	for (d = descriptor_list; d != nullptr; d = d->next)
+	// Protected rather than plain: the write_to_buffer below can overflow and
+	// close the connection it is writing to, which erases a node in this list.
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		to = Deref(d->character);
 
 		if (d->connected == CON_PLAYING

@@ -227,13 +227,18 @@ void gravity_well_explode(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *af)
 
 	affect_strip_area(room->area, gsn_gravity_well);
 
-	for (well = object_list; well != nullptr; well = well->next)
+	well = nullptr;
+
+	for (auto &owned : object_list)
 	{
-		if (well->item_type == ITEM_GRAVITYWELL && well->in_room && well->in_room == room)
+		if (owned->item_type == ITEM_GRAVITYWELL && owned->in_room && owned->in_room == room)
+		{
+			well = owned.get();
 			break;
+		}
 	}
 
-	if (!well)
+	if (well == nullptr)
 		return;
 
 	send_to_char("You lose control of your gravity well and it ruptures violently!\n\r", ch);
@@ -2800,9 +2805,9 @@ void spell_anchor(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	for (wch = char_list; wch != nullptr; wch = wch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		wch_next = wch->next;
+		CHAR_DATA *wch = walk.Current();
 
 		if (is_npc(wch) && wch->pIndexData->vnum == MOB_VNUM_ANCHOR && Deref(wch->hunting) == ch)
 		{
@@ -2845,9 +2850,9 @@ void spell_aerial_transferrence(int sn, int level, CHAR_DATA *ch, void *vo, int 
 		return;
 	}
 
-	for (wch = char_list; wch != nullptr; wch = wch_next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		wch_next = wch->next;
+		CHAR_DATA *wch = walk.Current();
 
 		if (is_npc(wch) && wch->pIndexData->vnum == MOB_VNUM_ANCHOR && Deref(wch->hunting) == ch)
 		{

@@ -111,8 +111,8 @@ void do_pswitch(CHAR_DATA *ch, char *argument)
 	victim = Deref(d->character);
 
 	victim->desc = nullptr;
-	victim->next = char_list;
-	char_list = victim;
+	char_list.push_front(std::unique_ptr<CHAR_DATA>(victim));
+	victim->globalNode = char_list.begin();
 	d->outsize = 2000;
 	d->outbuf = new char[d->outsize];
 	d->connected = CON_PLAYING;
@@ -366,10 +366,15 @@ void do_offer(CHAR_DATA *ch, char *argument)
 	auto offerings = OfferingRepository(RS.DbRift);
 
 	// status: 0 unread 1 rejected 2 accepted
-	for (altar = object_list; altar; altar = altar->next)
+	altar = nullptr;
+
+	for (auto &owned : object_list)
 	{
-		if (altar->in_room && altar->item_type == ITEM_ALTAR && altar->in_room == ch->in_room)
+		if (owned->in_room && owned->item_type == ITEM_ALTAR && owned->in_room == ch->in_room)
+		{
+			altar = owned.get();
 			break;
+		}
 	}
 
 	if (!altar || !altar->in_room->owner || !str_cmp(altar->in_room->owner, ""))
@@ -1043,8 +1048,10 @@ void mob_recho(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING
@@ -1065,8 +1072,10 @@ void area_echo(CHAR_DATA *ch, char *echo)
 {
 	char buffer[MAX_STRING_LENGTH * 2];
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING
@@ -1085,8 +1094,10 @@ void rarea_echo(ROOM_INDEX_DATA *room, char *echo)
 {
 	char buffer[MAX_STRING_LENGTH * 2];
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING
@@ -1105,8 +1116,10 @@ void outdoors_echo(AREA_DATA *area, char *echo)
 {
 	char buffer[MSL * 2];
 
-	for (DESCRIPTOR_DATA *d = descriptor_list; d; d = d->next)
+	for (OwningListWalk<DESCRIPTOR_DATA> walk(descriptor_list); !walk.Done(); walk.Step())
 	{
+		DESCRIPTOR_DATA *d = walk.Current();
+
 		CHAR_DATA *wch = Deref(d->character);
 
 		if (d->connected == CON_PLAYING
@@ -3085,8 +3098,10 @@ OBJ_DATA *make_cosmetic(char *name, char *wearloc, char *underloc, char *cosmeti
 	CHAR_DATA *ch;
 	OBJ_DATA *obj;
 
-	for (ch = char_list; ch->next; ch = ch->next)
+	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
+		CHAR_DATA *ch = walk.Current();
+
 		if (is_npc(ch))
 			break;
 	}

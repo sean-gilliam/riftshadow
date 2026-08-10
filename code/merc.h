@@ -302,49 +302,13 @@ struct rune_data
 	int type;
 	int extra;
 	int drawn_in;
-	RUNE_DATA *next;
+	// The per-container chain off obj->rune / exit->rune / room->rune.
+	// Non-owning containment: rune_list owns every applied rune.
 	RUNE_DATA *next_content;
 	RUNE_END *end_fun;
 };
 
-struct descriptor_data
-{
-	DESCRIPTOR_DATA *next;
-	// This connection's own handle, handed out so a character can name it
-	// without holding a pointer into a recycled struct. Registered by
-	// new_descriptor and retired by free_descriptor.
-	Handle<DESCRIPTOR_DATA> self;
-	// The connection watching this one, if any. Non-owning; it expires by
-	// itself when that connection closes, which is what close_socket's
-	// hand-written sweep over descriptor_list used to do.
-	Handle<DESCRIPTOR_DATA> snoop_by;
-	// The body this connection drives, and -- while an immortal is switched
-	// into a mob -- the immortal's own body parked behind it. Non-owning both
-	// ways: a character can be extracted while the connection lives on, so
-	// these are handles rather than pointers. `character` used to be nulled by
-	// hand on each of the five paths that free it; `original` was nulled on
-	// none of them, and check_playing reads its `true_name` for every open
-	// connection on every login attempt.
-	Handle<CHAR_DATA> character;
-	Handle<CHAR_DATA> original;
-	char *host;
-	short descriptor;
-	short connected;
-	bool fcommand;
-	char inbuf[4 * MAX_INPUT_LENGTH];
-	char incomm[MAX_INPUT_LENGTH];
-	char inlast[MAX_INPUT_LENGTH];
-	int repeat;
-	char *outbuf;
-	int outsize;
-	int outtop;
-	char *showstr_head;
-	char *showstr_point;
-	void *pEdit;	// OLC
-	char **pString;	// OLC
-	int editor;		// OLC
-	short type;
-};
+#include "entity/descriptor_data.h"
 
 struct bounty
 {
@@ -438,24 +402,38 @@ struct race_data
 	int legs;
 };
 
+//
+// A disguised player's real identity. `disguise` stashes the true name and
+// descriptions here and `disguise_remove` puts them back; save_char_obj reads
+// them so a player's file records who they really are rather than the mob they
+// are wearing. Held by exactly one field, pcdata->old, which owns it as a
+// unique_ptr. The destructor below frees the four strings and there is no
+// free list and no `next` link.
+//
+// `carrying` is a non-owning borrow of an object owned by the global object
+// list. Nothing assigns it, so it is always null and save.c's read of it never
+// fires. It is left in place because removing it changes what gets saved, which
+// is a separate question from who owns this struct.
+//
 struct old_char
 {
-	char *name;
-	char *short_descr;
-	char *long_descr;
-	char *description;
-	short perm_stats[MAX_STATS];
-	short armor[4];
-	float dam_mod;
-	short carry_weight;
-	short carry_number;
-	short saving_throw;
-	long affected_by[MAX_BITVECTOR];
-	long res_flags[MAX_BITVECTOR];
-	long vuln_flags[MAX_BITVECTOR];
-	long imm_flags[MAX_BITVECTOR];
-	OLD_CHAR *next;
-	OBJ_DATA *carrying;
+	char *name = nullptr;
+	char *short_descr = nullptr;
+	char *long_descr = nullptr;
+	char *description = nullptr;
+	short perm_stats[MAX_STATS] = {};
+	short armor[4] = {};
+	float dam_mod = 0.0f;
+	short carry_weight = 0;
+	short carry_number = 0;
+	short saving_throw = 0;
+	long affected_by[MAX_BITVECTOR] = {};
+	long res_flags[MAX_BITVECTOR] = {};
+	long vuln_flags[MAX_BITVECTOR] = {};
+	long imm_flags[MAX_BITVECTOR] = {};
+	OBJ_DATA *carrying = nullptr;
+
+	~old_char();		// frees the four owned strings (body in recycle.c)
 };
 
 #include "entity/affect_data.h"

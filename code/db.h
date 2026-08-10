@@ -36,11 +36,15 @@
 
 #include <cstddef>
 #include <list>
+#include <memory>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>		// srandom
 #include <unistd.h>		// getpid -- replaces the OLD_RAND hand declarations
 
+#include "entity/obj_data.h"		// ObjectList: object_list owns its objects
+#include "entity/char_data.h"		// CharacterList: char_list owns its characters
+#include "entity/list_cursor.h"	// walking char_list while characters are extracted
 #include "entity/extra_descr.h"		// get_extra_descr takes a std::list<EXTRA_DESCR_DATA>&
 
 #include "entity/fwd.h"
@@ -66,11 +70,17 @@ extern SHOP_DATA *shop_last;
 extern char bug_buf[];
 extern char *help_greeting;
 extern char log_buf[];
-extern CHAR_DATA *char_list;
+// Owns every character in the world. A character is put here by create_mobile
+// and by the login handing over at CON_READ_MOTD, and destroyed by extract_char
+// erasing its node. room->people and ch->carrying are containment, and stay raw.
+extern CharacterList char_list;
 extern KILL_DATA kill_table[];
 extern MOB_INDEX_DATA *mindex_list;
 extern OBJ_INDEX_DATA *oIndex_list;
-extern OBJ_DATA *object_list;
+// Owns every object in the world. An object is put here by create_object (and by
+// fread_obj for the legacy format) and destroyed by extract_obj erasing its
+// node; obj_data::contains and ch->carrying are containment, and stay raw.
+extern ObjectList object_list;
 extern TIME_INFO_DATA time_info;
 extern short sun;
 extern short moon_berus;
@@ -79,7 +89,12 @@ extern short moon_calabren;
 extern short calabren_pos;
 extern ROOM_INDEX_DATA *room_list;
 extern ROOM_INDEX_DATA *top_affected_room;
-extern RUNE_DATA *rune_list;
+// Owns every applied rune. A rune is on two lists at once: this one, which
+// decides when it expires and holds it alive, and a per-container chain off
+// obj->rune / exit->rune / room->rune, which decides whether it triggers and is
+// non-owning. Erasing from here is the destruction point, so extract_rune has
+// to unlink the container chain strictly first.
+extern std::list<std::unique_ptr<RUNE_DATA>> rune_list;
 extern long gold_constant;
 extern long total_gold;
 extern long player_gold;
