@@ -13,6 +13,7 @@
 #include <string>
 
 #include "rift.h"
+#include "gameloop.h"
 #include "stdlibs/clogger.h"
 #include "stdlibs/dbsession.h"
 #include "queue.h"
@@ -20,7 +21,7 @@
 #include "prof.h"
 #include "config.h"
 
-#define CONFIG_FILE RIFT_ROOT_DIR "/config.json"
+#define CONFIG_FILE rift_path("/config.json")
 
 #include "entity/fwd.h"
 
@@ -28,18 +29,28 @@ extern void wiznet(char *string, CHAR_DATA *ch, OBJ_DATA *obj, long flag, long f
 
 extern CMud RS;
 
+//
+// The MUD itself: the connections it owns, the services it runs on, and the
+// state that outlives any one player.
+//
+// Command dispatch is deliberately not a member.  Commands live in a const
+// table of free functions in interp.c, looked up by name, and a handler is an
+// entry point rather than behaviour that belongs to this object.  Wrapping
+// that table in a class here would add an owner without adding an invariant.
+//
 class CMud
-{	
+{
 public:
 	CMud();
 	virtual ~CMud();
-//	CGameLoop 			GameEngine;
+	CGameLoop			GameEngine;
 	DbSession			Db;		// `rift_core` database connection
 	DbSession			DbRift;	// `rift` database connection
 	CLogger				Logger;
 //	CInterpreter		Interpreter;
 	CQueue				Queue;
 	Config				Settings;
+	bool				Initialize();
 	bool				Bootup();
 	void				Shutdown();
 
@@ -68,21 +79,9 @@ public:
 	*/
 
 	bool				IsBanned(int desc, const char *tIP);
-	
-	//long				CurrentTime() { return GameEngine.GetTime(); }
 
 	bool				RunGame();	//are we up?
 
-	/*
-	 * What follows are THE coolest hacks in all recorded history,
-	 * null member classes with [] overloaded so it seems like an array.
-	 * 		-Cal
-	 */
-//	CSkill				Skills;
-//	CRace				Races;
-//	CClass				Classes;
-//	CCommand			Commands;
-	
 	std::string			greeting_screen;
 	std::string			motd;
 	std::string			base_directory;
@@ -93,7 +92,6 @@ public:
 
 	int					debug_mode;
 private:
-	void *				AllocPerm(int nBytes);
 	bool				game_up;
 };
 

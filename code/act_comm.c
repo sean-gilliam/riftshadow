@@ -774,8 +774,7 @@ void do_say(CHAR_DATA *ch, char *argument)
 		if (IS_SET(room_char->progtypes, MPROG_SPEECH) && room_char != ch)
 			room_char->pIndexData->mprogs->speech_prog(room_char, ch, argument);
 
-		if (TRAPS_MEVENT(room_char, TRAP_MSPEECH))
-			CALL_MEVENT(room_char, TRAP_MSPEECH, ch, room_char, argument);
+		spec_mob_speech(room_char, ch, argument);
 	}
 
 	report_cabal_items(ch, argument);
@@ -788,8 +787,7 @@ void do_say(CHAR_DATA *ch, char *argument)
 		if (IS_SET(char_obj->progtypes, IPROG_SPEECH) && char_obj->pIndexData->iprogs)
 			char_obj->pIndexData->iprogs->speech_prog(char_obj, ch, argument);
 
-		if (TRAPS_IEVENT(char_obj, TRAP_ISPEECH))
-			CALL_IEVENT(char_obj, TRAP_ISPEECH, ch, char_obj, argument);
+		spec_obj_speech(char_obj, ch, argument);
 	}
 
 	for (auto char_obj = ch->in_room->contents; char_obj != nullptr; char_obj = char_obj->next_content)
@@ -797,8 +795,7 @@ void do_say(CHAR_DATA *ch, char *argument)
 		if (IS_SET(char_obj->progtypes, IPROG_SPEECH) && char_obj->pIndexData->iprogs)
 			char_obj->pIndexData->iprogs->speech_prog(char_obj, ch, argument);
 
-		if (TRAPS_IEVENT(char_obj, TRAP_ISPEECH))
-			CALL_IEVENT(char_obj, TRAP_ISPEECH, ch, char_obj, argument);
+		spec_obj_speech(char_obj, ch, argument);
 	}
 }
 
@@ -952,8 +949,7 @@ void do_whisper(CHAR_DATA *ch, char *argument) /* whisper -- dioxide */
 				if (IS_SET(victim->progtypes, MPROG_SPEECH) && victim != ch)
 					victim->pIndexData->mprogs->speech_prog(victim, ch, argument);
 
-				if (TRAPS_MEVENT(victim, TRAP_MSPEECH))
-					CALL_MEVENT(victim, TRAP_MSPEECH, ch, victim, argument);
+				spec_mob_speech(victim, ch, argument);
 
 				if (is_affected(victim, gsn_word_of_command) && strstr(argument, victim->pcdata->command[0]))
 					command_execute(victim);

@@ -370,11 +370,8 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 					return;
 			}
 
-			if (TRAPS_MEVENT(moveprog, TRAP_MMOVE))
-			{
-				if (CALL_MEVENT(moveprog, TRAP_MMOVE, ch, moveprog, door) > 0)
-					return;
-			}
+			if (spec_mob_move(moveprog, ch, door) > 0)
+				return;
 		}
 
 		move = sect_table[to_room->sector_type].move_cost + sect_table[in_room->sector_type].move_cost;
@@ -1046,8 +1043,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 			if (IS_SET(obj->progtypes, IPROG_GREET))
 				obj->pIndexData->iprogs->greet_prog(obj, ch);
 
-			if (TRAPS_IEVENT(obj, TRAP_IGREET))
-				CALL_IEVENT(obj, TRAP_IGREET, ch, obj);
+			spec_obj_greet(obj, ch);
 		}
 
 		CHAR_DATA *lastFought = Deref(fch->last_fought);
@@ -1065,8 +1061,8 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (room_has_pc && IS_SET(fch->progtypes, MPROG_GREET))
 			fch->pIndexData->mprogs->greet_prog(fch, ch);
 
-		if (room_has_pc && TRAPS_MEVENT(fch, TRAP_MGREET))
-			CALL_MEVENT(fch, TRAP_MGREET, ch, fch);
+		if (room_has_pc)
+			spec_mob_greet(fch, ch);
 	}
 
 	for (auto obj = ch->carrying; room_has_pc && obj != nullptr; obj = obj->next_content)
@@ -1293,7 +1289,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 				auto dam = damage_new(victim, victim, dice(trap->quality * 10, 9), TYPE_UNDEFINED, DAM_LIGHTNING, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, "the lightning bolt*");
 
 				if (trap->quality > 5)
-					shock_effect(victim, trap->quality * 7, dam, TARGET_CHAR);
+					shock_effect(victim, trap->quality * 7, dam);
 			}
 			break;
 		case TRAP_SLEEPGAS:
@@ -1332,7 +1328,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 		case TRAP_POISONGAS:
 			break;
 		case TRAP_ACID:
-			spell_acid_stream(gsn_acid_stream, trap->quality * 7, victim, victim, TARGET_CHAR);
+			spell_acid_stream(gsn_acid_stream, trap->quality * 7, victim, victim, CastMode::Spell);
 			break;
 		case TRAP_DRAIN:
 			for (auto vch = room->people; vch; vch = vch->next_in_room)
@@ -1515,11 +1511,8 @@ void do_open(CHAR_DATA *ch, char *argument)
 				return;
 		}
 
-		if (TRAPS_IEVENT(obj, TRAP_IOPEN))
-		{
-			if (CALL_IEVENT(obj, TRAP_IOPEN, ch, obj))
-				return;
-		}
+		if (spec_obj_open(obj, ch))
+			return;
 
 		REMOVE_BIT_OLD(obj->value[1], CONT_CLOSED);
 		

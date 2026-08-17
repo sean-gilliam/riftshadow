@@ -21,24 +21,21 @@
 #include "../interp.h"
 #include "../update.h"
 
-void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	int dir = 0;
+	// Both ways in resolve the direction before dispatching, so it arrives in
+	// the target: do_cast for a TAR_DIR cast, cast_rune for a drawn rune.  The
+	// cast path used to re-parse the global holding the caster's argument
+	// instead, which meant any producer aiming this spell at something other
+	// than a direction quietly used whatever the last command had left there.
+	// Asking the target reports a mismatch and gives a direction of -1.
+	int dir = vo.AsDir();
 	EXIT_DATA *pexit = nullptr;
 
-	 // it's been casted, so we don't get the dir handed straight to us (this is pre TAR_DIR)
-	if (target != RUNE_DOOR)
+	if (dir < 0 || dir >= MAX_DIR)
 	{
-		if ((dir = direction_lookup(target_name)) == -1)
-		{
-			send_to_char("That's not a valid direction.\n\r", ch);
-			return;
-		}
-	}
-	else
-	{
-		// just copy this brutal little casting for converting a void pointer to an integer
-		dir = (int)*(int *)vo;
+		send_to_char("That's not a valid direction.\n\r", ch);
+		return;
 	}
 
 	pexit = ch->in_room->exit[dir];
@@ -49,8 +46,8 @@ void spell_stasis_wall(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		return;
 	}
 
-	// if it's not RUNE_DOOR then it's been casted, not runed, so it's immediate
-	if (target != RUNE_DOOR)
+	// a cast wall goes up now, a drawn one when the rune is finished
+	if (mode != CastMode::Rune)
 	{
 		// apply_rune copies this into a rune of its own, so the template only
 		// has to outlive the call.
@@ -211,7 +208,7 @@ void do_rune(CHAR_DATA *ch, char *argument)
 	char arg1[MAX_INPUT_LENGTH], arg2[MAX_INPUT_LENGTH], ttype[MSL];
 	OBJ_DATA *obj;
 	EXIT_DATA *pexit = nullptr;
-	void *vo;
+	SpellTarget vo;
 	int mana, where, sn, target = 0;
 
 	if (is_npc(ch) && Deref(ch->desc) == nullptr)
@@ -278,7 +275,7 @@ void do_rune(CHAR_DATA *ch, char *argument)
 		mana = std::max((int)skill_table[sn].min_mana, 100 / (2 + ch->level - skill_table[sn].skill_level[ch->Class()->GetIndex()]));
 
 	obj = nullptr;
-	vo = nullptr;
+	vo = SpellTarget();
 
 	if (!str_prefix(ttype, "armor"))
 	{
@@ -335,7 +332,7 @@ void do_rune(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		vo = (void *)obj;
+		vo = obj;
 
 		act("$n carefully begins to scribe an intricate rune on $p.", ch, obj, 0, TO_ROOM);
 		act("You carefully begin to scribe an intricate rune on $p.", ch, obj, 0, TO_CHAR);
@@ -348,7 +345,7 @@ void do_rune(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		vo = &where;
+		vo = SpellTarget::Direction(where);
 
 		act("$n carefully begins to scribe an intricate rune on the $t.", ch, strcmp(pexit->keyword, "") ? pexit->keyword : "door", 0, TO_ROOM);
 		act("You carefully begin to scribe an intricate rune on the $t.", ch, strcmp(pexit->keyword, "") ? pexit->keyword : "door", 0, TO_CHAR);
@@ -380,7 +377,7 @@ void do_rune(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	(*skill_table[sn].spell_fun)(sn, ch->level * 2, ch, vo, target);
+	(*skill_table[sn].spell_fun)(sn, ch->level * 2, ch, vo, CastMode::Rune);
 	check_improve(ch, sn, true, 1);
 }
 

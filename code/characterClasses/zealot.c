@@ -17,9 +17,9 @@
 #include "../db.h"
 #include "../lookup.h"
 
-void spell_infidels_weight(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_infidels_weight(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 	int mod;
 
@@ -70,9 +70,9 @@ int get_bv_stage(CHAR_DATA *ch)
 	return ((20 - af->duration) / af->modifier);
 }
 
-void spell_burning_vision(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_burning_vision(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af, *maf;
 	int mod;
 
@@ -150,9 +150,9 @@ void burning_vision_tick(CHAR_DATA *ch, AFFECT_DATA *af)
 	}
 }
 
-void spell_divine_malison(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_divine_malison(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af, *paf;
 	int reduction;
 

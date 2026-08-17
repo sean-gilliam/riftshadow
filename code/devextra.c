@@ -2136,11 +2136,12 @@ void do_commune(CHAR_DATA *ch, char *argument)
 	CHAR_DATA *victim;
 	OBJ_DATA *obj;
 	EXIT_DATA *pexit;
-	void *vo;
+	SpellTarget vo;
 	int mana;
 	int sn, where;
 	AFFECT_DATA af, *paf;
 	int target;
+	bool offensive_at_char = false;
 
 	if (is_npc(ch) && Deref(ch->desc) == nullptr)
 		return;
@@ -2264,7 +2265,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 	 */
 	victim = nullptr;
 	obj = nullptr;
-	vo = nullptr;
+	vo = SpellTarget();
 	target = TARGET_NONE;
 	af.aftype = AFT_COMMUNE;
 
@@ -2300,7 +2301,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			vo = (void *)victim;
+			vo = victim;
 			target = TARGET_CHAR;
 			break;
 		case TAR_CHAR_DEFENSIVE:
@@ -2327,7 +2328,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 				}
 			}
 
-			vo = (void *)victim;
+			vo = victim;
 			target = TARGET_CHAR;
 			break;
 		case TAR_CHAR_SELF:
@@ -2337,7 +2338,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			vo = (void *)ch;
+			vo = ch;
 			target = TARGET_CHAR;
 			break;
 		case TAR_OBJ_INV:
@@ -2355,7 +2356,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			vo = (void *)obj;
+			vo = obj;
 			target = TARGET_OBJ;
 			break;
 		case TAR_OBJ_CHAR_OFF:
@@ -2387,11 +2388,11 @@ void do_commune(CHAR_DATA *ch, char *argument)
 					return;
 				}
 
-				vo = (void *)victim;
+				vo = victim;
 			}
 			else if ((obj = get_obj_here(ch, target_name)) != nullptr)
 			{
-				vo = (void *)obj;
+				vo = obj;
 				target = TARGET_OBJ;
 			}
 			else
@@ -2404,17 +2405,17 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		case TAR_OBJ_CHAR_DEF:
 			if (arg2[0] == '\0')
 			{
-				vo = (void *)ch;
+				vo = ch;
 				target = TARGET_CHAR;
 			}
 			else if ((victim = get_char_room(ch, target_name)) != nullptr)
 			{
-				vo = (void *)victim;
+				vo = victim;
 				target = TARGET_CHAR;
 			}
 			else if ((obj = get_obj_carry(ch, target_name, ch)) != nullptr)
 			{
-				vo = (void *)obj;
+				vo = obj;
 				target = TARGET_OBJ;
 			}
 			else
@@ -2434,13 +2435,21 @@ void do_commune(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			vo = &where;
+			vo = SpellTarget::Direction(where);
 			target = TARGET_RUNE;
 			break;
 		default:
 			RS.Logger.Warn("Do_cast: bad target for sn {}.", sn);
 			return;
 	}
+
+	/*
+	 * A TAR_OBJ_CHAR_OFF prayer that resolved to a character is an offensive prayer aimed at that
+	 * character. Only the retaliation check at the end of this function ever treated it as one, so
+	 * the protections below were skipped while the retaliation still fired.
+	 */
+	offensive_at_char = skill_table[sn].target == TAR_CHAR_OFFENSIVE
+		|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF && target == TARGET_CHAR);
 
 	if (!is_npc(ch) && ch->mana < mana)
 	{
@@ -2466,10 +2475,10 @@ void do_commune(CHAR_DATA *ch, char *argument)
 			return;
 		}
 		*/
-		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE && is_safe(ch, victim))
+		if (offensive_at_char && is_safe(ch, victim))
 			return;
 
-		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE)
+		if (offensive_at_char)
 		{
 			if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 			{
@@ -2489,7 +2498,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 			}
 		}
 
-		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE && victim != ch)
+		if (offensive_at_char && victim != ch)
 		{
 			act("You narrow your eyes and glare in $N's direction.", ch, 0, victim, TO_CHAR);
 			act("$n narrows $s eyes and glares in $N's direction.", ch, 0, victim, TO_NOTVICT);
@@ -2501,7 +2510,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 				act("You reflect $n's spell right back at $m!", ch, 0, victim, TO_VICT);
 				act("$N reflects $n's spell right back at $m!", ch, 0, victim, TO_NOTVICT);
 
-				(*skill_table[sn].spell_fun)(sn, ch->level * 2, victim, ch, target);
+				(*skill_table[sn].spell_fun)(sn, ch->level * 2, victim, ch, CastMode::Spell);
 				return;
 			}
 		}
@@ -2529,7 +2538,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 			act("$n furrows $s brow as $e looks through $s possessions.", ch, 0, 0, TO_ROOM);
 		}
 
-		(*skill_table[sn].spell_fun)(sn, ch->level, ch, vo, target);
+		(*skill_table[sn].spell_fun)(sn, ch->level, ch, vo, CastMode::Spell);
 
 		if (sn == gsn_rage)
 		{
@@ -2541,9 +2550,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	if ((skill_table[sn].target == TAR_CHAR_OFFENSIVE
-			|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF
-			&& target == TARGET_CHAR))
+	if (offensive_at_char
 		&& victim != ch && Deref(victim->master) != ch)
 	{
 		CHAR_DATA *vch;
@@ -2570,10 +2577,11 @@ void do_call(CHAR_DATA *ch, char *argument)
 	CHAR_DATA *victim;
 	OBJ_DATA *obj;
 	EXIT_DATA *pexit;
-	void *vo;
+	SpellTarget vo;
 	int mana, where;
 	int sn;
 	int target;
+	bool offensive_at_char = false;
 
 	if (is_npc(ch) && Deref(ch->desc) == nullptr)
 		return;
@@ -2624,7 +2632,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 	 */
 	victim = nullptr;
 	obj = nullptr;
-	vo = nullptr;
+	vo = SpellTarget();
 	target = TARGET_NONE;
 
 	switch (skill_table[sn].target)
@@ -2660,7 +2668,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			vo = (void *)victim;
+			vo = victim;
 			target = TARGET_CHAR;
 			break;
 		case TAR_CHAR_DEFENSIVE:
@@ -2677,7 +2685,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 				}
 			}
 
-			vo = (void *)victim;
+			vo = victim;
 			target = TARGET_CHAR;
 			break;
 		case TAR_CHAR_SELF:
@@ -2687,7 +2695,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			vo = (void *)ch;
+			vo = ch;
 			target = TARGET_CHAR;
 			break;
 		case TAR_OBJ_INV:
@@ -2705,7 +2713,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			vo = (void *)obj;
+			vo = obj;
 			target = TARGET_OBJ;
 			break;
 		case TAR_OBJ_CHAR_OFF:
@@ -2737,11 +2745,11 @@ void do_call(CHAR_DATA *ch, char *argument)
 					return;
 				}
 
-				vo = (void *)victim;
+				vo = victim;
 			}
 			else if ((obj = get_obj_here(ch, target_name)) != nullptr)
 			{
-				vo = (void *)obj;
+				vo = obj;
 				target = TARGET_OBJ;
 			}
 			else
@@ -2754,17 +2762,17 @@ void do_call(CHAR_DATA *ch, char *argument)
 		case TAR_OBJ_CHAR_DEF:
 			if (arg2[0] == '\0')
 			{
-				vo = (void *)ch;
+				vo = ch;
 				target = TARGET_CHAR;
 			}
 			else if ((victim = get_char_room(ch, target_name)) != nullptr)
 			{
-				vo = (void *)victim;
+				vo = victim;
 				target = TARGET_CHAR;
 			}
 			else if ((obj = get_obj_carry(ch, target_name, ch)) != nullptr)
 			{
-				vo = (void *)obj;
+				vo = obj;
 				target = TARGET_OBJ;
 			}
 			else
@@ -2784,13 +2792,21 @@ void do_call(CHAR_DATA *ch, char *argument)
 				return;
 			}
 
-			vo = &where;
+			vo = SpellTarget::Direction(where);
 			target = TARGET_DIR;
 			break;
 		default:
 			RS.Logger.Warn("Do_cast: bad target for sn {}.", sn);
 			return;
 	}
+
+	/*
+	 * A TAR_OBJ_CHAR_OFF power that resolved to a character is an offensive power aimed at that
+	 * character. Only the retaliation check at the end of this function ever treated it as one, so
+	 * the protections below were skipped while the retaliation still fired.
+	 */
+	offensive_at_char = skill_table[sn].target == TAR_CHAR_OFFENSIVE
+		|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF && target == TARGET_CHAR);
 
 	if (!is_npc(ch) && ch->mana < mana)
 	{
@@ -2813,10 +2829,10 @@ void do_call(CHAR_DATA *ch, char *argument)
 	{
 		ch->mana -= mana;
 
-		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE && is_safe(ch, victim))
+		if (offensive_at_char && is_safe(ch, victim))
 			return;
 
-		if (skill_table[sn].target == TAR_CHAR_OFFENSIVE)
+		if (offensive_at_char)
 		{
 			if (!is_npc(ch) && !is_npc(victim) && (Deref(ch->fighting) == nullptr || Deref(victim->fighting) == nullptr))
 			{
@@ -2840,17 +2856,16 @@ void do_call(CHAR_DATA *ch, char *argument)
 				act("$N reflects your spell right back at you!", ch, 0, victim, TO_CHAR);
 				act("You reflect $n's spell right back at $m!", ch, 0, victim, TO_VICT);
 				act("$N reflects $n's spell right back at $m!", ch, 0, victim, TO_NOTVICT);
-				(*skill_table[sn].spell_fun)(sn, ch->level * 2, victim, ch, target);
+				(*skill_table[sn].spell_fun)(sn, ch->level * 2, victim, ch, CastMode::Spell);
 				return;
 			}
 		}
 
-		(*skill_table[sn].spell_fun)(sn, ch->level, ch, vo, target);
+		(*skill_table[sn].spell_fun)(sn, ch->level, ch, vo, CastMode::Spell);
 		check_improve(ch, sn, true, 1);
 	}
 
-	if ((skill_table[sn].target == TAR_CHAR_OFFENSIVE
-			|| (skill_table[sn].target == TAR_OBJ_CHAR_OFF && target == TARGET_CHAR))
+	if (offensive_at_char
 		&& victim != ch
 		&& Deref(victim->master) != ch)
 	{

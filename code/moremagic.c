@@ -57,9 +57,9 @@
 #include "skills.h"
 #include "db.h"
 
-void spell_enlarge(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_enlarge(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 	char buf[MSL];
 
@@ -111,9 +111,9 @@ void spell_enlarge(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	}
 }
 
-void spell_sunray(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_sunray(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	int dam = 0;
 	AFFECT_DATA af;
 
@@ -175,9 +175,9 @@ void spell_sunray(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	damage_old(ch, victim, dam, sn, DAM_LIGHT, true);
 }
 
-void spell_cleanse(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_cleanse(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 
 	// Difficulty modifier: 1 easy 2 medium 3 hard 4 very hard
 	sn = skill_lookup("blindness");
@@ -319,9 +319,9 @@ int get_affect_level(CHAR_DATA *ch, int sn)
 	return -1;
 }
 
-void spell_cure_deafness(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_cure_deafness(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 
 	if (!is_affected(victim, gsn_deafen))
 	{
@@ -344,9 +344,9 @@ void spell_cure_deafness(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	}
 }
 
-void spell_remove_paralysis(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_remove_paralysis(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 
 	if (!is_affected(victim, skill_lookup("hold person")))
 	{
@@ -369,9 +369,9 @@ void spell_remove_paralysis(int sn, int level, CHAR_DATA *ch, void *vo, int targ
 	}
 }
 
-void spell_awaken(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_awaken(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA *laf;
 
 	if (is_awake(victim))
@@ -408,9 +408,9 @@ void spell_awaken(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	}
 }
 
-void spell_resist_heat(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_resist_heat(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 
 	if (is_affected(victim, sn))
@@ -441,9 +441,9 @@ void spell_resist_heat(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	affect_to_char(victim, &af);
 }
 
-void spell_resist_cold(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_resist_cold(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 
 	if (is_affected(victim, sn))
@@ -474,9 +474,9 @@ void spell_resist_cold(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	affect_to_char(victim, &af);
 }
 
-void spell_resist_lightning(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_resist_lightning(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 
 	if (is_affected(victim, sn))
@@ -507,9 +507,9 @@ void spell_resist_lightning(int sn, int level, CHAR_DATA *ch, void *vo, int targ
 	affect_to_char(victim, &af);
 }
 
-void spell_resist_mental(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_resist_mental(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 
 	if (is_affected(victim, sn))
@@ -540,9 +540,9 @@ void spell_resist_mental(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	affect_to_char(victim, &af);
 }
 
-void spell_resist_acid(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_resist_acid(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 
 	if (is_affected(victim, sn))
@@ -573,9 +573,9 @@ void spell_resist_acid(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	affect_to_char(victim, &af);
 }
 
-void spell_resist_negative(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_resist_negative(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 
 	if (is_affected(victim, sn))
@@ -606,7 +606,7 @@ void spell_resist_negative(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	affect_to_char(victim, &af);
 }
 
-void spell_group_teleport(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_group_teleport(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	ROOM_INDEX_DATA *old_room;
 	CHAR_DATA *group;
@@ -614,7 +614,7 @@ void spell_group_teleport(int sn, int level, CHAR_DATA *ch, void *vo, int target
 
 	old_room = ch->in_room;
 
-	spell_teleport(skill_lookup("teleport"), level, ch, ch, 0);
+	spell_teleport(skill_lookup("teleport"), level, ch, ch, CastMode::Spell);
 
 	if (ch->in_room != old_room)
 	{
@@ -643,9 +643,9 @@ void spell_group_teleport(int sn, int level, CHAR_DATA *ch, void *vo, int target
 	}
 }
 
-void spell_soften(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_soften(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 
 	if (is_affected(victim, sn))
@@ -673,9 +673,9 @@ void spell_soften(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	send_to_char("You feel more frail.\n\r", victim);
 }
 
-void spell_rejuvenate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_rejuvenate(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	victim->hit = std::min(victim->hit + 200, (int)victim->max_hit);
 
 	update_pos(victim);
@@ -686,9 +686,9 @@ void spell_rejuvenate(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 		send_to_char("Ok.\n\r", ch);
 }
 
-void spell_fatigue(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_fatigue(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	int dam = dice(level, 4);
 
 	if (saves_spell(level, victim, DAM_MENTAL))
@@ -705,7 +705,7 @@ void spell_fatigue(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	damage_new(ch, victim, dam, sn, DAM_MENTAL, true, HIT_UNBLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
 }
 
-void spell_strength(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_strength(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	AFFECT_DATA af;
 
@@ -733,9 +733,9 @@ void spell_strength(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	act("$n meditates for a period of time, building up $s faith in $s Deity.", ch, 0, 0, TO_ROOM);
 }
 
-void spell_remove_taint(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_remove_taint(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	OBJ_DATA *obj = (OBJ_DATA *)vo;
+	OBJ_DATA *obj = vo.AsObj();
 	int chance;
 
 	if (!IS_SET(obj->extra_flags, ITEM_EVIL))
@@ -761,9 +761,9 @@ void spell_remove_taint(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	}
 }
 
-void spell_worldbind(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_worldbind(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 
 	if (is_affected(victim, sn))
@@ -798,10 +798,10 @@ void waterbreath_end(CHAR_DATA *ch, AFFECT_DATA *af)
 	check_waterbreath(ch, ch->in_room);
 }
 
-void spell_waterbreath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_waterbreath(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	AFFECT_DATA af;
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 
 	if (is_affected(victim, sn))
 	{

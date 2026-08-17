@@ -25,7 +25,7 @@
 #include "../act_info.h"
 #include "../pstring.h"
 
-void spell_rites_of_preparation(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_rites_of_preparation(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	CHAR_DATA *to;
 	AFFECT_DATA af;
@@ -97,9 +97,9 @@ void spell_rites_of_preparation(int sn, int level, CHAR_DATA *ch, void *vo, int 
 	}
 }
 
-void spell_spiritual_hammer(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_spiritual_hammer(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	float dam = dice(level, 4);
 
 	if (victim == ch)
@@ -322,9 +322,9 @@ bool check_intercept(CHAR_DATA *ch, CHAR_DATA *victim, CHAR_DATA *paladin, int d
 	return true;
 }
 
-void spell_blinding_orb(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_blinding_orb(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo, *vch_next;
+	CHAR_DATA *victim = vo.AsChar(), *vch_next;
 	AFFECT_DATA af;
 	int dam, hitroll, duration, b_hitroll, b_duration;
 
@@ -396,9 +396,9 @@ void spell_blinding_orb(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	}
 }
 
-void spell_voice_of_damnation(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_voice_of_damnation(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo, *vch_next;
+	CHAR_DATA *victim = vo.AsChar(), *vch_next;
 
 	act("Imbued with the strength of your god, you threaten those around you with eternal damnation!", ch, 0, victim, TO_CHAR);
 	act("$N shouts threats of damnation in a strange and powerful voice!", victim, 0, ch, TO_ROOM);
@@ -429,9 +429,9 @@ void spell_voice_of_damnation(int sn, int level, CHAR_DATA *ch, void *vo, int ta
 	}
 }
 
-void spell_seraphic_mantle(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_seraphic_mantle(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	AFFECT_DATA af;
 
 	if (victim != ch)
@@ -467,7 +467,7 @@ void spell_seraphic_mantle(int sn, int level, CHAR_DATA *ch, void *vo, int targe
 	affect_to_char(ch, &af);
 }
 
-void spell_arms_of_light(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_arms_of_light(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	char arg[MSL];
 	OBJ_DATA *weapon;
@@ -530,7 +530,7 @@ void spell_arms_of_light(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 }
 
-void spell_arms_of_purity(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_arms_of_purity(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	char arg[MSL];
 	OBJ_DATA *weapon;
@@ -591,7 +591,7 @@ void spell_arms_of_purity(int sn, int level, CHAR_DATA *ch, void *vo, int target
 	WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 }
 
-void spell_arms_of_wrath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_arms_of_wrath(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	char arg[MSL];
 	OBJ_DATA *weapon;
@@ -654,7 +654,7 @@ void spell_arms_of_wrath(int sn, int level, CHAR_DATA *ch, void *vo, int target)
 	WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 }
 
-void spell_arms_of_judgement(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_arms_of_judgement(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	char arg[MSL];
 	OBJ_DATA *weapon;
@@ -753,7 +753,7 @@ void do_strike_of_virtue(CHAR_DATA *ch, char *argument)
 	WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 }
 
-void spell_divine_frenzy(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_divine_frenzy(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	AFFECT_DATA af;
 
@@ -973,7 +973,7 @@ void do_valiant_charge(CHAR_DATA *ch, char *argument)
 	WAIT_STATE(ch, PULSE_VIOLENCE * 3);
 }
 
-void spell_awe(int level, int sn, CHAR_DATA *ch, void *vo, int target)
+void spell_awe(int level, int sn, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	AFFECT_DATA af;
 
@@ -998,10 +998,10 @@ void spell_awe(int level, int sn, CHAR_DATA *ch, void *vo, int target)
 	affect_to_char(ch, &af);
 }
 
-void spell_shield_of_faith(int level, int sn, CHAR_DATA *ch, void *vo, int target)
+void spell_shield_of_faith(int level, int sn, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	AFFECT_DATA af;
-	CHAR_DATA *to = (CHAR_DATA *)vo;
+	CHAR_DATA *to = vo.AsChar();
 
 	if (to == nullptr)
 		to = ch;
@@ -1033,10 +1033,10 @@ void spell_shield_of_faith(int level, int sn, CHAR_DATA *ch, void *vo, int targe
 	affect_to_char(to, &af);
 }
 
-void spell_holy_shroud(int level, int sn, CHAR_DATA *ch, void *vo, int target)
+void spell_holy_shroud(int level, int sn, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	AFFECT_DATA af;
-	CHAR_DATA *to = (CHAR_DATA *)vo;
+	CHAR_DATA *to = vo.AsChar();
 
 	if (to == nullptr)
 		to = ch;
@@ -1149,10 +1149,10 @@ int check_arms(CHAR_DATA *ch, OBJ_DATA *wield, bool bOncePerRound)
 	return 0;
 }
 
-void spell_empathy(int level, int sn, CHAR_DATA *ch, void *vo, int target)
+void spell_empathy(int level, int sn, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	AFFECT_DATA af;
-	CHAR_DATA *vict = (CHAR_DATA *)vo;
+	CHAR_DATA *vict = vo.AsChar();
 
 	if (ch == vict)
 	{
@@ -1190,10 +1190,10 @@ void empathy_end(CHAR_DATA *ch, AFFECT_DATA *af)
 		act("You feel pained as your spiritual link with $n is severed!", Deref(af->owner), 0, ch, TO_VICT);
 }
 
-void spell_tower_of_fortitude(int level, int sn, CHAR_DATA *ch, void *vo, int target)
+void spell_tower_of_fortitude(int level, int sn, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	AFFECT_DATA af;
-	CHAR_DATA *vict = (CHAR_DATA *)vo;
+	CHAR_DATA *vict = vo.AsChar();
 
 	if (is_affected(ch, gsn_tower_of_fortitude))
 	{
@@ -1217,10 +1217,10 @@ void spell_tower_of_fortitude(int level, int sn, CHAR_DATA *ch, void *vo, int ta
 	affect_to_char(ch, &af);
 }
 
-void spell_indomitable_spirit(int level, int sn, CHAR_DATA *ch, void *vo, int target)
+void spell_indomitable_spirit(int level, int sn, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
 	AFFECT_DATA af;
-	CHAR_DATA *vict = (CHAR_DATA *)vo;
+	CHAR_DATA *vict = vo.AsChar();
 
 	if (is_affected(ch, gsn_indomitable_spirit))
 	{
@@ -1282,9 +1282,9 @@ void ispirit_end(CHAR_DATA *ch, AFFECT_DATA *af)
 	}
 }
 
-void spell_altruism(int level, int sn, CHAR_DATA *ch, void *vo, int target)
+void spell_altruism(int level, int sn, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *vict = (CHAR_DATA *)vo;
+	CHAR_DATA *vict = vo.AsChar();
 
 	if (ch == vict)
 	{

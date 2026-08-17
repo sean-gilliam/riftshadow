@@ -164,8 +164,7 @@ void violence_update(void)
 			if (IS_SET(obj->progtypes, IPROG_FIGHT))
 				(obj->pIndexData->iprogs->fight_prog)(obj, ch);
 
-			if (TRAPS_IEVENT(obj, TRAP_IFIGHT))
-				CALL_IEVENT(obj, TRAP_IFIGHT, ch, obj);
+			spec_obj_fight(obj, ch);
 		}
 
 		if (IS_SET(ch->progtypes, MPROG_FIGHT) && (ch->wait <= 0))
@@ -967,19 +966,13 @@ int one_hit_new(CHAR_DATA *ch, CHAR_DATA *victim, int dt, bool specials, bool bl
 		dt = rdt + TYPE_HIT;
 	}
 
-	if (wield && TRAPS_IEVENT(wield, TRAP_IONEHIT))
-	{
-		if (CALL_IEVENT(wield, TRAP_IONEHIT, ch, victim, wield, &dam, &dt, &dam_type) > 0)
-			return 0;
-	}
+	if (spec_obj_one_hit(wield, ch, victim, dam, dt, dam_type) > 0)
+		return 0;
 
 	// mob onehit [mhit] fires when mob is hit, but item onehit fires when item does the hitting
 
-	if (is_npc(victim) && TRAPS_MEVENT(victim, TRAP_MONEHIT))
-	{
-		if (CALL_IEVENT(victim, TRAP_MONEHIT, ch, victim, wield, &dam, &dt, &dam_type) > 0)
-			return 0;
-	}
+	if (spec_mob_one_hit(victim, ch, wield, dam, dt, dam_type) > 0)
+		return 0;
 
 	result = damage_new(ch, victim, (int)dam, dt, dam_type, true, blockable, addition, multiplier, dnoun);
 
@@ -3352,11 +3345,8 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 				return;
 		}
 
-		if (TRAPS_IEVENT(obj, TRAP_IDEATH))
-		{
-			if (CALL_IEVENT(obj, TRAP_IDEATH, victim, obj))
-				return;
-		}
+		if (spec_obj_death(obj, victim))
+			return;
 	}
 
 	if (is_npc(ch)
@@ -3374,11 +3364,8 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 			return;
 	}
 
-	if (is_npc(victim) && TRAPS_MEVENT(victim, TRAP_MDEATH))
-	{
-		if (CALL_MEVENT(victim, TRAP_MDEATH, ch, victim) > 0)
-			return;
-	}
+	if (spec_mob_death(victim, ch) > 0)
+		return;
 
 	temp_death_log(ch, victim);
 	mob_death_log(ch, victim);
@@ -5338,7 +5325,7 @@ void do_bash(CHAR_DATA *ch, char *argument)
 		act("$N attempts to bash you, but is stopped by a wave of freezing air.", victim, 0, ch, TO_CHAR);
 		act("$N attempts to bash $n, but is stopped by a wave of freezing air.", victim, 0, ch, TO_NOTVICT);
 		act("You attempt to bash $n, but are seared by a wave of freezing air.", victim, 0, ch, TO_VICT);
-		(*skill_table[gsn_chill].spell_fun)(gsn_chill, ch->level, victim, ch, TAR_CHAR_OFFENSIVE);
+		(*skill_table[gsn_chill].spell_fun)(gsn_chill, ch->level, victim, ch, CastMode::Spell);
 
 		WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 		return;
@@ -6359,9 +6346,9 @@ void do_slay(CHAR_DATA *ch, char *argument)
 	raw_kill(ch, victim);
 }
 
-void spell_power_word_kill(int sn, int level, CHAR_DATA *ch, void *vo, int target)
+void spell_power_word_kill(int sn, int level, CHAR_DATA *ch, SpellTarget vo, CastMode mode)
 {
-	CHAR_DATA *victim = (CHAR_DATA *)vo;
+	CHAR_DATA *victim = vo.AsChar();
 	int dam, saves, modify;
 
 	saves = 0;
@@ -6877,7 +6864,7 @@ void do_throw(CHAR_DATA *ch, char *argument)
 		act("$N attempts to throw you, but is stopped by a wave of freezing air.", victim, 0, ch, TO_CHAR);
 		act("$N attempts to throw $n, but is stopped by a wave of freezing air.", victim, 0, ch, TO_NOTVICT);
 		act("You attempt to throw $n, but are seared by a wave of freezing air.", victim, 0, ch, TO_VICT);
-		(*skill_table[gsn_chill].spell_fun)(gsn_chill, ch->level, victim, ch, TAR_CHAR_OFFENSIVE);
+		(*skill_table[gsn_chill].spell_fun)(gsn_chill, ch->level, victim, ch, CastMode::Spell);
 
 		WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 		return;

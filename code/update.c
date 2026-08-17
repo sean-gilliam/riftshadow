@@ -649,8 +649,7 @@ void mobile_update(void)
 			if (do_mob_cast(ch))
 				continue;
 
-		if (TRAPS_MEVENT(ch, TRAP_MPULSE))
-			CALL_MEVENT(ch, TRAP_MPULSE, ch);
+		spec_mob_pulse(ch);
 
 		/* That's all for sleeping / busy monster, and empty zones */
 		if (IS_SET(ch->progtypes, MPROG_PULSE)
@@ -3043,8 +3042,7 @@ void iprog_pulse_update(bool isTick)
 			if (IS_SET(obj->progtypes, IPROG_PULSE))
 				(obj->pIndexData->iprogs->pulse_prog)(obj, isTick);
 
-			if (TRAPS_IEVENT(obj, TRAP_IPULSE))
-				CALL_IEVENT(obj, TRAP_IPULSE, obj, isTick);
+			spec_obj_pulse(obj, isTick);
 		}
 	}
 }
@@ -3070,9 +3068,11 @@ bool do_mob_cast(CHAR_DATA *ch)
 		return false;
 
 	victim = Deref(ch->fighting);
-	// Share the wealth.
+	// Share the wealth. A mob only ever aims at a character here, so an
+	// object-or-character spell counts as offensive without needing to ask
+	// what the payload turned out to be.
 	//
-	if (skill_table[sn].target == TAR_CHAR_OFFENSIVE)
+	if (skill_table[sn].target == TAR_CHAR_OFFENSIVE || skill_table[sn].target == TAR_OBJ_CHAR_OFF)
 	{
 		for (victim = ch->in_room->people; victim != nullptr; victim = victim->next_in_room)
 		{
@@ -3115,7 +3115,7 @@ bool do_mob_cast(CHAR_DATA *ch)
 		say_spell(ch, sn);
 	}
 
-	(*skill_table[sn].spell_fun)(sn, ch->level, ch, victim, TAR_CHAR_OFFENSIVE);
+	(*skill_table[sn].spell_fun)(sn, ch->level, ch, victim, CastMode::Spell);
 
 	return true;
 }
