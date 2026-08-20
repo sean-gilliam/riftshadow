@@ -716,10 +716,7 @@ void bust_a_prompt(CHAR_DATA *ch)
 				i = buf2;
 				break;
 			case 'h':
-				if (!IS_SET(ch->comm, COMM_ANSI))
-					sprintf(buf2, "%d", ch->hit);
-				else
-					sprintf(buf2, "%d", ch->hit);
+				sprintf(buf2, "%d", ch->hit);
 
 				i = buf2;
 				break;
@@ -2412,6 +2409,8 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 
 			write_to_buffer(d, "\n\r", 2);
 			d->connected = CON_NEW_CHAR;
+
+			[[fallthrough]];
 		case CON_NEW_CHAR:
 			// motd
 			do_help(ch, "motd");
@@ -2929,17 +2928,22 @@ void show_string(struct descriptor_data *d, char *input)
 		{
 			*scan = '\0';
 			write_to_buffer(d, buffer, strlen(buffer));
-			for (chk = d->showstr_point; isspace(*chk); chk++);
+			// Scanning for the first non-space is the whole of this loop. The
+			// empty body is deliberate, and the block below runs once after it
+			// rather than being the body.
+			for (chk = d->showstr_point; isspace(*chk); chk++)
 			{
-				if (!*chk)
+			}
+
+			if (!*chk)
+			{
+				if (d->showstr_head)
 				{
-					if (d->showstr_head)
-					{
-						delete[] d->showstr_head;
-						d->showstr_head = 0;
-					}
-					d->showstr_point = 0;
+					delete[] d->showstr_head;
+					d->showstr_head = 0;
 				}
+
+				d->showstr_point = 0;
 			}
 
 			return;
@@ -3327,7 +3331,7 @@ void announce_logout(CHAR_DATA *ch)
 
 void do_rename(CHAR_DATA *ch, char *argument)
 {
-	char old_name[MAX_INPUT_LENGTH], new_name[MAX_INPUT_LENGTH], strsave[MAX_INPUT_LENGTH], pbuf[MSL], *cname;
+	char old_name[MAX_INPUT_LENGTH], new_name[MAX_INPUT_LENGTH], strsave[MAX_INPUT_LENGTH], *cname;
 	CHAR_DATA *victim;
 
 	argument = one_argument(argument, old_name);
@@ -3421,7 +3425,7 @@ void do_rename(CHAR_DATA *ch, char *argument)
 	act("$n has renamed you to $N!", ch, nullptr, victim, TO_VICT);
 }
 
-void do_renam(CHAR_DATA *ch, char *argument)
+void do_renam(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	send_to_char("If you want to RENAME an existing player your must type rename in full.\n\r", ch);
 	send_to_char("rename <current name> <new name>\n\r", ch);

@@ -676,14 +676,14 @@ void load_mobs(FILE *fp)
 			}
 		}
 
-		auto pMobIndex_affect_sn_size = std::size(pMobIndex->affect_sn);
+		const int pMobIndex_affect_sn_size = std::size(pMobIndex->affect_sn);
 		for (i = 0; i < pMobIndex_affect_sn_size; i++)
 		{
 			pMobIndex->affect_sn[i] = -1;
 		}
 
 		/* Morg - Valgrind fix */
-		auto pMobIndex_cast_spell_size = std::size(pMobIndex->cast_spell);
+		const int pMobIndex_cast_spell_size = std::size(pMobIndex->cast_spell);
 		for (i = 0; i < pMobIndex_cast_spell_size; i++)
 		{
 			pMobIndex->cast_spell[i] = nullptr;
@@ -944,21 +944,29 @@ void load_mobs(FILE *fp)
 	}
 }
 
-void bugout(char *reason)
+[[noreturn]] void bugout(char *reason)
 {
 	//TODO: Tie this into the logging system
 
 	RS.Logger.Warn(reason);
 
 	auto fp = fopen(BUGOUT_FILE, "a");
+
+	// Every caller of this treats it as a halt, so the exit has to happen whether
+	// or not the log file can be opened. Returning early instead left the callers
+	// running on into code written on the assumption that they would not, and two
+	// of them in the area loader go straight into a SET_BIT with NO_FLAG, which
+	// indexes before the start of the field.
 	if (fp == nullptr)
 	{
 		RS.Logger.Warn("Unable to open bug file: fopen {}: {}", BUGOUT_FILE, std::strerror(errno));
-		return;
+	}
+	else
+	{
+		fprintf(fp, "%s\n", reason);
+		fclose(fp);
 	}
 
-	fprintf(fp, "%s\n", reason);
-	fclose(fp);
 	exit(3);
 }
 
@@ -1029,6 +1037,18 @@ void load_objs(FILE *fp)
 		newobjs++;
 		pObjIndex->limcount = 0;
 		pObjIndex->limtotal = 0;
+
+		// The allocation above is default-init, so every scalar member starts
+		// indeterminate and this one is read before anything else assigns it.
+		// The reset walker in db.c compares it against a 'P' reset's limit, and
+		// a prototype whose count lands above that limit is skipped totally and
+		// permanently rather than intermittently. Measured over five boots, 29
+		// of 2,677 prototypes came up non-zero, running from 2,608 to 30,066
+		// against a limit that is at most 999, and the values decode as
+		// recycled string bytes. No reset is currently gated off by it, so
+		// zeroing here changes no behaviour today. load_mobiles above does the
+		// same thing for the matching field on a mob prototype.
+		pObjIndex->count = 0;
 		pObjIndex->extra_descr.clear();
 
 		pObjIndex->name = fread_string(fp);

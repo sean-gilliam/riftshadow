@@ -368,7 +368,6 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 {
 	long i;
 	long dummy[MAX_BITVECTOR];
-	OBJ_APPLY_DATA *app;
 
 	zero_vector(dummy);
 
@@ -667,7 +666,7 @@ void save_progs(FILE *fp, AREA_DATA *pArea)
 			if (pRoomIndex->area != pArea)
 				continue;
 
-			if (pRoomIndex->progtypes)
+			if (!IS_ZERO_VECTOR(pRoomIndex->progtypes))
 			{
 				if (IS_SET(pRoomIndex->progtypes, RPROG_PULSE))
 					fprintf(fp, "R %d pulse_prog %s\n", pRoomIndex->vnum, pRoomIndex->rprogs->pulse_name);
@@ -694,9 +693,7 @@ void save_progs(FILE *fp, AREA_DATA *pArea)
 			if (mIndex->area != pArea)
 				continue;
 
-			if (!mIndex->progtypes)
-				continue;
-			if (mIndex->progtypes)
+			if (!IS_ZERO_VECTOR(mIndex->progtypes))
 			{
 				if (IS_SET(mIndex->progtypes, MPROG_BRIBE))
 					fprintf(fp, "M %d bribe_prog %s\n", mIndex->vnum, mIndex->mprogs->bribe_name);
@@ -741,7 +738,7 @@ void save_progs(FILE *fp, AREA_DATA *pArea)
 	{
 		for (pObjIndex = obj_index_hash[iHash]; pObjIndex; pObjIndex = pObjIndex->next)
 		{
-			if (pObjIndex->area != pArea || !pObjIndex->progtypes)
+			if (pObjIndex->area != pArea || IS_ZERO_VECTOR(pObjIndex->progtypes))
 				continue;
 
 			if (IS_SET(pObjIndex->progtypes, IPROG_WEAR))
@@ -808,7 +805,7 @@ void save_progs(FILE *fp, AREA_DATA *pArea)
 
 void save_specs(FILE *fp, AREA_DATA *pArea)
 {
-	int iHash, i;
+	int iHash;
 	OBJ_INDEX_DATA *pObjIndex;
 	MOB_INDEX_DATA *pMob;
 
@@ -893,7 +890,7 @@ void save_resets(FILE *fp, AREA_DATA *pArea)
 	fprintf(fp, "S\n\n");
 }
 
-void save_shops(FILE *fp, AREA_DATA *pArea)
+void save_shops([[maybe_unused]] FILE *fp, [[maybe_unused]] AREA_DATA *pArea)
 {
 	return;
 }
@@ -943,11 +940,8 @@ void do_asave(CHAR_DATA *ch, char *argument)
 {
 	char arg1[MAX_INPUT_LENGTH], buf[MSL];
 	AREA_DATA *pArea;
-	FILE *fp;
 	int value;
 	bool found = false;
-
-	fp = nullptr;
 
 	if (!check_security(ch))
 		return;

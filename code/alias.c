@@ -97,7 +97,7 @@ void substitute_alias(DESCRIPTOR_DATA *d, char *argument)
 	interpret(Deref(d->character), buf);
 }
 
-void do_alia(CHAR_DATA *ch, char *argument)
+void do_alia(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	send_to_char("I'm sorry, alias must be entered in full.\n\r", ch);
 }
@@ -224,7 +224,7 @@ void do_unalias(CHAR_DATA *ch, char *argument)
 
 	argument = one_argument(argument, arg);
 
-	if (arg == (char *)'\0')
+	if (arg[0] == '\0')
 	{
 		send_to_char("Unalias what?\n\r", ch);
 		return;

@@ -287,7 +287,7 @@ char *munch(char *str)
 
 	copy = str;
 
-	for (i = 0; *copy && *copy != '\0'; i++)
+	for (i = 0; *copy != '\0'; i++)
 	{
 		if (*copy == '\r')
 		{
@@ -852,7 +852,7 @@ void fix_exits(void)
 		{
 			bool fexit = false;
 
-			auto pRoomIndex_exit_size = std::size(pRoomIndex->exit);
+			const int pRoomIndex_exit_size = std::size(pRoomIndex->exit);
 			for (door = 0; door < pRoomIndex_exit_size; door++)
 			{
 				pexit = pRoomIndex->exit[door];
@@ -1025,7 +1025,6 @@ void reset_room(ROOM_INDEX_DATA *pRoom)
 	EXIT_DATA *pexit = nullptr;
 	bool last;
 	int level = 0;
-	char buf[MSL];
 	CHAR_DATA *rch;
 	bool found;
 
@@ -1807,7 +1806,6 @@ void clone_mobile(CHAR_DATA *parent, CHAR_DATA *clone)
 OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 {
 	OBJ_DATA *obj;
-	int i;
 
 	if (pObjIndex == nullptr)
 	{
@@ -2729,7 +2727,7 @@ void do_areas(CHAR_DATA *ch, char *argument)
 	}
 }
 
-void do_memory(CHAR_DATA *ch, char *argument)
+void do_memory(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	char buf[MAX_STRING_LENGTH];
 
@@ -2776,7 +2774,7 @@ void do_memory(CHAR_DATA *ch, char *argument)
 	send_to_char(buf, ch);
 }
 
-void do_dump(CHAR_DATA *ch, char *argument)
+void do_dump([[maybe_unused]] CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	int count, count2, num_pcs, aff_count;
 	MOB_INDEX_DATA *pMobIndex;
@@ -3054,7 +3052,8 @@ long number_mm(void)
 	if(rgiState[0] == 0) // check if they're all zero, if so call init_mm()
 	{
 		bool isAnyrgiStateNumberNotZero = false;
-		for(auto i = 0; i < std::size(rgiState); i++)
+		const int rgiState_size = std::size(rgiState);
+		for(auto i = 0; i < rgiState_size; i++)
 		{
 			if(rgiState[i] != 0)
 			{
@@ -3300,7 +3299,7 @@ void tail_chain(void)
 	return;
 }
 
-void do_force_reset(CHAR_DATA *ch, char *argument)
+void do_force_reset(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	AREA_DATA *pArea;
 	char buf[MAX_STRING_LENGTH];
@@ -3403,7 +3402,7 @@ void do_alist(CHAR_DATA *ch,char *argument)
 }
 */
 
-void do_llimit(CHAR_DATA *ch, char *argument)
+void do_llimit(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	FILE *fpChar;
 	char strPlr[MAX_INPUT_LENGTH];
@@ -3595,7 +3594,7 @@ void load_rooms(FILE *fp)
 			SET_BIT(pRoomIndex->room_flags, ROOM_NO_GATE);
 		}
 
-		auto pRoomIndex_exit_size = std::size(pRoomIndex->exit);
+		const int pRoomIndex_exit_size = std::size(pRoomIndex->exit);
 		for (door = 0; door < pRoomIndex_exit_size; door++)
 		{
 			pRoomIndex->exit[door] = nullptr;

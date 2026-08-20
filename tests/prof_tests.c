@@ -1237,7 +1237,7 @@ SCENARIO("check to see if player leveled a proficiency (char* int)", "[CheckImpr
 			THEN("it should display a message notifying the player")
 			{
 				// TODO: figure out how to game the chance generator to test correct output
-				auto result = Deref(player->desc)->outbuf;
+				//auto result = Deref(player->desc)->outbuf;
 
 				REQUIRE(1 == 1);
 			}
@@ -1377,7 +1377,6 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 
 			THEN("it should return false")
 			{
-				auto track = 1;
 				auto result = player->Profs()->InterpCommand("track", nullptr);
 
 				REQUIRE(result == false);
@@ -1398,7 +1397,6 @@ SCENARIO("Attempt to track a character", "[prof_tracking]")
 
 			THEN("it should return false")
 			{
-				auto t = 1;
 				auto result = player->Profs()->InterpCommand("track", "player2");
 
 				REQUIRE(result == false);
@@ -1602,7 +1600,6 @@ SCENARIO("Attempt to bandage a character", "[prof_bandage]")
 
 			THEN("it should return false")
 			{
-				auto t = 1;
 				auto result = player->Profs()->InterpCommand("bandage", "self");
 
 				REQUIRE(result == false);
@@ -1623,7 +1620,6 @@ SCENARIO("Attempt to bandage a character", "[prof_bandage]")
 
 			THEN("it should return false")
 			{
-				auto t = 1;
 				auto result = player->Profs()->InterpCommand("bandage", "player2");
 
 				REQUIRE(result == false);
@@ -1645,7 +1641,6 @@ SCENARIO("Attempt to bandage a character", "[prof_bandage]")
 
 			THEN("it should return false")
 			{
-				auto t = 1;
 				auto result = player->Profs()->InterpCommand("bandage", "player2");
 
 				REQUIRE(result == false);
@@ -1728,5 +1723,38 @@ SCENARIO("Attempt to bandage a character", "[prof_bandage]")
 
 			TestHelperCleanupPlayerObject(player);
 		}
+	}
+}
+
+SCENARIO("typing a proficiency affect as visible or invisible", "[add_prof_affect]")
+{
+	GIVEN("a player character")
+	{
+		auto player = new char_data();
+		player->Profs()->SetChar(player);
+
+		WHEN("a proficiency affect is added as invisible")
+		{
+			add_prof_affect(player, (char *)"testprof", 5, true);
+
+			THEN("the affect carries AFT_INVIS rather than whatever init_affect left")
+			{
+				REQUIRE(player->affected.size() == 1);
+				REQUIRE(player->affected.back().aftype == AFT_INVIS);
+			}
+		}
+
+		WHEN("a proficiency affect is added as visible")
+		{
+			add_prof_affect(player, (char *)"testprof", 5, false);
+
+			THEN("the affect carries AFT_SKILL")
+			{
+				REQUIRE(player->affected.size() == 1);
+				REQUIRE(player->affected.back().aftype == AFT_SKILL);
+			}
+		}
+
+		TestHelperCleanupPlayerObject(player);
 	}
 }

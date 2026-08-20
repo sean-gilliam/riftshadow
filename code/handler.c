@@ -187,8 +187,10 @@ int weapon_lookup(const char *name)
 /// @returns The type of the given weapon. (Default: WEAPON_EXOTIC)
 int weapon_type_lookup(const char *name)
 {
-	auto idx = weapon_lookup(name);
-	return idx > -1 || idx < weapon_table.size()
+	const int idx = weapon_lookup(name);
+	const int weapon_table_size = weapon_table.size();
+
+	return idx > -1 && idx < weapon_table_size
 		? weapon_table[idx].type
 		: WEAPON_EXOTIC;
 }
@@ -884,36 +886,35 @@ int get_curr_stat(CHAR_DATA *ch, int stat)
 
 		if (!str_cmp(race_table[ch->race].name, "human"))
 		{
-			int iClass;
-			iClass = ch->Class()->GetIndex();
+			int iClass = ch->Class()->GetIndex();
 			switch (ch->Class()->attr_prime)
 			{
 				case STAT_STR:
 					if (stat == STAT_STR &&
-						(ch->Class()->GetIndex() == CLASS_WARRIOR || ch->Class()->GetIndex() == CLASS_ANTI_PALADIN ||
-						ch->Class()->GetIndex() == CLASS_RANGER || ch->Class()->GetIndex() == CLASS_PALADIN))
+						(iClass == CLASS_WARRIOR || iClass == CLASS_ANTI_PALADIN ||
+						iClass == CLASS_RANGER || iClass == CLASS_PALADIN))
 						max = 23;
 					else
 						max = 20;
 					break;
 				case STAT_INT:
 					if (stat == STAT_INT &&
-						(ch->Class()->GetIndex() == CLASS_SORCERER || ch->Class()->GetIndex() == CLASS_NECROMANCER ||
-						ch->Class()->GetIndex() == CLASS_SHAPESHIFTER))
+						(iClass == CLASS_SORCERER || iClass == CLASS_NECROMANCER ||
+						iClass == CLASS_SHAPESHIFTER))
 						max = 23;
 					else
 						max = 20;
 					break;
 				case STAT_WIS:
 					if (stat == STAT_WIS &&
-						(ch->Class()->GetIndex() == CLASS_HEALER || ch->Class()->GetIndex() == CLASS_ZEALOT))
+						(iClass == CLASS_HEALER || iClass == CLASS_ZEALOT))
 						max = 23;
 					else
 						max = 20;
 					break;
 				case STAT_DEX:
 					if (stat == STAT_DEX &&
-						(ch->Class()->GetIndex() == CLASS_ASSASSIN || ch->Class()->GetIndex() == CLASS_THIEF))
+						(iClass == CLASS_ASSASSIN || iClass == CLASS_THIEF))
 						max = 23;
 					else
 						max = 20;
@@ -1888,13 +1889,13 @@ void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
 	}
 
 	if (!is_npc(ch)
-		&& (is_obj_stat(obj, ITEM_ANTI_EVIL) && palign < 0)
-		|| (is_obj_stat(obj, ITEM_ANTI_GOOD) && palign > 0)
-		|| (is_obj_stat(obj, ITEM_ANTI_NEUTRAL) && palign == 0)
-		|| (is_obj_stat(obj, ITEM_ANTI_LAWFUL) && pethos > 0)
-		|| (is_obj_stat(obj, ITEM_ANTI_NEUT) && pethos == 0)
-		|| (is_obj_stat(obj, ITEM_ANTI_CHAOTIC) && pethos < 0)
-		|| is_restricted(ch, obj))
+		&& ((is_obj_stat(obj, ITEM_ANTI_EVIL) && palign < 0)
+			|| (is_obj_stat(obj, ITEM_ANTI_GOOD) && palign > 0)
+			|| (is_obj_stat(obj, ITEM_ANTI_NEUTRAL) && palign == 0)
+			|| (is_obj_stat(obj, ITEM_ANTI_LAWFUL) && pethos > 0)
+			|| (is_obj_stat(obj, ITEM_ANTI_NEUT) && pethos == 0)
+			|| (is_obj_stat(obj, ITEM_ANTI_CHAOTIC) && pethos < 0)
+			|| is_restricted(ch, obj)))
 	{
 		/*
 		 * Thanks to Morgenes for the bug fix here!

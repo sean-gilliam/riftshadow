@@ -283,6 +283,14 @@ void do_circle_stab(CHAR_DATA *ch, char *argument)
 		dam = dice(obj->value[1], obj->value[2]);
 		dam += 40;
 
+		// TODO: Each fraction below is an integer division that evaluates on its
+		// own before it is applied, so 3 / 2 is 1 and 7 / 3 is 2. The bands
+		// actually run 1, 1, 2, 2, 2, 3, 3, 3 rather than the values written.
+		// Restoring the written numbers literally is not right either, because
+		// they are not monotonic. 7 / 2 at level 49 is larger than 10 / 3 at
+		// level 50, so a thief would lose damage on reaching 50. Truncation has
+		// hidden that because both fractions come out as 3. This needs a damage
+		// curve decision rather than a mechanical fix.
 		if (ch->level <= 15)
 			dam *= 1;
 		else if (ch->level <= 20)
@@ -569,7 +577,7 @@ void do_ghetto_bind(CHAR_DATA *ch, char *argument)
 	}
 }
 
-void do_ghetto_unbind(CHAR_DATA *ch, char *argument)
+void do_ghetto_unbind(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	if (!is_affected(ch, gsn_bind))
 	{
@@ -1196,7 +1204,6 @@ void do_sign(CHAR_DATA *ch, char *argument)
 
 void do_slash(CHAR_DATA *ch, char *argument)
 {
-	char buf[MAX_STRING_LENGTH];
 	char arg1[MAX_INPUT_LENGTH];
 	char arg2[MAX_INPUT_LENGTH];
 	CHAR_DATA *victim;
@@ -1515,7 +1522,7 @@ void do_disguise(CHAR_DATA *ch, char *argument)
 	WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 }
 
-void disguise_end(CHAR_DATA *ch, AFFECT_DATA *af)
+void disguise_end(CHAR_DATA *ch, [[maybe_unused]] AFFECT_DATA *af)
 {
 	disguise_remove(ch);
 }
@@ -1554,7 +1561,7 @@ void disguise_remove(CHAR_DATA *ch)
 	ch->pcdata->old.reset();
 }
 
-void do_undisguise(CHAR_DATA *ch, char *argument)
+void do_undisguise(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	if (!is_affected(ch, gsn_disguise) || !ch->pcdata->old)
 	{
@@ -1578,7 +1585,7 @@ void do_undisguise(CHAR_DATA *ch, char *argument)
 	WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 }
 
-void do_search(CHAR_DATA *ch, char *argument)
+void do_search(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	OBJ_DATA *obj = nullptr;
 	int chance;
@@ -1712,7 +1719,7 @@ void do_counterfeit(CHAR_DATA *ch, char *argument)
 	WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 }
 
-void counterfeit_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
+void counterfeit_end(OBJ_DATA *obj, [[maybe_unused]] OBJ_AFFECT_DATA *af)
 {
 
 	if (CHAR_DATA *carrier = Deref(obj->carried_by))
@@ -1743,7 +1750,7 @@ void counterfeit_end(OBJ_DATA *obj, OBJ_AFFECT_DATA *af)
 	obj->description = palloc_string(obj->pIndexData->description);
 }
 
-void do_shadow_cloak(CHAR_DATA *ch, char *argument)
+void do_shadow_cloak(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	AFFECT_DATA af;
 	int skill, cost;
@@ -2143,8 +2150,6 @@ void do_bind(CHAR_DATA *ch, char *argument)
 
 	if (number_percent() < skill)
 	{
-		char buf[50];
-
 		init_affect(&af);
 		af.aftype = AFT_SKILL;
 		af.where = TO_AFFECTS;
@@ -2231,7 +2236,7 @@ void do_bind(CHAR_DATA *ch, char *argument)
 	}
 }
 
-void do_unbind(CHAR_DATA *ch, char *argument)
+void do_unbind(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	AFFECT_DATA *af = check_bind(ch, "arms");
 

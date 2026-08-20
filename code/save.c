@@ -92,7 +92,7 @@ int isAftSpell(int aftype)
  */
 void save_char_obj(CHAR_DATA *ch)
 {
-	char strsave[MAX_INPUT_LENGTH], filenm[MSL], query[MSL * 2];
+	char strsave[MAX_INPUT_LENGTH];
 	FILE *fp;
 
 	if (is_npc(ch) || mPort == 4000) // do not save, sir!!!
@@ -704,7 +704,7 @@ void fwrite_pet(CHAR_DATA *pet, FILE *fp)
 	if (!IS_ZERO_VECTOR(pet->comm))
 		fprintf(fp, "Comm %s\n", print_flags(pet->comm));
 
-	fprintf(fp, "Pos  %d\n", pet->position = POS_FIGHTING ? POS_STANDING : pet->position);
+	fprintf(fp, "Pos  %d\n", pet->position == POS_FIGHTING ? POS_STANDING : pet->position);
 
 	if (pet->saving_throw != 0)
 		fprintf(fp, "Save %d\n", pet->saving_throw);

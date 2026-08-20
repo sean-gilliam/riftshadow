@@ -75,8 +75,6 @@
 
 bool check_arms(CHAR_DATA *ch, OBJ_DATA *obj)
 {
-	char buf[MSL];
-
 	if (is_affected_obj(obj, gsn_arms_of_light)
 		|| is_affected_obj(obj, gsn_arms_of_wrath)
 		|| is_affected_obj(obj, gsn_arms_of_purity)
@@ -125,7 +123,7 @@ bool can_loot(CHAR_DATA *ch, OBJ_DATA *obj)
 	if (is_npc(ch))
 		return false;
 
-	if (!obj->owner || obj->owner == nullptr)
+	if (obj->owner == nullptr)
 		return true;
 
 	if (!str_cmp(ch->true_name, obj->owner))
@@ -1100,8 +1098,8 @@ void do_give(CHAR_DATA *ch, char *argument)
 
 	if (IS_SET(obj->progtypes, IPROG_GIVE))
 	{
-		if ((obj->pIndexData->iprogs->give_prog)(obj, ch, victim) == true);
-		return;
+		if ((obj->pIndexData->iprogs->give_prog)(obj, ch, victim) == true)
+			return;
 	}
 
 	obj_from_char(obj);
@@ -2250,7 +2248,7 @@ void wear_obj(CHAR_DATA *ch, OBJ_DATA *obj, bool fReplace)
 		weapon = get_eq_char(ch, WEAR_WIELD);
 
 		if (weapon != nullptr
-			&& (ch->size < SIZE_LARGE && is_weapon_stat(weapon, WEAPON_TWO_HANDS)
+			&& ((ch->size < SIZE_LARGE && is_weapon_stat(weapon, WEAPON_TWO_HANDS))
 				|| weapon->value[0] == WEAPON_STAFF
 				|| weapon->value[0] == WEAPON_POLEARM
 				|| weapon->value[0] == WEAPON_SPEAR))
@@ -2557,7 +2555,7 @@ void wear_obj(CHAR_DATA *ch, OBJ_DATA *obj, bool fReplace)
 			return;
 		}
 
-		if (ch->size < SIZE_LARGE && is_weapon_stat(obj, WEAPON_TWO_HANDS)
+		if ((ch->size < SIZE_LARGE && is_weapon_stat(obj, WEAPON_TWO_HANDS))
 			|| obj->value[0] == WEAPON_SPEAR
 			|| obj->value[0] == WEAPON_STAFF
 			|| obj->value[0] == WEAPON_POLEARM)
@@ -3055,7 +3053,7 @@ void do_recite(CHAR_DATA *ch, char *argument)
 	extract_obj(scroll);
 }
 
-void do_brandish(CHAR_DATA *ch, char *argument)
+void do_brandish(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	CHAR_DATA *vch;
 	CHAR_DATA *vch_next;
@@ -4066,7 +4064,6 @@ void do_list(CHAR_DATA *ch, char *argument)
 void do_sell(CHAR_DATA *ch, char *objName)
 {
 	char buf[MAX_STRING_LENGTH];
-	char arg[MAX_INPUT_LENGTH];
 	CHAR_DATA *keeper;
 	OBJ_DATA *obj;
 	int cost,roll,haggleSkillLevel;
@@ -4567,7 +4564,7 @@ bool is_restricted(CHAR_DATA *ch, OBJ_DATA *obj)
 
 	status= false;
 
-	if (!restricted)
+	if (IS_ZERO_VECTOR(restricted))
 		return false;
 
 	for (i = 0; restrict_table[i].name != nullptr; i++)

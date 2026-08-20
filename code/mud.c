@@ -197,7 +197,7 @@ char * CMud::GetError()
 
 /* the following functions are so incredibly slick, they're illegal in connecticut */
 
-void bug(const char *bugstr, ...)
+void bug([[maybe_unused]] const char *bugstr, ...)
 {
 	//TODO: The linker errors out if this is deleted. Need to find what references this.
 }
@@ -209,7 +209,6 @@ void CMud::LoadObjLimits()
 	char strPlr[MAX_INPUT_LENGTH];
 	char chkbuf[MAX_STRING_LENGTH];
 	char temp_player_name[MSL];
-	char pbuf[100];
 	int i;
 	long temp_bounty;
 	long min_bounty = 0;

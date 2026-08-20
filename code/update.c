@@ -1180,6 +1180,7 @@ void char_update(void)
 		bool charm_gone;
 
 		master = nullptr;
+		charm_gone = false;
 
 		if (is_npc(ch)
 			&& (sun == SolarPosition::Sunrise || sun == SolarPosition::Daylight)
@@ -1372,7 +1373,6 @@ void char_update(void)
 				auto next = std::next(it);
 				AFFECT_DATA *paf = &*it;
 				AFFECT_DATA *paf_next = (next != ch->affected.end()) ? &*next : nullptr;
-				charm_gone= false;
 
 				if (!ghost && ch->ghost > 0)
 					break;
@@ -1420,8 +1420,8 @@ void char_update(void)
 					CHAR_DATA *owner = Deref(paf->owner);
 
 					if (((owner && owner->Class()->GetIndex() == CLASS_PALADIN)
-							|| (!owner && ch->Class()->GetIndex() == CLASS_PALADIN)
-							&& trusts(ch, owner ? owner : ch))
+							|| (!owner && ch->Class()->GetIndex() == CLASS_PALADIN))
+						&& trusts(ch, owner ? owner : ch)
 						&& paf->aftype == AFT_COMMUNE)
 					{
 						if (number_percent() < (get_skill(owner ? owner : ch, gsn_channeling) * .85)
@@ -1456,11 +1456,32 @@ void char_update(void)
 						if (paf->type && str_cmp(skill_table[paf->type].room_msg_off, "") && is_awake(ch))
 							act(skill_table[paf->type].room_msg_off, ch, 0, 0, TO_ROOM);
 					}
+
+					// A charm running out has to release the following as well
+					// as the affect. affect_remove only clears the bit, and
+					// stop_follower is the only thing that ends the follow and
+					// tells both sides. It cannot be called from here, because
+					// it strips the character's charm affects and would
+					// invalidate the iterator this loop is holding, so the
+					// break is recorded and carried out once the walk is done.
+					if (IS_SET(paf->bitvector, AFF_CHARM))
+					{
+						master = Deref(ch->master);
+						charm_gone = true;
+					}
+
 					affect_remove(ch, paf);
 				}
 
 				it = next;
 			}
+
+			// Deferred from the loop above. Only if the tick did not free the
+			// character, and only if it is still following the same master it
+			// was charmed by, so that a follow changed in the meantime is left
+			// alone.
+			if (charm_gone && master != nullptr && Deref(ticking) == ch && Deref(ch->master) == master)
+				stop_follower(ch);
 		}
 
 		if (!ch)
@@ -1772,8 +1793,6 @@ void track_attack(CHAR_DATA *mob, CHAR_DATA *victim)
 
 void track_update(void)
 {
-	char buf[MAX_STRING_LENGTH];
-
 	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
 		CHAR_DATA *tch = walk.Current();
@@ -1999,7 +2018,12 @@ void aggr_update(void)
 			{
 				vch_next = vch->next_in_room;
 
-				if (Deref(paf->owner)->ghost > 0)
+				CHAR_DATA *owner = Deref(paf->owner);
+
+				// An owner who can no longer be resolved has been destroyed, which
+				// ends the mark for the same reason a dead owner does. Deref hands
+				// back a null in that case and reading through it crashes the tick.
+				if (owner == nullptr || owner->ghost > 0)
 				{
 					affect_remove(wch, paf);
 					break;		// paf is gone; nothing further reads the mark
@@ -2117,7 +2141,7 @@ int get_hours(CHAR_DATA *ch)
  * @param racenumber The race index of the player race (used as an age adjustment)
  * @return char* The "age name", i.e. "young", "old", etc.
  */
-char *get_age_name_new(int age, int racenumber)
+char *get_age_name_new(int age, [[maybe_unused]] int racenumber)
 {
 	char *name;
 	if(age < 0)
@@ -2335,7 +2359,7 @@ void update_handler(void)
 	tail_chain();
 }
 
-void do_forcetick(CHAR_DATA *ch, char *argument)
+void do_forcetick([[maybe_unused]] CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	wiznet("TICK!", nullptr, nullptr, WIZ_TICKS, 0, 0);
 
@@ -2470,7 +2494,7 @@ void room_affect_update(void)
 {
 	ROOM_INDEX_DATA *room, *to_room;
 	CHAR_DATA *victim, *v_next, *vch;
-	int i, dam, chance, roomcount = 0;
+	int dam, chance, roomcount = 0;
 	AREA_AFFECT_DATA *aaf;
 	ROOM_AFFECT_DATA *af, *af2;
 	AFFECT_DATA *paf, cvaf, cvaf2;

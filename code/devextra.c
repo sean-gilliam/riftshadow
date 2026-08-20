@@ -152,7 +152,7 @@ void do_gold(CHAR_DATA *ch, char *argument)
 	send_to_char(buf, ch);
 }
 
-void do_clean(CHAR_DATA *ch, char *argument)
+void do_clean(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	send_to_char("Cleaning logins...\n\r", ch);
 	send_to_char("Cleaning notes...\n\r", ch);
@@ -656,7 +656,7 @@ void show_database_info(CHAR_DATA *ch, char *argument)
 	}
 }
 
-void do_demo(CHAR_DATA *ch, char *name)
+void do_demo(CHAR_DATA *ch, [[maybe_unused]] char *name)
 {
 	FILE *fp;
 	char tempbuf[MSL], buf[MSL];
@@ -950,8 +950,8 @@ void plug_graveyard(CHAR_DATA *ch, int type)
 	//  this insert must go through the repositories, not the deleted raw
 	//  one_fquery/open_fconn helpers.
 	// auto buf = fmt::sprintf(
-	// 		"insert into gabe20010201051916(zposter,zposter_email,zsubject,zmessage,zdatetime,zaddress,zunique,"\
-	// 		"zthreadid,zdelete,zmod) values('Death_Wizard','immortals@riftshadow.com','%s','%s',"\
+	// 		"insert into gabe20010201051916(zposter,zposter_email,zsubject,zmessage,zdatetime,zaddress,zunique,"
+	// 		"zthreadid,zdelete,zmod) values('Death_Wizard','immortals@riftshadow.com','%s','%s',"
 	// 		"'%s','localhost',%s,'%s',0,'Death_Wizard')",
 	// 		name, message, cur_date, unique, stid);
 }
@@ -1362,7 +1362,7 @@ void do_credits(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		if (buf && buf2[0] == '\0')
+		if (buf2[0] == '\0')
 		{
 			sprintf(buf3, "%s has %i bounty credits.\n\r", victim->name, victim->pcdata->bounty_credits);
 			send_to_char(buf3, ch);
@@ -1431,7 +1431,7 @@ void bounty_cb(char *string)
 		do_cb(guardian, string);
 }
 
-void do_topbounties(CHAR_DATA *ch, char *argument)
+void do_topbounties(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	int i, pnum = 0, plus = 0;
 	char buf[MAX_STRING_LENGTH];
@@ -1479,7 +1479,7 @@ void do_bounty(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (!arg1 || !arg2 || (!is_number(arg2) && !is_immortal(ch)))
+	if (arg1[0] == '\0' || arg2[0] == '\0' || (!is_number(arg2) && !is_immortal(ch)))
 	{
 		send_to_char("Syntax:   bounty <character> <amount>\n\r", ch);
 		send_to_char("Places a bounty of the specified amount on the life of the specified character.\n\r", ch);
@@ -1621,7 +1621,7 @@ void pay_bounty(CHAR_DATA *ch, CHAR_DATA *victim)
 	victim->pcdata->bounty = 0;
 }
 
-void do_rchanges(CHAR_DATA *ch, char *argument)
+void do_rchanges([[maybe_unused]] CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	/*
 	char arg1[MAX_STRING_LENGTH], buf[MAX_STRING_LENGTH], list[2000][110], nlist[110];
@@ -1803,7 +1803,7 @@ char *flags_to_string(CHAR_DATA *ch, const struct flag_type *showflags, int flag
 	char temp_value[MAX_INPUT_LENGTH];
 	temp_value[0] = '\0';
 
-	for (flag = 0; showflags[flag].name != nullptr; flag = flag++)
+	for (flag = 0; showflags[flag].name != nullptr; flag++)
 	{
 		strcat(temp_value, showflags[flag].name);
 
@@ -1954,10 +1954,11 @@ void do_assess_old(CHAR_DATA *ch, char *argument)
 	{
 		buf[0] = '\0';
 
-		if (skill < 91);
+		if (skill < 91)
+		{
 			sprintf(buf, "%s seems to be affected by %s.\n\r", is_npc(victim) ? victim->short_descr : victim->name, skill_table[paf.type].name);
-
-		if (skill >= 91);
+		}
+		else
 		{
 			fuzzy = number_range(0, 2);
 			// Let's fuz up the duration a bit if it's not permanent.
@@ -2886,7 +2887,7 @@ void do_call(CHAR_DATA *ch, char *argument)
 	}
 }
 
-void do_snare(CHAR_DATA *ch, char *argument)
+void do_snare(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	ROOM_AFFECT_DATA af;
 	AFFECT_DATA snaretimer;
@@ -3110,15 +3111,18 @@ void do_createcosmetic(CHAR_DATA *ch, char *argument)
 
 OBJ_DATA *make_cosmetic(char *name, char *wearloc, char *underloc, char *cosmeticloc)
 {
-	CHAR_DATA *ch;
+	CHAR_DATA *ch = nullptr;
 	OBJ_DATA *obj;
 
 	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
 	{
-		CHAR_DATA *ch = walk.Current();
+		CHAR_DATA *wch = walk.Current();
 
-		if (is_npc(ch))
+		if (is_npc(wch))
+		{
+			ch = wch;
 			break;
+		}
 	}
 
 	char buf[MSL];
@@ -3148,7 +3152,7 @@ OBJ_DATA *make_cosmetic(char *name, char *wearloc, char *underloc, char *cosmeti
 	return obj;
 }
 
-void pulse_prog_repop_container(OBJ_DATA *obj, bool isTick)
+void pulse_prog_repop_container(OBJ_DATA *obj, [[maybe_unused]] bool isTick)
 {
 	if (obj->contains)
 		return;
