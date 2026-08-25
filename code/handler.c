@@ -942,9 +942,7 @@ int get_curr_stat(CHAR_DATA *ch, int stat)
 int get_max_train(CHAR_DATA *ch, int stat)
 {
 	int max;
-	int iClass;
 
-	iClass = (ch->Class()->GetIndex() + 1);
 
 	if (is_npc(ch) || ch->level > LEVEL_IMMORTAL)
 		return 25;
@@ -1168,10 +1166,8 @@ void init_affect(AFFECT_DATA *paf)
 void affect_modify(CHAR_DATA *ch, AFFECT_DATA *paf, bool fAdd)
 {
 	OBJ_DATA *wield;
-	int mod;
 	bool disarmed= false;
 
-	mod = paf->modifier;
 
 	if (fAdd)
 	{
@@ -1318,8 +1314,8 @@ void affect_modify(CHAR_DATA *ch, AFFECT_DATA *paf, bool fAdd)
 		if (disarmed && get_eq_char(ch, WEAR_WIELD) == nullptr)
 		{
 			unequip_char(ch, wield, false);
-			act("You swap $p into your primary hand.", ch, wield, 0, TO_CHAR);
-			act("$n swaps $p into $s primary hand.", ch, wield, 0, TO_ROOM);
+			act("You swap $p into your primary hand.", ch, wield, nullptr, TO_CHAR);
+			act("$n swaps $p into $s primary hand.", ch, wield, nullptr, TO_ROOM);
 			equip_char(ch, wield, WEAR_WIELD, false);
 		}
 	}
@@ -1414,7 +1410,7 @@ void new_affect_to_char(CHAR_DATA *ch, AFFECT_DATA *paf)
 	if (IS_SET(ch->imm_flags, IMM_SLEEP) && IS_SET(paf->bitvector, AFF_SLEEP) && paf->where == TO_AFFECTS)
 	{
 		send_to_char("You are unaffected.\n\r", ch);
-		act("$n is unaffected.", ch, 0, 0, TO_ROOM);
+		act("$n is unaffected.", ch, nullptr, nullptr, TO_ROOM);
 		return;
 	}
 
@@ -1620,15 +1616,16 @@ void char_from_room(CHAR_DATA *ch)
 	ch->next_in_room = nullptr;
 	ch->on = nullptr; /* sanity check! */
 
-	if (is_affected_room(prev_room, gsn_gravity_well))
-	{
-		af = affect_find_room(prev_room->affected, gsn_gravity_well);
+	af = affect_find_room(prev_room->affected, gsn_gravity_well);
 
-		if (ch == Deref(af->owner))
-			gravity_well_explode(prev_room, af);
-	}
+	if (af != nullptr && ch == Deref(af->owner))
+		gravity_well_explode(prev_room, af);
+
 	if (!is_affected(ch, gsn_pull) && (check_entwine(ch, 1) || check_entwine(ch, 2)))
 	{
+		// check_entwine(1) and check_entwine(2) together ask exactly what this
+		// search asks, so a miss means the two have drifted apart rather than
+		// that the character is not entwined.
 		aaf = nullptr;
 		for (auto &aaf_elem : ch->affected)
 		{
@@ -1639,7 +1636,12 @@ void char_from_room(CHAR_DATA *ch)
 			}
 		}
 
-		do_uncoil(Deref(aaf->owner), "automagic");
+		// The coiler can be gone while the wire is still on. do_uncoil reads the
+		// character it is handed, so there is nothing to hand it.
+		CHAR_DATA *coiler = aaf != nullptr ? Deref(aaf->owner) : nullptr;
+
+		if (coiler != nullptr)
+			do_uncoil(coiler, "automagic");
 	}
 	else if (!is_affected(ch, gsn_pull) && check_entwine(ch, 0))
 	{
@@ -1862,9 +1864,7 @@ bool is_worn(OBJ_DATA *obj)
 void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
 {
 	int i;
-	bool status;
 
-	status= false;
 	if (iWear != WEAR_COSMETIC && get_eq_char(ch, iWear) != nullptr)
 	{
 		RS.Logger.Warn("Equip_char: already equipped ({}) -- {} -- {}.", iWear, ch->name, ch->in_room->area->file_name);
@@ -1941,10 +1941,10 @@ void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
 		ch->in_room->light += 3;
 
 	if (show && obj->pIndexData->wear_echo[0] != nullptr)
-		act(palloc_string(obj->pIndexData->wear_echo[0]), ch, obj, 0, TO_CHAR);
+		act(palloc_string(obj->pIndexData->wear_echo[0]), ch, obj, nullptr, TO_CHAR);
 
 	if (show && obj->pIndexData->wear_echo[1] != nullptr)
-		act(palloc_string(obj->pIndexData->wear_echo[1]), ch, obj, 0, TO_ROOM);
+		act(palloc_string(obj->pIndexData->wear_echo[1]), ch, obj, nullptr, TO_ROOM);
 }
 
 /*
@@ -2001,10 +2001,10 @@ void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 		ch->in_room->light = std::max(0, ch->in_room->light - 3);
 
 	if (show && obj->pIndexData->remove_echo[0] != nullptr)
-		act(palloc_string(obj->pIndexData->remove_echo[0]), ch, obj, 0, TO_CHAR);
+		act(palloc_string(obj->pIndexData->remove_echo[0]), ch, obj, nullptr, TO_CHAR);
 
 	if (show && obj->pIndexData->remove_echo[1] != nullptr)
-		act(palloc_string(obj->pIndexData->remove_echo[1]), ch, obj, 0, TO_ROOM);
+		act(palloc_string(obj->pIndexData->remove_echo[1]), ch, obj, nullptr, TO_ROOM);
 }
 
 /*

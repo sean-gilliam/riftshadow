@@ -1160,11 +1160,9 @@ void calabren_update(void)
  */
 void char_update(void)
 {
-	CHAR_DATA *ch_quit;
 	int hgain;
 	bool ghost= false;
 
-	ch_quit = nullptr;
 
 	/* update save counter */
 	save_number++;
@@ -1431,7 +1429,7 @@ void char_update(void)
 
 							if (!owner || ch == owner)
 							{
-								act("You feel invigorated as your $t supplication is renewed by your deity.", ch, skill_table[paf->type].name, 0, TO_CHAR);
+								act("You feel invigorated as your $t supplication is renewed by your deity.", ch, skill_table[paf->type].name, nullptr, TO_CHAR);
 							}
 							else
 							{
@@ -1454,7 +1452,7 @@ void char_update(void)
 						}
 
 						if (paf->type && str_cmp(skill_table[paf->type].room_msg_off, "") && is_awake(ch))
-							act(skill_table[paf->type].room_msg_off, ch, 0, 0, TO_ROOM);
+							act(skill_table[paf->type].room_msg_off, ch, nullptr, nullptr, TO_ROOM);
 					}
 
 					// A charm running out has to release the following as well
@@ -1523,7 +1521,6 @@ void char_update(void)
 void obj_update(void)
 {
 	OBJ_DATA *obj;
-	OBJ_DATA *obj_next;
 	CHAR_DATA *cguard;
 
 	for (OwningListWalk<OBJ_DATA> walk(object_list); !walk.Done(); walk.Step())
@@ -1550,7 +1547,7 @@ void obj_update(void)
 			|| (obj->in_room
 				&& (obj->in_room->sector_type == SECT_WATER || obj->in_room->sector_type == SECT_UNDERWATER)))
 		{
-			act("The water extinguishes $p.", carrier, obj, 0, TO_CHAR);
+			act("The water extinguishes $p.", carrier, obj, nullptr, TO_CHAR);
 
 			if (is_affected_obj(obj, gsn_immolate))
 				affect_strip_obj(obj, gsn_immolate);
@@ -1730,7 +1727,7 @@ void obj_update(void)
 							for (t_obj = obj->contains; t_obj != nullptr; t_obj = next_obj)
 							{
 								next_obj = t_obj->next_content;
-								act_new("$p returns to you.", owner, t_obj, 0, TO_CHAR, POS_DEAD);
+								act_new("$p returns to you.", owner, t_obj, nullptr, TO_CHAR, POS_DEAD);
 
 								if (t_obj->item_type == ITEM_MONEY)
 								{
@@ -1829,9 +1826,11 @@ void track_update(void)
 		// has already gone back on the free list -- the exact failure this
 		// field stopped being a raw pointer to avoid. Re-reading costs an
 		// array index and an integer compare, and yields null instead.
-		if (tch->in_room == Deref(tch->last_fought)->in_room)
+		CHAR_DATA *quarry = Deref(tch->last_fought);
+
+		if (quarry != nullptr && tch->in_room == quarry->in_room)
 		{
-			track_attack(tch, Deref(tch->last_fought));
+			track_attack(tch, quarry);
 			continue;
 		}
 
@@ -2212,7 +2211,7 @@ void age_update(void)
 			}
 			else
 			{
-				act("$n slowly fades away as $s souls departs the mortal planes.", ch, 0, 0, TO_ROOM);
+				act("$n slowly fades away as $s souls departs the mortal planes.", ch, nullptr, nullptr, TO_ROOM);
 				send_to_char("Your soul finally departs the mortal planes.\n\r", ch);
 				wiznet("$N has finally died of old age.", ch, nullptr, 0, 0, 0);
 
@@ -2241,7 +2240,7 @@ void age_update(void)
 		if (get_hours(ch) < ch->pcdata->death_time && !timedied)
 			continue;
 
-		act("$n closes $s eyes for the final time as age catches up with $m at last.", ch, 0, 0, TO_ROOM);
+		act("$n closes $s eyes for the final time as age catches up with $m at last.", ch, nullptr, nullptr, TO_ROOM);
 		send_to_char("You close your eyes for the final time as age catches up with you at last.\n\r", ch);
 		age_death(ch);
 
@@ -2378,7 +2377,7 @@ void do_forcetick([[maybe_unused]] CHAR_DATA *ch, [[maybe_unused]] char *argumen
 
 void affect_update(void)
 {
-	OBJ_DATA *obj, *obj_next;
+	OBJ_DATA *obj;
 	ROOM_INDEX_DATA *room;
 	AREA_DATA *area;
 
@@ -2527,7 +2526,6 @@ void room_affect_update(void)
 			if (well == nullptr)
 				continue;
 
-			auto room_exit_size = std::size(room->exit);
 			auto well_grav_distance = get_grav_distance(well);
 
 			direction = 0;
@@ -2566,9 +2564,9 @@ void room_affect_update(void)
 							char_to_room(victim, prevroom);
 							dirname = flag_name_lookup(reverse_d(direction), direction_table);
 
-							act("A powerful force drags you inexorably $T.", victim, 0, dirname, TO_CHAR);
+							act("A powerful force drags you inexorably $T.", victim, nullptr, dirname, TO_CHAR);
 							do_look(victim, "auto");
-							act("An invisible force drags $n into the room from the $T.", victim, 0, flag_name_lookup(direction, direction_table), TO_ROOM);
+							act("An invisible force drags $n into the room from the $T.", victim, nullptr, flag_name_lookup(direction, direction_table), TO_ROOM);
 						}
 					}
 
@@ -2650,18 +2648,32 @@ void room_affect_update(void)
 			}
 		}
 
-		if (is_affected_room(room, gsn_tidalwave))
+		// The wave is stored as a pair: one affect at APPLY_ROOM_NONE carrying the
+		// countdown, and one at APPLY_ROOM_NOPE carrying the damage dice. Asking
+		// is_affected_room for the wave is satisfied by either half on its own, so
+		// finding both is the condition, and the searches below are that test.
+		af = nullptr;
+		for (auto &r : room->affected)
 		{
-			af = nullptr;
-			for (auto &r : room->affected)
+			if (r.type == gsn_tidalwave && r.location == APPLY_ROOM_NONE)
 			{
-				if (r.type == gsn_tidalwave && r.location == APPLY_ROOM_NONE)
-				{
-					af = &r;
-					break;
-				}
+				af = &r;
+				break;
 			}
+		}
 
+		af2 = nullptr;
+		for (auto &r : room->affected)
+		{
+			if (r.type == gsn_tidalwave && r.location == APPLY_ROOM_NOPE)
+			{
+				af2 = &r;
+				break;
+			}
+		}
+
+		if (af != nullptr && af2 != nullptr)
+		{
 			if (af->modifier == 1)
 			{
 				for (vch = room->people; vch != nullptr; vch = vch->next_in_room)
@@ -2676,16 +2688,6 @@ void room_affect_update(void)
 			}
 			else if (af->modifier == 0)
 			{
-				af2 = nullptr;
-				for (auto &r : room->affected)
-				{
-					if (r.type == gsn_tidalwave && r.location == APPLY_ROOM_NOPE)
-					{
-						af2 = &r;
-						break;
-					}
-				}
-
 				for (vch = room->people; vch != nullptr; vch = vch->next_in_room)
 				{
 					sprintf(buf, "%sA massive tidal wave rolls in, engulfing the area!%s\n\r",
@@ -2706,9 +2708,11 @@ void room_affect_update(void)
 
 					if (!is_npc(vch))
 					{
-						if (vch->in_room == Deref(af->owner)->in_room)
+						CHAR_DATA *owner = Deref(af->owner);
+
+						if (owner != nullptr && vch->in_room == owner->in_room)
 						{
-							sprintf(buf, "Help! I'm being drowned by %s's tidal wave!", pers(Deref(af->owner), vch));
+							sprintf(buf, "Help! I'm being drowned by %s's tidal wave!", pers(owner, vch));
 							do_myell(vch, buf, nullptr);
 						}
 						else
@@ -2783,18 +2787,13 @@ void room_affect_update(void)
 							new_affect_to_char(vch, &cvaf);
 						}
 
-						paf = nullptr;
-						for (auto &paf_elem : vch->affected)
-						{
-							if (paf_elem.type == gsn_noxious_fumes)
-							{
-								paf = &paf_elem;
-								break;
-							}
-						}
+						paf = affect_find(vch->affected, gsn_noxious_fumes);
 
-						paf->modifier = URANGE(0, paf->modifier, 5);
-						paf->modifier++;
+						if (paf != nullptr)
+						{
+							paf->modifier = URANGE(0, paf->modifier, 5);
+							paf->modifier++;
+						}
 
 						init_affect(&cvaf2);
 						cvaf2.where = TO_AFFECTS;
@@ -2875,7 +2874,7 @@ void room_affect_update(void)
 					break;
 
 				if (room->people)
-					act("The violent winds blow $p away!", room->people, obj, 0, TO_ALL);
+					act("The violent winds blow $p away!", room->people, obj, nullptr, TO_ALL);
 
 				obj_from_room(obj);
 				obj_to_room(obj, to_room);
@@ -2884,7 +2883,7 @@ void room_affect_update(void)
 				if (!to_room->people)
 					continue;
 
-				act("The violent winds blow $p in!", to_room->people, obj, 0, TO_ALL);
+				act("The violent winds blow $p in!", to_room->people, obj, nullptr, TO_ALL);
 
 				if (caster == nullptr)
 					continue;
@@ -2919,11 +2918,11 @@ void room_affect_update(void)
 					to_room->area->area_type == ARE_UNOPENED)
 					break;
 				send_to_char("The violent winds buffet you out of the room!\n\r", victim);
-				act("The violent winds buffet $n out of the room!", victim, 0, 0, TO_ROOM);
+				act("The violent winds buffet $n out of the room!", victim, nullptr, nullptr, TO_ROOM);
 				char_from_room(victim);
 				char_to_room(victim, to_room);
 				do_look(victim, "auto");
-				act("The violent winds buffet $n into the room!", victim, 0, 0, TO_ROOM);
+				act("The violent winds buffet $n into the room!", victim, nullptr, nullptr, TO_ROOM);
 			}
 		}
 	}
@@ -2956,7 +2955,7 @@ void ayell_update(void)
 void iprog_pulse_update(bool isTick)
 {
 	char *direction;
-	OBJ_DATA *obj, *obj_next;
+	OBJ_DATA *obj;
 	ROOM_INDEX_DATA *to_room;
 	EXIT_DATA *pexit;
 	int door;
@@ -2989,7 +2988,7 @@ void iprog_pulse_update(bool isTick)
 
 						if (to_room->people)
 						{
-							act("$p drifts in.", to_room->people, obj, 0, TO_ALL);
+							act("$p drifts in.", to_room->people, obj, nullptr, TO_ALL);
 						}
 
 						obj_from_room(obj);
@@ -3032,15 +3031,15 @@ void iprog_pulse_update(bool isTick)
 						}
 
 						if (to_room->sector_type == SECT_WATER && to_room->people)
-							act("$p suddenly bobs up and surfaces.", to_room->people, obj, 0, TO_ALL);
+							act("$p suddenly bobs up and surfaces.", to_room->people, obj, nullptr, TO_ALL);
 						else if (to_room->people)
-							act("$p floats in from below.", to_room->people, obj, 0, TO_ALL);
+							act("$p floats in from below.", to_room->people, obj, nullptr, TO_ALL);
 					}
 					else
 					{
 						if (obj->in_room->people && obj->in_room->sector_type == SECT_WATER)
 						{
-							act("$p sinks beneath the surface.", obj->in_room->people, obj, 0, TO_ALL);
+							act("$p sinks beneath the surface.", obj->in_room->people, obj, nullptr, TO_ALL);
 						}
 						else if (obj->in_room->people && obj->in_room->sector_type == SECT_UNDERWATER)
 						{
@@ -3049,7 +3048,7 @@ void iprog_pulse_update(bool isTick)
 						}
 
 						if (to_room->people)
-							act("$p sinks in from above.", to_room->people, obj, 0, TO_ALL);
+							act("$p sinks in from above.", to_room->people, obj, nullptr, TO_ALL);
 					}
 
 					obj_from_room(obj);
@@ -3125,13 +3124,13 @@ bool do_mob_cast(CHAR_DATA *ch)
 	{
 		if (skill_table[sn].target == TAR_CHAR_DEFENSIVE)
 		{
-			act("$n closes $s eyes with a look of concentration for a moment.", ch, 0, 0, TO_ROOM);
+			act("$n closes $s eyes with a look of concentration for a moment.", ch, nullptr, nullptr, TO_ROOM);
 		}
 		else
 		{
-			act("You narrow your eyes and glare in $N's direction.", ch, 0, victim, TO_CHAR);
-			act("$n narrows $s eyes and glares in $N's direction.", ch, 0, victim, TO_NOTVICT);
-			act("$n narrows $s eyes and glares in your direction.", ch, 0, victim, TO_VICT);
+			act("You narrow your eyes and glare in $N's direction.", ch, nullptr, victim, TO_CHAR);
+			act("$n narrows $s eyes and glares in $N's direction.", ch, nullptr, victim, TO_NOTVICT);
+			act("$n narrows $s eyes and glares in your direction.", ch, nullptr, victim, TO_VICT);
 		}
 	}
 	else if (!IS_SET(ch->form, FORM_NOSPEECH))

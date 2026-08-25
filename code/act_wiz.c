@@ -493,7 +493,7 @@ void do_induct(CHAR_DATA *ch, char *argument)
 	}
 
 	sprintf(buf, "%s has been inducted into the %s.", victim->name, cabal_table[cabal].long_name);
-	act(buf, victim, 0, ch, TO_NOTVICT);
+	act(buf, victim, nullptr, ch, TO_NOTVICT);
 
 	strcat(buf, "\n\r");
 	send_to_char(buf, ch);
@@ -537,7 +537,7 @@ void do_induct(CHAR_DATA *ch, char *argument)
 void do_outfit(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	OBJ_DATA *obj;
-	int i, body, arms, legs, hands, feet, shield, sn, vnum;
+	int i, body, arms, legs, hands, feet, sn, vnum;
 	AFFECT_DATA af;
 
 	if (is_affected(ch, skill_lookup("outfit")))
@@ -562,7 +562,6 @@ void do_outfit(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		legs = 24574;
 		hands = 24576;
 		feet = 24578;
-		shield = 24580;
 	}
 	else
 	{
@@ -571,7 +570,6 @@ void do_outfit(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		legs = 24575;
 		hands = 24577;
 		feet = 24579;
-		shield = 24580;
 	}
 
 	obj = get_eq_char(ch, WEAR_BODY);
@@ -651,6 +649,7 @@ void do_outfit(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		obj_to_char(obj, ch);
 		wear_obj(ch, obj, false);
 	}
+
 
 	/*
 	obj = get_eq_char(ch, WEAR_ABOUT);
@@ -3413,7 +3412,7 @@ void reboot_now(CHAR_DATA *ch)
 
 				for (t_obj = obj->contains; t_obj != nullptr; t_obj = t_obj->next_content)
 				{
-					act_new("$p returns to you.",owner,t_obj,0,TO_CHAR,POS_DEAD);
+					act_new("$p returns to you.",owner,t_obj,nullptr,TO_CHAR,POS_DEAD);
 
 					if(t_obj->item_type==ITEM_MONEY)
 					{
@@ -3743,8 +3742,8 @@ void do_switch(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "$N switches into %s.", victim->short_descr);
 	wiznet(buf, ch, nullptr, WIZ_SWITCHES, WIZ_SECURE, get_trust(ch));
 
-	Deref(ch->desc)->character = victim->self;
-	Deref(ch->desc)->original = ch->self;
+	connection->character = victim->self;
+	connection->original = ch->self;
 	victim->desc = ch->desc;
 	// The possessed mob borrows the immortal's pcdata (it's an NPC, so its own
 	// pcdata is null). Ownership stays with the original body; do_return calls
@@ -3793,7 +3792,12 @@ void do_return(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	ch->pcdata.release();		// relinquish the borrowed pcdata WITHOUT freeing it
 	connection->character = connection->original;
 	connection->original = nullptr;
-	Deref(connection->character)->desc = ch->desc;
+
+	CHAR_DATA *body = Deref(connection->character);
+
+	if (body != nullptr)
+		body->desc = ch->desc;
+
 	ch->desc = nullptr;
 }
 
@@ -4133,7 +4137,7 @@ void do_purge(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		act("$n disintegrates $N!", ch, 0, victim, TO_NOTVICT);
+		act("$n disintegrates $N!", ch, nullptr, victim, TO_NOTVICT);
 
 		if (victim->level > 1)
 			save_char_obj(victim);
@@ -4204,10 +4208,10 @@ void do_advance(CHAR_DATA *ch, char *argument)
 	 *   Currently, an imp can lower another imp.
 	 *   -- Swiftest
 	 */
+	int temp_prac = -1;
+
 	if (level <= victim->level)
 	{
-		int temp_prac;
-
 		send_to_char("Lowering a player's level!\n\r", ch);
 		send_to_char("**** OOOOHHHHHHHHHH  NNNNOOOO ****\n\r", victim);
 		temp_prac = victim->practice;
@@ -4237,6 +4241,12 @@ void do_advance(CHAR_DATA *ch, char *argument)
 		victim->level += 1;
 		advance_level(victim, false);
 	}
+
+	// Only the lowering branch zeroes practices, and each advance_level above
+	// grants a fresh allowance on the way back up. Restoring the saved count
+	// puts the player back where they were instead of paying them again.
+	if (temp_prac >= 0)
+		victim->practice = temp_prac;
 
 	sprintf(buf, "You are now level %d.\n\r", victim->level);
 	send_to_char(buf, victim);
@@ -6377,7 +6387,7 @@ void do_astrip(CHAR_DATA *ch, char *argument)
 	}
 
 	if (victim != ch)
-		act("All affects stripped from $N.", ch, 0, victim, TO_CHAR);
+		act("All affects stripped from $N.", ch, nullptr, victim, TO_CHAR);
 	else
 		send_to_char("All affects stripped from yourself.\n\r", ch);
 }
@@ -6625,7 +6635,7 @@ void do_addapply(CHAR_DATA *ch, char *argument)
 
 		obj->apply.clear();
 
-		act("All affects removed from $p.", ch, obj, 0, TO_CHAR);
+		act("All affects removed from $p.", ch, obj, nullptr, TO_CHAR);
 		return;
 	}
 
@@ -7147,7 +7157,7 @@ void do_empower(CHAR_DATA *ch, char *argument)
 			REMOVE_BIT(victim->act, PLR_EMPOWERED);
 
 			send_to_char("The Immortals have revoked your empowerment!\n\r", victim);
-			act("You have UNEMPOWERED $N, until you notify $M, $E doesn't know.", ch, 0, victim, TO_CHAR);
+			act("You have UNEMPOWERED $N, until you notify $M, $E doesn't know.", ch, nullptr, victim, TO_CHAR);
 
 			sprintf(buf, "$N revokes %s's empowerment.", victim->name);
 			wiznet(buf, ch, nullptr, WIZ_PENALTIES, 0, 0);
@@ -7169,7 +7179,7 @@ void do_empower(CHAR_DATA *ch, char *argument)
 		{
 			SET_BIT(victim->act, PLR_EMPOWERED);
 
-			act("You have EMPOWERED $N, until you notify $M, $E doesn't know.", ch, 0, victim, TO_CHAR);
+			act("You have EMPOWERED $N, until you notify $M, $E doesn't know.", ch, nullptr, victim, TO_CHAR);
 
 			sprintf(buf, "$N empowers %s.", victim->name);
 			wiznet(buf, ch, nullptr, WIZ_PENALTIES, 0, 0);
@@ -7297,7 +7307,7 @@ void do_rastrip(CHAR_DATA *ch, char *argument)
 		it = next;
 	}
 
-	act("All affects stripped from '$t'.", ch, location->name, 0, TO_CHAR);
+	act("All affects stripped from '$t'.", ch, location->name, nullptr, TO_CHAR);
 }
 
 void do_aastrip(CHAR_DATA *ch, [[maybe_unused]] char *argument)
@@ -7311,7 +7321,7 @@ void do_aastrip(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		it = next;
 	}
 
-	act("All affects stripped from '$t'.", ch, area->name, 0, TO_CHAR);
+	act("All affects stripped from '$t'.", ch, area->name, nullptr, TO_CHAR);
 }
 
 void do_oastrip(CHAR_DATA *ch, char *argument)
@@ -7347,7 +7357,7 @@ void do_oastrip(CHAR_DATA *ch, char *argument)
 		it = next;
 	}
 
-	act("All affects stripped from $p.", ch, obj, 0, TO_CHAR);
+	act("All affects stripped from $p.", ch, obj, nullptr, TO_CHAR);
 }
 
 void do_givexp(CHAR_DATA *ch, char *argument)
@@ -7479,7 +7489,7 @@ void do_clearfavors(CHAR_DATA *ch, char *argument)
 		victim->pcdata->lesserdata[i] = FAVOR_NONE;
 	}
 
-	act("$N's favors cleared.", ch, 0, victim, TO_CHAR);
+	act("$N's favors cleared.", ch, nullptr, victim, TO_CHAR);
 }
 
 void do_gsnlist(CHAR_DATA *ch, [[maybe_unused]] char *argument)
@@ -7760,7 +7770,7 @@ void do_interpdump([[maybe_unused]] CHAR_DATA *ch, [[maybe_unused]] char *argume
 		if (cmd_table[i].hide == 1)
 			bit += 1;
 
-		fprintf(fp, ";%s;0;do_%s;%d;%d;%d;\n", cmd_table[i].name, cmd_table[i].name, cmd_table[i].level, cmd_table[i].log, bit);
+		fprintf(fp, ";%s;0;do_%s;%d;%d;%d;\n", cmd_table[i].name.data(), cmd_table[i].name.data(), cmd_table[i].level, cmd_table[i].log, bit);
 	}
 	fclose(fp);
 

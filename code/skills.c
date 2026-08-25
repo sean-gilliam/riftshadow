@@ -202,6 +202,7 @@ void do_spells(CHAR_DATA *ch, char *argument)
 			break;
 
 		if ((level = skill_table[sn].skill_level[ch->Class()->GetIndex()]) < LEVEL_HERO + 1
+			&& (fAll || level <= ch->level)
 			&& level >= min_lev
 			&& level <= max_lev
 			&& skill_table[sn].spell_fun != spell_null
@@ -367,6 +368,7 @@ void do_skills(CHAR_DATA *ch, char *argument)
 			&&  ch->pcdata->learned[sn] > 0)
 		*/
 		if ((level = skill_table[sn].skill_level[ch->Class()->GetIndex()]) < LEVEL_HERO + 1
+			&& (fAll || level <= ch->level)
 			&& level >= min_lev
 			&& level <= max_lev
 			&& skill_table[sn].spell_fun == spell_null
@@ -667,10 +669,10 @@ void check_style_improve(CHAR_DATA *ch, int style, int multiplier)
 							get_char_color(ch, "lightyellow"),
 							style_table[style].name,
 							END_COLOR(ch));
-						act(test, ch, 0, 0, TO_CHAR);
+						act(test, ch, nullptr, nullptr, TO_CHAR);
 
 						sprintf(test, "You feel ready to learn the %s skill.", style_percent[i].name);
-						act(test, ch, 0, 0, TO_CHAR);
+						act(test, ch, nullptr, nullptr, TO_CHAR);
 					}
 				}
 			}

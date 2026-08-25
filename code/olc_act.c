@@ -524,6 +524,11 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 
 bool redit_mshow(CHAR_DATA *ch, char *argument)
 {
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
+		return false;
+
 	MOB_INDEX_DATA *pMob;
 	int value;
 
@@ -549,16 +554,21 @@ bool redit_mshow(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		Deref(ch->desc)->pEdit = (void *)pMob;
+		connection->pEdit = (void *)pMob;
 	}
 
 	medit_show(ch, argument);
-	Deref(ch->desc)->pEdit = (void *)ch->in_room;
+	connection->pEdit = (void *)ch->in_room;
 	return false;
 }
 
 bool redit_oshow(CHAR_DATA *ch, char *argument)
 {
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
+		return false;
+
 	OBJ_INDEX_DATA *pObj;
 	int value;
 
@@ -584,11 +594,11 @@ bool redit_oshow(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		Deref(ch->desc)->pEdit = (void *)pObj;
+		connection->pEdit = (void *)pObj;
 	}
 
 	oedit_show(ch, argument);
-	Deref(ch->desc)->pEdit = (void *)ch->in_room;
+	connection->pEdit = (void *)ch->in_room;
 	return false;
 }
 
@@ -635,7 +645,8 @@ bool medit_vnum(CHAR_DATA *ch, char *argument)
 
 	EDIT_MOB(ch, pMob);
 
-	return false;
+	if (pMob == nullptr)
+		return false;
 
 	if (!*argument || !is_number(argument))
 	{
@@ -645,19 +656,59 @@ bool medit_vnum(CHAR_DATA *ch, char *argument)
 
 	vnum = atoi(argument);
 
-	if (vnum >= ch->in_room->area->min_vnum && vnum <= ch->in_room->area->max_vnum)
-	{
-		pMob->vnum = vnum;
-		send_to_char("Vnum set.\n\r", ch);
-		return true;
-	}
-	else
+	if (vnum < ch->in_room->area->min_vnum || vnum > ch->in_room->area->max_vnum)
 	{
 		send_to_char("That vnum is not within the area range.\n\r", ch);
 		return false;
 	}
 
-	return false;
+	if (vnum == pMob->vnum)
+	{
+		send_to_char("That is already this mobile's vnum.\n\r", ch);
+		return false;
+	}
+
+	if (get_mob_index(vnum) != nullptr)
+	{
+		send_to_char("That vnum is already in use.\n\r", ch);
+		return false;
+	}
+
+	// The hash bucket is chosen by vnum, so assigning the new number in place
+	// would strand the prototype in the old bucket where get_mob_index cannot
+	// find it under either number. Unlink from the old bucket, renumber, then
+	// link into the new one.
+	int iHash = pMob->vnum % MAX_KEY_HASH;
+
+	if (mob_index_hash[iHash] == pMob)
+	{
+		mob_index_hash[iHash] = pMob->next;
+	}
+	else
+	{
+		MOB_INDEX_DATA *prev = mob_index_hash[iHash];
+
+		while (prev != nullptr && prev->next != pMob)
+			prev = prev->next;
+
+		if (prev == nullptr)
+		{
+			send_to_char("That mobile is not in the index. Vnum unchanged.\n\r", ch);
+			return false;
+		}
+
+		prev->next = pMob->next;
+	}
+
+	pMob->vnum = vnum;
+
+	iHash = vnum % MAX_KEY_HASH;
+	pMob->next = mob_index_hash[iHash];
+	mob_index_hash[iHash] = pMob;
+
+	send_to_char("Vnum set.\n\r", ch);
+	send_to_char("Resets referring to the old vnum are NOT updated. Check them before saving.\n\r", ch);
+	return true;
 }
 
 bool medit_group(CHAR_DATA *ch, char *argument)
@@ -665,6 +716,9 @@ bool medit_group(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (!*argument || !is_number(argument))
 	{
@@ -685,6 +739,9 @@ bool medit_speech(CHAR_DATA *ch, char *argument)
 	int type;
 
 	EDIT_MOB(ch, pMobIndex);
+
+	if (pMobIndex == nullptr)
+		return false;
 
 	if (!*argument)
 	{
@@ -913,6 +970,9 @@ bool medit_prog(CHAR_DATA *ch, char *argument)
 
 	EDIT_MOB(ch, pMobIndex);
 
+	if (pMobIndex == nullptr)
+		return false;
+
 	if (!*argument)
 	{
 		send_to_char("The following mob progs are available:\n\r", ch);
@@ -1010,6 +1070,9 @@ bool oedit_prog(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObjIndex);
 
+	if (pObjIndex == nullptr)
+		return false;
+
 	if (!*argument)
 	{
 		send_to_char("The following object programs are available:\n\r", ch);
@@ -1105,6 +1168,9 @@ bool oedit_spec(CHAR_DATA *ch, char *argument)
 	OBJ_INDEX_DATA *pObjIndex;
 
 	EDIT_OBJ(ch, pObjIndex);
+
+	if (pObjIndex == nullptr)
+		return false;
 
 	argument = one_argument(argument, add);
 	argument = one_argument(argument, prog);
@@ -1508,6 +1574,9 @@ bool aedit_type(CHAR_DATA *ch, char *argument)
 
 	EDIT_AREA(ch, pArea);
 
+	if (pArea == nullptr)
+		return false;
+
 	if (!*argument)
 	{
 		send_to_char("Syntax:  type <type>\n\r", ch);
@@ -1536,6 +1605,9 @@ bool aedit_prog(CHAR_DATA *ch, char *argument)
 	bool found = false;
 
 	EDIT_AREA(ch, pArea);
+
+	if (pArea == nullptr)
+		return false;
 
 	if (!*argument)
 	{
@@ -1637,6 +1709,9 @@ bool aedit_security(CHAR_DATA *ch, char *argument)
 
 	EDIT_AREA(ch, pArea);
 
+	if (pArea == nullptr)
+		return false;
+
 	one_argument(argument, sec);
 
 	if (!is_number(sec) || sec[0] == '\0')
@@ -1673,6 +1748,9 @@ bool aedit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	char buf[MAX_STRING_LENGTH];
 
 	EDIT_AREA(ch, pArea);
+
+	if (pArea == nullptr)
+		return false;
 
 	sprintf(buf, "Name:     [%5d] %s\n\r", pArea->vnum, pArea->name);
 	send_to_char(buf, ch);
@@ -1758,6 +1836,9 @@ bool aedit_reset(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 	EDIT_AREA(ch, pArea);
 
+	if (pArea == nullptr)
+		return false;
+
 	reset_area(pArea);
 	send_to_char("Area reset.\n\r", ch);
 
@@ -1777,7 +1858,12 @@ bool aedit_create(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	pArea = new_area();
 	area_last->next = pArea;
 	area_last = pArea; /* Thanks, Walker. */
-	Deref(ch->desc)->pEdit = (void *)pArea;
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
+		return false;
+
+	connection->pEdit = (void *)pArea;
 
 	SET_BIT(pArea->area_flags, AREA_ADDED);
 	send_to_char("Area Created.\n\r", ch);
@@ -1789,6 +1875,9 @@ bool aedit_name(CHAR_DATA *ch, char *argument)
 	AREA_DATA *pArea;
 
 	EDIT_AREA(ch, pArea);
+
+	if (pArea == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -1808,6 +1897,9 @@ bool aedit_credits(CHAR_DATA *ch, char *argument)
 	AREA_DATA *pArea;
 
 	EDIT_AREA(ch, pArea);
+
+	if (pArea == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -1829,6 +1921,9 @@ bool aedit_file(CHAR_DATA *ch, char *argument)
 	int i, length;
 
 	EDIT_AREA(ch, pArea);
+
+	if (pArea == nullptr)
+		return false;
 
 	one_argument(argument, file); /* Forces Lowercase */
 
@@ -1876,6 +1971,9 @@ bool aedit_level(CHAR_DATA *ch, char *argument)
 
 	EDIT_AREA(ch, pArea);
 
+	if (pArea == nullptr)
+		return false;
+
 	argument = one_argument(argument, lowc);
 	argument = one_argument(argument, highc);
 
@@ -1907,6 +2005,9 @@ bool aedit_age(CHAR_DATA *ch, char *argument)
 
 	EDIT_AREA(ch, pArea);
 
+	if (pArea == nullptr)
+		return false;
+
 	one_argument(argument, age);
 
 	if (!is_number(age) || age[0] == '\0')
@@ -1927,6 +2028,9 @@ bool aedit_builder(CHAR_DATA *ch, char *argument)
 	char buf[MAX_STRING_LENGTH];
 
 	EDIT_AREA(ch, pArea);
+
+	if (pArea == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -1988,6 +2092,9 @@ bool aedit_vnum(CHAR_DATA *ch, char *argument)
 
 	EDIT_AREA(ch, pArea);
 
+	if (pArea == nullptr)
+		return false;
+
 	argument = one_argument(argument, lower);
 	one_argument(argument, upper);
 
@@ -2039,6 +2146,9 @@ bool aedit_lvnum(CHAR_DATA *ch, char *argument)
 
 	EDIT_AREA(ch, pArea);
 
+	if (pArea == nullptr)
+		return false;
+
 	one_argument(argument, lower);
 
 	if (!is_number(lower) || lower[0] == '\0')
@@ -2078,6 +2188,9 @@ bool aedit_uvnum(CHAR_DATA *ch, char *argument)
 	int iupper;
 
 	EDIT_AREA(ch, pArea);
+
+	if (pArea == nullptr)
+		return false;
 
 	one_argument(argument, upper);
 
@@ -2136,6 +2249,9 @@ bool aedit_climate(CHAR_DATA *ch, char *argument)
 	int icli = 0, climate;
 
 	EDIT_AREA(ch, pArea);
+
+	if (pArea == nullptr)
+		return false;
 
 	one_argument(argument, wcli);
 
@@ -2951,6 +3067,11 @@ bool redit_ed(CHAR_DATA *ch, char *argument)
 
 bool redit_create(CHAR_DATA *ch, char *argument)
 {
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
+		return false;
+
 	AREA_DATA *pArea;
 	ROOM_INDEX_DATA *pRoom;
 	int value;
@@ -2997,7 +3118,7 @@ bool redit_create(CHAR_DATA *ch, char *argument)
 	iHash = value % MAX_KEY_HASH;
 	pRoom->next = room_index_hash[iHash];
 	room_index_hash[iHash] = pRoom;
-	Deref(ch->desc)->pEdit = (void *)pRoom;
+	connection->pEdit = (void *)pRoom;
 
 	sprintf(buf, "Room #%d created.\n\r", value);
 	send_to_char(buf, ch);
@@ -3080,13 +3201,36 @@ bool redit_mana(CHAR_DATA *ch, char *argument)
 	return false;
 }
 
-bool redit_clan(CHAR_DATA *ch, [[maybe_unused]] char *argument)
+bool redit_clan(CHAR_DATA *ch, char *argument)
 {
 	ROOM_INDEX_DATA *pRoom;
+	char buf[MAX_STRING_LENGTH];
 
 	EDIT_ROOM(ch, pRoom);
 
-	send_to_char("Clan set.\n\r", ch);
+	if (argument[0] == '\0')
+	{
+		send_to_char("Syntax:  clan (name)\n\r", ch);
+		send_to_char("         clan none\n\r", ch);
+		return false;
+	}
+
+	// cabal_lookup returns 0 for anything it does not recognize, and 0 is also
+	// the "none" cabal, so an unknown name would otherwise clear the room
+	// silently instead of reporting a typo.
+	int cabal = cabal_lookup(argument);
+
+	if (cabal == 0 && str_cmp(argument, cabal_table[0].name))
+	{
+		sprintf(buf, "There is no '%s' cabal.\n\r", argument);
+		send_to_char(buf, ch);
+		return false;
+	}
+
+	pRoom->cabal = cabal;
+
+	sprintf(buf, "Clan set to %s.\n\r", cabal_table[cabal].name);
+	send_to_char(buf, ch);
 	return true;
 }
 
@@ -3931,6 +4075,9 @@ bool oedit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	sprintf(buf, "Name:             [%s]\n\r", pObj->name);
 	send_to_char(buf, ch);
 
@@ -4237,6 +4384,9 @@ bool oedit_addapply(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	argument = one_argument(argument, loc);
 	one_argument(argument, mod);
 
@@ -4274,6 +4424,9 @@ bool oedit_addaffect(CHAR_DATA *ch, char *argument)
 	char value2[MAX_STRING_LENGTH];
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	argument = one_argument( argument, loc );
 	argument = one_argument( argument, mod );
@@ -4321,6 +4474,9 @@ bool oedit_delapply(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	one_argument(argument, apply);
 
 	if (!is_number(apply) || apply[0] == '\0')
@@ -4366,6 +4522,9 @@ bool oedit_msg(CHAR_DATA *ch, char *argument)
 	char target[MSL];
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	argument = one_argument(argument, type);
 	argument = one_argument(argument, target);
@@ -4447,6 +4606,9 @@ bool oedit_limit(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	if (argument[0] == '\0')
 	{
 		send_to_char("Syntax:  limit (number)\n\r"\
@@ -4474,6 +4636,9 @@ bool oedit_verb(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	if (argument[0] == '\0')
 	{
 		send_to_char("Syntax:  verb (verb name)\n\r", ch);
@@ -4491,6 +4656,9 @@ bool oedit_cabal(CHAR_DATA *ch, char *argument)
 	int cabal;
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -4518,6 +4686,9 @@ bool oedit_timer(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	if (argument[0] == '\0')
 	{
 		send_to_char("Syntax:  timer (number)\n\r"\
@@ -4544,6 +4715,9 @@ bool oedit_restrict(CHAR_DATA *ch, char *argument)
 	int bit, count;
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -4583,6 +4757,9 @@ bool oedit_notes(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	string_append(ch, &pObj->notes);
 	return true;
 }
@@ -4591,6 +4768,9 @@ bool oedit_wear_name(CHAR_DATA *ch, char *argument)
 {
 	OBJ_INDEX_DATA *pObj;
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -4611,6 +4791,9 @@ bool oedit_flag(CHAR_DATA *ch, char *argument)
 	AFFECT_DATA pAf, *af;
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	argument = one_argument(argument, arg1);
 	argument = one_argument(argument, arg2);
@@ -4718,6 +4901,9 @@ bool oedit_name(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	if (argument[0] == '\0')
 	{
 		send_to_char("Syntax:  name [string]\n\r", ch);
@@ -4736,6 +4922,9 @@ bool oedit_short(CHAR_DATA *ch, char *argument)
 	OBJ_INDEX_DATA *pObj;
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -4756,6 +4945,9 @@ bool oedit_long(CHAR_DATA *ch, char *argument)
 	OBJ_INDEX_DATA *pObj;
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -4790,6 +4982,9 @@ bool oedit_values(CHAR_DATA *ch, char *argument, int value)
 	OBJ_INDEX_DATA *pObj;
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	if (set_value(ch, pObj, argument, value))
 		return true;
@@ -4843,6 +5038,9 @@ bool oedit_weight(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	if (argument[0] == '\0' || !is_number(argument))
 	{
 		send_to_char("Syntax:  weight [number]\n\r", ch);
@@ -4861,6 +5059,9 @@ bool oedit_cost(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	if (argument[0] == '\0' || !is_number(argument))
 	{
 		send_to_char("Syntax:  cost [number]\n\r", ch);
@@ -4875,6 +5076,11 @@ bool oedit_cost(CHAR_DATA *ch, char *argument)
 
 bool oedit_create(CHAR_DATA *ch, char *argument)
 {
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
+		return false;
+
 	OBJ_INDEX_DATA *pObj;
 	AREA_DATA *pArea;
 	int value;
@@ -4918,7 +5124,7 @@ bool oedit_create(CHAR_DATA *ch, char *argument)
 	iHash = value % MAX_KEY_HASH;
 	pObj->next = obj_index_hash[iHash];
 	obj_index_hash[iHash] = pObj;
-	Deref(ch->desc)->pEdit = (void *)pObj;
+	connection->pEdit = (void *)pObj;
 
 	send_to_char("Object Created.\n\r", ch);
 	return true;
@@ -4930,6 +5136,9 @@ bool oedit_ed(CHAR_DATA *ch, char *argument)
 	char command[MAX_INPUT_LENGTH];
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	argument = one_argument(argument, command);
 
@@ -5060,6 +5269,9 @@ bool oedit_extra(CHAR_DATA *ch, char *argument) /* Moved out of oedit() due to n
 	{
 		EDIT_OBJ(ch, pObj);
 
+		if (pObj == nullptr)
+			return false;
+
 		value = flag_value(extra_flags, argument);
 		if ((value) != NO_FLAG)
 		{
@@ -5085,6 +5297,9 @@ bool oedit_wear(CHAR_DATA *ch, char *argument) /* Moved out of oedit() due to na
 	{
 		EDIT_OBJ(ch, pObj);
 
+		if (pObj == nullptr)
+			return false;
+
 		value = flag_value(wear_flags, argument);
 		if ((value) != NO_FLAG)
 		{
@@ -5108,6 +5323,9 @@ bool oedit_type(CHAR_DATA *ch, char *argument) /* Moved out of oedit() due to na
 	if (argument[0] != '\0')
 	{
 		EDIT_OBJ(ch, pObj);
+
+		if (pObj == nullptr)
+			return false;
 
 		value = flag_value(type_flags, argument);
 		if ((value) != NO_FLAG)
@@ -5141,6 +5359,9 @@ bool oedit_material(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	if (argument[0] == '\0')
 	{
 		send_to_char("Syntax:  material [string]\n\r", ch);
@@ -5161,6 +5382,9 @@ bool oedit_material(CHAR_DATA *ch, char *argument)
 	int value;
 
 	EDIT_OBJ(ch, pObj);
+
+	if (pObj == nullptr)
+		return false;
 
 	if ( argument[0] != '\0' )
 	{
@@ -5185,6 +5409,9 @@ bool oedit_level(CHAR_DATA *ch, char *argument)
 
 	EDIT_OBJ(ch, pObj);
 
+	if (pObj == nullptr)
+		return false;
+
 	if (argument[0] == '\0' || !is_number(argument))
 	{
 		send_to_char("Syntax:  level [number]\n\r", ch);
@@ -5205,6 +5432,9 @@ bool oedit_condition(CHAR_DATA *ch, char *argument)
 	if (argument[0] != '\0' && (value = atoi(argument)) >= 0 && (value <= 100))
 	{
 		EDIT_OBJ(ch, pObj);
+
+		if (pObj == nullptr)
+			return false;
 
 		pObj->condition = value;
 		send_to_char("Condition set.\n\r", ch);
@@ -5227,6 +5457,10 @@ bool medit_limit(CHAR_DATA *ch, char *argument)
 	int low, high;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
+
 	argument = one_argument(argument, arg1);
 	argument = one_argument(argument, arg2);
 
@@ -5259,6 +5493,9 @@ bool medit_optional(CHAR_DATA *ch, char *argument)
 	BARRED_DATA *bar = nullptr;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	argument = one_argument(argument, arg1);
 	argument = one_argument(argument, arg2);
@@ -5482,6 +5719,9 @@ bool medit_yell(CHAR_DATA *ch, char *argument)
 
 	EDIT_MOB(ch, pMob);
 
+	if (pMob == nullptr)
+		return false;
+
 	pMob->attack_yell = palloc_string(argument);
 	return true;
 }
@@ -5491,6 +5731,9 @@ bool medit_notes(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	string_append(ch, &pMob->notes);
 	return true;
@@ -5519,6 +5762,9 @@ bool medit_class(CHAR_DATA *ch, char *argument)
 	char arg1[MSL], arg2[MSL], arg3[MSL];
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	argument = one_argument(argument, arg1);
 	argument = one_argument(argument, arg2);
@@ -5609,6 +5855,9 @@ bool medit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	int i;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	sprintf(buf, "Name:        [%s]\n\rArea:        [%5d] %s\n\r",
 		pMob->player_name,
@@ -5932,6 +6181,11 @@ bool medit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 bool medit_create(CHAR_DATA *ch, char *argument)
 {
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (connection == nullptr)
+		return false;
+
 	MOB_INDEX_DATA *pMob;
 	AREA_DATA *pArea;
 	int value;
@@ -5978,7 +6232,7 @@ bool medit_create(CHAR_DATA *ch, char *argument)
 
 	pMob->next = mob_index_hash[iHash];
 	mob_index_hash[iHash] = pMob;
-	Deref(ch->desc)->pEdit = (void *)pMob;
+	connection->pEdit = (void *)pMob;
 
 	send_to_char("Mobile Created.\n\r", ch);
 	return true;
@@ -5990,6 +6244,9 @@ bool medit_spec(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if ( argument[0] == '\0' )
 	{
@@ -6023,6 +6280,9 @@ bool medit_damtype(CHAR_DATA *ch, char *argument)
 
 	EDIT_MOB(ch, pMob);
 
+	if (pMob == nullptr)
+		return false;
+
 	if (argument[0] == '\0')
 	{
 		send_to_char("Syntax:  damtype [damage message]\n\r", ch);
@@ -6049,6 +6309,9 @@ bool medit_align(CHAR_DATA *ch, char *argument)
 
 	EDIT_MOB(ch, pMob);
 
+	if (pMob == nullptr)
+		return false;
+
 	if (argument[0] == '\0' || !is_number(argument))
 	{
 		send_to_char("Syntax:  alignment [number]\n\r", ch);
@@ -6066,6 +6329,9 @@ bool medit_level(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (argument[0] == '\0' || !is_number(argument))
 	{
@@ -6096,6 +6362,9 @@ bool medit_desc(CHAR_DATA *ch, char *argument)
 
 	EDIT_MOB(ch, pMob);
 
+	if (pMob == nullptr)
+		return false;
+
 	if (argument[0] == '\0')
 	{
 		string_append(ch, &pMob->description);
@@ -6111,6 +6380,9 @@ bool medit_long(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -6133,6 +6405,9 @@ bool medit_short(CHAR_DATA *ch, char *argument)
 
 	EDIT_MOB(ch, pMob);
 
+	if (pMob == nullptr)
+		return false;
+
 	if (argument[0] == '\0')
 	{
 		send_to_char("Syntax:  short [string]\n\r", ch);
@@ -6151,6 +6426,9 @@ bool medit_name(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -6171,6 +6449,9 @@ bool medit_cabal(CHAR_DATA *ch, char *argument)
 	int cabal;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -6202,6 +6483,9 @@ bool medit_shop(CHAR_DATA *ch, char *argument)
 	argument = one_argument(argument, arg2);
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (arg1[0] == '\0')
 	{
@@ -6259,6 +6543,9 @@ bool medit_sex(CHAR_DATA *ch, char *argument) /* Moved out of medit() due to nam
 	{
 		EDIT_MOB(ch, pMob);
 
+		if (pMob == nullptr)
+			return false;
+
 		value = flag_value(sex_flags, argument);
 
 		if (value != NO_FLAG)
@@ -6283,6 +6570,9 @@ bool medit_act(CHAR_DATA *ch, char *argument) /* Moved out of medit() due to nam
 	if (argument[0] != '\0')
 	{
 		EDIT_MOB(ch, pMob);
+
+		if (pMob == nullptr)
+			return false;
 
 		value = flag_value(act_flags, argument);
 
@@ -6309,6 +6599,9 @@ bool medit_affect(CHAR_DATA *ch, char *argument) /* Moved out of medit() due to 
 	if (argument[0] != '\0')
 	{
 		EDIT_MOB(ch, pMob);
+
+		if (pMob == nullptr)
+			return false;
 
 		value = flag_value(affect_flags, argument);
 		if ((value) != NO_FLAG)
@@ -6337,6 +6630,10 @@ bool medit_ac(CHAR_DATA *ch, char *argument)
 			break;
 
 		EDIT_MOB(ch, pMob);
+
+		if (pMob == nullptr)
+			return false;
+
 		argument = one_argument(argument, arg);
 
 		if (!is_number(arg))
@@ -6406,6 +6703,9 @@ bool medit_form(CHAR_DATA *ch, char *argument)
 	{
 		EDIT_MOB(ch, pMob);
 
+		if (pMob == nullptr)
+			return false;
+
 		value = flag_value(form_flags, argument);
 
 		if (value != NO_FLAG)
@@ -6430,6 +6730,9 @@ bool medit_part(CHAR_DATA *ch, char *argument)
 	if (argument[0] != '\0')
 	{
 		EDIT_MOB(ch, pMob);
+
+		if (pMob == nullptr)
+			return false;
 
 		value = flag_value(part_flags, argument);
 
@@ -6456,6 +6759,9 @@ bool medit_imm(CHAR_DATA *ch, char *argument)
 	{
 		EDIT_MOB(ch, pMob);
 
+		if (pMob == nullptr)
+			return false;
+
 		value = flag_value(imm_flags, argument);
 
 		if (value != NO_FLAG)
@@ -6481,6 +6787,9 @@ bool medit_res(CHAR_DATA *ch, char *argument)
 	{
 		EDIT_MOB(ch, pMob);
 
+		if (pMob == nullptr)
+			return false;
+
 		value = flag_value(res_flags, argument);
 
 		if (value != NO_FLAG)
@@ -6505,6 +6814,9 @@ bool medit_vuln(CHAR_DATA *ch, char *argument)
 	if (argument[0] != '\0')
 	{
 		EDIT_MOB(ch, pMob);
+
+		if (pMob == nullptr)
+			return false;
 
 		value = flag_value(vuln_flags, argument);
 
@@ -6535,6 +6847,9 @@ bool medit_material(CHAR_DATA *ch, char *argument)
 
 	EDIT_MOB(ch, pMob);
 
+	if (pMob == nullptr)
+		return false;
+
 	if ((value = flag_value( material_type, argument)) != NO_FLAG)
 	{
 		pMob->material = material_name(value);
@@ -6556,6 +6871,9 @@ bool medit_off(CHAR_DATA *ch, char *argument)
 	if (argument[0] != '\0')
 	{
 		EDIT_MOB(ch, pMob);
+
+		if (pMob == nullptr)
+			return false;
 
 		value = flag_value(off_flags, argument);
 
@@ -6582,6 +6900,9 @@ bool medit_size(CHAR_DATA *ch, char *argument)
 	{
 		EDIT_MOB(ch, pMob);
 
+		if (pMob == nullptr)
+			return false;
+
 		value = flag_value(size_flags, argument);
 
 		if (value != NO_FLAG)
@@ -6605,6 +6926,9 @@ bool medit_hitdice(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -6669,6 +6993,9 @@ bool medit_manadice(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -6739,6 +7066,9 @@ bool medit_damdice(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -6811,6 +7141,9 @@ bool medit_race(CHAR_DATA *ch, char *argument)
 	{
 		EDIT_MOB(ch, pMob);
 
+		if (pMob == nullptr)
+			return false;
+
 		pMob->race = race;
 		BITWISE_OR(pMob->off_flags, race_data_lookup(race)->off);
 		BITWISE_OR(pMob->imm_flags, race_data_lookup(race)->imm);
@@ -6861,6 +7194,9 @@ bool medit_position(CHAR_DATA *ch, char *argument)
 
 	EDIT_MOB(ch, pMob);
 
+	if (pMob == nullptr)
+		return false;
+
 	pMob->start_pos = value;
 	send_to_char("Start position set.\n\r", ch);
 	return true;
@@ -6872,6 +7208,9 @@ bool medit_gold(CHAR_DATA *ch, char *argument)
 	int index;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (argument[0] == '\0')
 	{
@@ -6897,6 +7236,9 @@ bool medit_hitroll(CHAR_DATA *ch, char *argument)
 	MOB_INDEX_DATA *pMob;
 
 	EDIT_MOB(ch, pMob);
+
+	if (pMob == nullptr)
+		return false;
 
 	if (argument[0] == '\0' || !is_number(argument))
 	{

@@ -112,8 +112,12 @@ void do_delete(CHAR_DATA *ch, char *argument)
 			do_quit_new(ch, "", true);
 
 			auto cname = palloc_string(ch->true_name);
+
+			// Archiving the pfile into dead_char is what makes a name refuse to
+			// be reused, so only a character with real time behind it retires
+			// its name. Anything shorter frees the name for someone else.
 			auto save_pfile = ((ch->played + (current_time - ch->logon)) / 3600) >= 15;
-			delete_char(cname, true); // >= 15 hours. Make name unusable.
+			delete_char(cname, save_pfile);
 
 			free_pstring(cname);
 			return;
@@ -422,11 +426,11 @@ void do_newbie(CHAR_DATA *ch, char *argument)
 	if (IS_SET(ch->comm, COMM_ANSI))
 	{
 		sprintf(buf2, "%s[NEWBIE] $n$t%s", get_char_color(ch, "newbie"), END_COLOR(ch));
-		act_new(buf2, ch, buf, 0, TO_CHAR, POS_DEAD);
+		act_new(buf2, ch, buf, nullptr, TO_CHAR, POS_DEAD);
 	}
 	else
 	{
-		act_new("[NEWBIE] $n$t", ch, buf, 0, TO_CHAR, POS_DEAD);
+		act_new("[NEWBIE] $n$t", ch, buf, nullptr, TO_CHAR, POS_DEAD);
 	}
 
 	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
@@ -494,11 +498,11 @@ void do_builder(CHAR_DATA *ch, char *argument)
 	if (IS_SET(ch->comm, COMM_ANSI))
 	{
 		sprintf(buf2, "%s[BUILDER] $n$t%s", get_char_color(ch, "builder"), END_COLOR(ch));
-		act_new(buf2, ch, buf, 0, TO_CHAR, POS_DEAD);
+		act_new(buf2, ch, buf, nullptr, TO_CHAR, POS_DEAD);
 	}
 	else
 	{
-		act_new("[BUILDER] $n$t", ch, buf, 0, TO_CHAR, POS_DEAD);
+		act_new("[BUILDER] $n$t", ch, buf, nullptr, TO_CHAR, POS_DEAD);
 	}
 
 	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
@@ -587,11 +591,11 @@ void do_immtalk(CHAR_DATA *ch, char *argument)
 	if (IS_SET(ch->comm, COMM_ANSI))
 	{
 		sprintf(buf2, "%s[IMM] $n$t%s", get_char_color(ch, "immtalk"), END_COLOR(ch));
-		act_new(buf2, ch, buffer.data(), 0, TO_CHAR, POS_DEAD);
+		act_new(buf2, ch, buffer.data(), nullptr, TO_CHAR, POS_DEAD);
 	}
 	else
 	{
-		act_new("[IMM] $n$t", ch, buffer.data(), 0, TO_CHAR, POS_DEAD);
+		act_new("[IMM] $n$t", ch, buffer.data(), nullptr, TO_CHAR, POS_DEAD);
 	}
 
 	for (OwningListWalk<CHAR_DATA> walk(char_list); !walk.Done(); walk.Step())
@@ -753,7 +757,7 @@ void do_say(CHAR_DATA *ch, char *argument)
 		{
 			if (!(is_immortal(ch)) && is_affected(victim, gsn_deafen))
 			{
-				act("$n says something you can't quite hear.", ch, 0, victim, TO_VICT);
+				act("$n says something you can't quite hear.", ch, nullptr, victim, TO_VICT);
 			}
 			else
 			{
@@ -867,7 +871,7 @@ void say_to(CHAR_DATA *ch, CHAR_DATA *victim, char *argument, char *extra)
 	{
 		if (!(is_immortal(ch)) && is_affected(victim, gsn_deafen))
 		{
-			act("$n says something you can't quite hear.", ch, 0, victim, TO_VICT);
+			act("$n says something you can't quite hear.", ch, nullptr, victim, TO_VICT);
 		}
 		else
 		{
@@ -939,12 +943,12 @@ void do_whisper(CHAR_DATA *ch, char *argument) /* whisper -- dioxide */
 		{
 			if (!is_immortal(ch) && is_affected(victim, gsn_deafen))
 			{
-				act("$n says something you can't quite hear.", ch, 0, victim, TO_VICT);
+				act("$n says something you can't quite hear.", ch, nullptr, victim, TO_VICT);
 			}
 			else
 			{
 				sprintf(buf, "$n whispers '%s%s%s'", get_char_color(victim, "red"), argument, END_COLOR(victim));
-				act(buf, ch, 0, victim, TO_VICT);
+				act(buf, ch, nullptr, victim, TO_VICT);
 
 				if (IS_SET(victim->progtypes, MPROG_SPEECH) && victim != ch)
 					victim->pIndexData->mprogs->speech_prog(victim, ch, argument);
@@ -1086,12 +1090,12 @@ void do_sing(CHAR_DATA *ch, char *argument)
 		{
 			if (!is_immortal(ch) && is_affected(victim, gsn_deafen))
 			{
-				act("$n sings something you can't quite hear.", ch, 0, victim, TO_VICT);
+				act("$n sings something you can't quite hear.", ch, nullptr, victim, TO_VICT);
 			}
 			else
 			{
 				buffer3 = fmt::format("$n sings '{}{}{}'", get_char_color(victim, "song"), buf, END_COLOR(victim));
-				act(buffer3.c_str(), ch, 0, victim, TO_VICT);
+				act(buffer3.c_str(), ch, nullptr, victim, TO_VICT);
 
 				if (is_affected(victim, gsn_word_of_command) && strstr(argument, victim->pcdata->command[0]))
 					command_execute(victim);
@@ -1100,7 +1104,7 @@ void do_sing(CHAR_DATA *ch, char *argument)
 	}
 
 	buffer3 = fmt::format("You sing '{}{}{}'", get_char_color(ch, "song"), buf2, END_COLOR(ch));
-	act(buffer3.c_str(), ch, 0, 0, TO_CHAR);
+	act(buffer3.c_str(), ch, nullptr, nullptr, TO_CHAR);
 }
 
 void do_pray(CHAR_DATA *ch, char *argument)
@@ -1140,6 +1144,9 @@ void do_pray(CHAR_DATA *ch, char *argument)
 		DESCRIPTOR_DATA *d = walk.Current();
 
 		auto victim = Deref(d->original) ? Deref(d->original) : Deref(d->character);
+
+		if (victim == nullptr)
+			continue;
 
 		if (d->connected == CON_PLAYING && Deref(d->character) != ch && !IS_SET(victim->comm, COMM_SHOUTSOFF) && !IS_SET(victim->comm, COMM_QUIET) && victim->level >= 52)
 		{
@@ -1257,13 +1264,13 @@ void do_tell(CHAR_DATA *ch, char *argument)
 
 	if (!(is_immortal(ch) && ch->level > LEVEL_IMMORTAL) && (!is_awake(victim) || is_affected(victim, gsn_deafen)))
 	{
-		act("$E can't hear you.", ch, 0, victim, TO_CHAR);
+		act("$E can't hear you.", ch, nullptr, victim, TO_CHAR);
 		return;
 	}
 
 	if ((IS_SET(victim->comm, COMM_QUIET) || IS_SET(victim->comm, COMM_DEAF)) && !is_immortal(ch)) /* Let Imms send tells to deaf players */
 	{
-		act("$E is not receiving tells.", ch, 0, victim, TO_CHAR);
+		act("$E is not receiving tells.", ch, nullptr, victim, TO_CHAR);
 		return;
 	}
 
@@ -1345,13 +1352,13 @@ void do_reply(CHAR_DATA *ch, char *argument)
 
 	if (!is_immortal(ch) && (!is_awake(victim) || is_affected(victim, gsn_deafen)))
 	{
-		act("$E can't hear you.", ch, 0, victim, TO_CHAR);
+		act("$E can't hear you.", ch, nullptr, victim, TO_CHAR);
 		return;
 	}
 
 	if ((IS_SET(victim->comm, COMM_QUIET) || IS_SET(victim->comm, COMM_DEAF)) && !is_immortal(ch) && !is_immortal(victim))
 	{
-		act_new("$E is not receiving tells.", ch, 0, victim, TO_CHAR, POS_DEAD);
+		act_new("$E is not receiving tells.", ch, nullptr, victim, TO_CHAR, POS_DEAD);
 		return;
 	}
 
@@ -1485,6 +1492,9 @@ void do_yell(CHAR_DATA *ch, char *argument)
 		// Read once: command_execute below can extract the listener, but it is
 		// the last thing this iteration does with it.
 		CHAR_DATA *listener = Deref(d->character);
+
+		if (listener == nullptr)
+			continue;
 
 		if (d->connected == CON_PLAYING && listener != ch && listener->in_room != nullptr && listener->in_room->area == ch->in_room->area && !IS_SET(listener->comm, COMM_QUIET))
 		{
@@ -1831,7 +1841,7 @@ void do_quit_new(CHAR_DATA *ch, [[maybe_unused]] char *argument, bool autoq)
 			{
 				if (obj->carried_by == ch->self)
 				{
-					act("You cannot quit with cabal items in your inventory!", ch, 0, 0, TO_CHAR);
+					act("You cannot quit with cabal items in your inventory!", ch, nullptr, nullptr, TO_CHAR);
 					return;
 				}
 			}
@@ -1899,21 +1909,10 @@ void do_quit_new(CHAR_DATA *ch, [[maybe_unused]] char *argument, bool autoq)
 	{
 		CHAR_DATA *wch = walk.Current();
 
-		if (is_affected(wch, gsn_empathy))
-		{
-			AFFECT_DATA *laf = nullptr;
-			for (auto &laf_elem : wch->affected)
-			{
-				if (laf_elem.type == gsn_empathy)
-				{
-					laf = &laf_elem;
-					break;
-				}
-			}
+		AFFECT_DATA *laf = affect_find(wch->affected, gsn_empathy);
 
-			if (Deref(laf->owner) == ch)
-				affect_strip(wch, gsn_empathy);
-		}
+		if (laf != nullptr && Deref(laf->owner) == ch)
+			affect_strip(wch, gsn_empathy);
 
 		if (!is_npc(wch))
 			continue;
@@ -1926,7 +1925,7 @@ void do_quit_new(CHAR_DATA *ch, [[maybe_unused]] char *argument, bool autoq)
 
 		if (wch->pIndexData->vnum == MOB_VNUM_DECOY && is_name(ch->name, wch->name))
 		{
-			act("$n crumbles to dust.", wch, 0, 0, TO_ROOM);
+			act("$n crumbles to dust.", wch, nullptr, nullptr, TO_ROOM);
 			extract_char(wch, true);
 		}
 	}
@@ -2726,7 +2725,7 @@ void do_release(CHAR_DATA *ch, char *argument)
 
 	if (is_npc(victim))
 	{
-		act("$n slowly fades away.", victim, 0, 0, TO_ROOM);
+		act("$n slowly fades away.", victim, nullptr, nullptr, TO_ROOM);
 		extract_char(victim, true);
 	}
 	else
@@ -2825,7 +2824,12 @@ void mob_death_log(CHAR_DATA *killer, CHAR_DATA *dead)
 /* type 0 = create, 1 = login, 2 = logout */
 void login_log(CHAR_DATA *ch, int type)
 {
-	if (!ch->pcdata->host && !Deref(ch->desc))
+	// Read once. The guard below proves the descriptor is there when the stored
+	// host is not, but only if both reads see the same descriptor, and resolving
+	// the handle twice is two separate lookups.
+	DESCRIPTOR_DATA *connection = Deref(ch->desc);
+
+	if (!ch->pcdata->host && !connection)
 		return;
 
 	if (IS_SET(ch->comm, COMM_NOSOCKET))
@@ -2833,7 +2837,7 @@ void login_log(CHAR_DATA *ch, int type)
 
 	Login login;
 	login.name = ch->true_name;
-	login.site = ch->pcdata->host ? ch->pcdata->host : Deref(ch->desc)->host;
+	login.site = ch->pcdata->host ? ch->pcdata->host : connection->host;
 	login.time = log_time();
 	login.ctime = current_time;
 	login.played = type == 2 ? (int)((current_time - ch->logon) / 60) : -1;

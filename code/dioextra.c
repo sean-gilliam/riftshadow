@@ -353,7 +353,7 @@ void do_affrem(CHAR_DATA *ch, char *argument)
 	}
 
 	if (skill_table[sn].room_msg_off && remove)
-		act(skill_table[sn].room_msg_off, victim, 0, 0, TO_ROOM);
+		act(skill_table[sn].room_msg_off, victim, nullptr, nullptr, TO_ROOM);
 
 	sprintf(buf, "The %s affect is removed from %s.\n\r", skill_table[sn].name, victim->name);
 
@@ -705,9 +705,9 @@ bool check_shroud_of_light(CHAR_DATA *ch, CHAR_DATA *victim)
 
 	if (number_percent() <= 35 && is_affected(ch, gsn_shroud_of_light))
 	{
-		act("As you approach $M, $N's shroud of light sears you!", ch, 0, victim, TO_CHAR);
-		act("As $n approaches you, your shroud of light sears $m!", ch, 0, victim, TO_VICT);
-		act("$n is seared by $N's shroud of light!", ch, 0, victim, TO_NOTVICT);
+		act("As you approach $M, $N's shroud of light sears you!", ch, nullptr, victim, TO_CHAR);
+		act("As $n approaches you, your shroud of light sears $m!", ch, nullptr, victim, TO_VICT);
+		act("$n is seared by $N's shroud of light!", ch, nullptr, victim, TO_NOTVICT);
 
 		init_affect(&af);
 		af.where = TO_AFFECTS;
@@ -1361,7 +1361,7 @@ void do_finger(CHAR_DATA *ch, char *argument)
 		sprintf(buf2, "  Align: %-16s Ethos: %-20s Sex:  %s\n\r",
 			align < 0 ? "evil" : align == 0 ? "neutral" : align > 0 ? "good" : "(none)",
 			ethos < 0 ? "chaotic" : ethos == 0 ? "neutral" : ethos > 0 ? "lawful" : "(none)",
-			pc_race_table[race].name);
+			sex);
 		send_to_char(buf2, ch);
 
 		sprintf(buf3, "%d (b%d)", time_info.year - born, born);

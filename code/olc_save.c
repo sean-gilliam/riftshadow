@@ -897,7 +897,6 @@ void save_shops([[maybe_unused]] FILE *fp, [[maybe_unused]] AREA_DATA *pArea)
 
 void save_area(AREA_DATA *pArea)
 {
-	long long temp_bit;
 	FILE *fp = nullptr;
 
 	std::string backupPath = std::string(RIFT_AREA_DIR) + "/backup/" + pArea->file_name + ".bak";
@@ -922,7 +921,6 @@ void save_area(AREA_DATA *pArea)
 	fprintf(fp, "%d\n", pArea->security);
 	fprintf(fp, "%s~\n\n", pArea->builders);
 
-	temp_bit = pArea->area_flags[0] + pArea->area_flags[1];
 
 	save_mobiles(fp, pArea);
 	save_objects(fp, pArea);
@@ -1123,6 +1121,9 @@ void do_asave(CHAR_DATA *ch, char *argument)
 		if (!str_cmp(arg1, "area"))
 		{
 			DESCRIPTOR_DATA *d = Deref(ch->desc);
+
+			if (d == nullptr)
+				return;
 
 			/* Is character currently editing. */
 			if (d->editor == 0)
