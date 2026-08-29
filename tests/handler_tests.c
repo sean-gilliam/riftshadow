@@ -13,6 +13,7 @@
 #include "../code/db.h"
 #include "../code/recycle.h"
 #include "../code/pstring.h"
+#include "../code/mspec.h"
 #include "world_fixture.h"
 
 // TEST_CASE("Test capitalization", "[string]" )
@@ -2909,6 +2910,132 @@ SCENARIO("an aligned item does not reject the mob wearing it", "[equip_char]")
 			{
 				REQUIRE(TestWorld::Heard(player, "rejects you"));
 				REQUIRE(TestWorld::Heard(watcher, "drops"));
+			}
+		}
+	}
+}
+
+// An object reaches extract_obj from several directions, and one of them is the
+// destruction of whatever is carrying it. Nothing on that path establishes that
+// the object came from a prototype, and the count it decrements belongs to one.
+SCENARIO("extracting an object that was never stamped from a prototype", "[extract_obj]")
+{
+	GIVEN("an object built by hand, with no prototype behind it")
+	{
+		TestWorld world;
+
+		auto obj = new obj_data();
+		obj->self = objectHandles.Add(obj);
+		obj->name = palloc_string("orphan");
+		obj->short_descr = palloc_string("an orphaned trinket");
+		obj->description = palloc_string("An orphaned trinket lies here.");
+		obj->item_type = ITEM_TRASH;
+		obj->wear_loc = WEAR_NONE;
+
+		REQUIRE(obj->pIndexData == nullptr);
+
+		WHEN("it is extracted")
+		{
+			// Without the guard this reads limcount through the null prototype
+			// and the process dies here. It never reaches the object list check
+			// below, which is the part that reports the object as unaccounted for.
+			extract_obj(obj);
+
+			THEN("the object survives to be released by its caller")
+			{
+				// extract_obj returns early for an object that was never linked,
+				// saying so in the log and leaving the object to whoever built it.
+				REQUIRE(Deref(obj->self) == obj);
+			}
+		}
+
+		free_obj(obj);
+	}
+}
+
+// A pet escorting a player through the academy keeps ticking after the player
+// stops existing. The leader it is escorting is reached through a handle, and a
+// handle to a freed character resolves to nothing.
+SCENARIO("an academy pet whose leader has gone", "[apet_at_room]")
+{
+	GIVEN("a pet whose leader has been freed")
+	{
+		TestWorld world;
+		auto room = world.CreateRoom();
+		auto player = world.CreatePlayer("Escorted", room);
+		auto pet = world.CreateMob("an academy guide", room);
+
+		pet->leader = player->self;
+
+		REQUIRE(Deref(pet->leader) == player);
+
+		WHEN("the leader is freed and the pet reaches a room")
+		{
+			free_char(player);
+
+			REQUIRE(Deref(pet->leader) == nullptr);
+
+			THEN("the pet does nothing rather than writing through the dead handle")
+			{
+				// Without the guard the first statement of apet_at_room assigns
+				// through a null pointer and the process dies here.
+				apet_at_room(pet, CIM_FOOD);
+
+				REQUIRE(Deref(pet->master) == nullptr);
+			}
+		}
+	}
+}
+
+// can_see is read at its call sites as a filter that rejects a character who is
+// not there: several callers resolve one out of a handle and pass the result
+// straight in, guarded by nothing but the call itself. Every line of the body
+// dereferences both arguments, so the predicate has to answer for the absent
+// case rather than crash inside it.
+SCENARIO("can_see answers for a character that is not there", "[can_see]")
+{
+	GIVEN("a character in a lit room")
+	{
+		TestWorld world;
+		auto room = world.CreateRoom();
+		auto watcher = world.CreatePlayer("Watcher", room);
+		auto seen = world.CreatePlayer("Seen", room);
+
+		WHEN("the victim is absent")
+		{
+			THEN("nothing is visible rather than the test dying inside itself")
+			{
+				// Without the guard this dereferences null a few lines into the
+				// body and the process dies here.
+				REQUIRE(can_see(watcher, nullptr) == false);
+			}
+		}
+
+		WHEN("the viewer is absent")
+		{
+			THEN("nothing is visible")
+			{
+				REQUIRE(can_see(nullptr, seen) == false);
+			}
+		}
+
+		WHEN("both are absent")
+		{
+			THEN("the answer is still no")
+			{
+				// The ch == victim shortcut sits above most of the body and
+				// would answer true for two null pointers, so the guard has to
+				// come before it.
+				REQUIRE(can_see(nullptr, nullptr) == false);
+			}
+		}
+
+		WHEN("both are present")
+		{
+			THEN("they can see each other, so the guard did not swallow the normal case")
+			{
+				REQUIRE(can_see(watcher, seen) == true);
+				REQUIRE(can_see(seen, watcher) == true);
 			}
 		}
 	}
