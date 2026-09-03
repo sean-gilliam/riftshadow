@@ -52,14 +52,18 @@ struct obj_data
 	char *name;
 	char *short_descr;
 	char *description;
-	short item_type;
+	// Zero rather than a named type, which is what this field held before it
+	// had a type: it is what an object that has not been given one has, and
+	// the item table reads it back as "none". Naming it would stop the save
+	// seam reporting a stored zero, which is a real anomaly.
+	ItemType item_type = static_cast<ItemType>(0);
 	long extra_flags[MAX_BITVECTOR];
 	long wear_flags[MAX_BITVECTOR];
 	long imm_flags[MAX_BITVECTOR];
 	long res_flags[MAX_BITVECTOR];
 	long vuln_flags[MAX_BITVECTOR];
 	long affected_by[MAX_BITVECTOR];
-	short wear_loc;
+	WearLocation wear_loc = WEAR_NONE;
 	short weight;
 	int cost;
 	short level;

@@ -1,6 +1,7 @@
 #ifndef ACT_OBJ_H
 #define ACT_OBJ_H
 
+#include "enums.h"
 #include "entity/fwd.h"
 
 
@@ -45,7 +46,7 @@ void do_eat (CHAR_DATA *ch, char *argument);
 /*
  * Remove an object.
  */
-bool remove_obj (CHAR_DATA *ch, int iWear, bool fReplace);
+bool remove_obj (CHAR_DATA *ch, WearLocation iWear, bool fReplace);
 /*
  * Wear one object.
  * Optional replacement of existing objects.
@@ -92,6 +93,6 @@ bool is_owner (CHAR_DATA *ch, OBJ_DATA *corpse);
 void do_roll (CHAR_DATA *ch, char *argument);
 void do_flip (CHAR_DATA *ch, char *argument);
 bool is_carrying (CHAR_DATA *ch, int vnum);
-bool is_carrying_type (CHAR_DATA *ch, int type);
+bool is_carrying_type (CHAR_DATA *ch, ItemType type);
 
 #endif /* ACT_OBJ_H */

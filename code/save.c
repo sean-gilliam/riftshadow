@@ -23,6 +23,7 @@
 #include "./repositories/playerrepository.h"
 #include "chardef.h"
 #include "const.h"
+#include "persisted_enum.h"
 #include "utility.h"
 #include "misc.h"
 #include "./include/spdlog/fmt/bundled/format.h"
@@ -113,10 +114,10 @@ void save_char_obj(CHAR_DATA *ch)
 		player.name = ch->true_name;
 		player.pks = ch->pcdata->frags[PK_KILLS];
 		player.level = ch->level;
-		player.class_ = ch->Class()->GetIndex();
+		player.class_ = write_persisted(ch->Class()->GetIndex());
 		player.race = ch->race;
 		player.cabal = ch->cabal;
-		player.sex = ch->pcdata->true_sex;
+		player.sex = write_persisted(ch->pcdata->true_sex);
 		player.hours = (int)((ch->played + current_time - ch->logon) / 3600);
 		player.align = ch->alignment;
 		player.ethos = ch->pcdata->ethos;
@@ -179,7 +180,7 @@ void fwrite_charmie(CHAR_DATA *ch, FILE *fp)
 	fprintf(fp, "#CHARMED\n");
 	fprintf(fp, "%d %d %s~ %s~\n", ch->pIndexData->vnum, ch->in_room->vnum, ch->name, ch->short_descr);
 	fprintf(fp, "%s~\n", ch->long_descr);
-	fprintf(fp, "%d %d %d %d\n", ch->level, ch->max_hit, ch->hit, ch->size);
+	fprintf(fp, "%d %d %d %d\n", ch->level, ch->max_hit, ch->hit, write_persisted(ch->size));
 	fprintf(fp, "%d %d %d %d %d\n", ch->alignment, ch->damage[DICE_NUMBER], ch->damage[DICE_TYPE], ch->damroll, ch->defense_mod);
 }
 
@@ -212,7 +213,7 @@ void fread_charmie(CHAR_DATA *ch, FILE *fp)
 	charmed->level = fread_number(fp);
 	charmed->max_hit = fread_number(fp);
 	charmed->hit = fread_number(fp);
-	charmed->size = fread_number(fp);
+	charmed->size = read_persisted<Size>(fread_number(fp), "size");
 	charmed->alignment = fread_number(fp);
 	charmed->damage[DICE_NUMBER] = fread_number(fp);
 	charmed->damage[DICE_TYPE] = fread_number(fp);
@@ -228,7 +229,7 @@ void fread_charmie(CHAR_DATA *ch, FILE *fp)
 	af.where = TO_AFFECTS;
 	af.level = ch->level;
 	af.aftype = AFT_SPELL;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	af.duration = -1;
 
@@ -288,7 +289,7 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 	if (ch->cabal == CABAL_HORDE)
 		fprintf(fp, "Tribe %d\n", ch->pcdata->tribe);
 
-	fprintf(fp, "Sex  %d\n", ch->sex);
+	fprintf(fp, "Sex  %d\n", write_persisted(ch->sex));
 	fprintf(fp, "Beauty %d\n", ch->pcdata->beauty);
 	fprintf(fp, "Cla  %s~\n", ch->Class()->name.c_str());
 	fprintf(fp, "Levl %d\n", ch->level);
@@ -385,7 +386,7 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 		if (ch->incog_level)
 			fprintf(fp, "Inco %d\n", ch->incog_level);
 
-		fprintf(fp, "Pos  %d\n", ch->position == POS_FIGHTING ? POS_STANDING : ch->position);
+		fprintf(fp, "Pos  %d\n", write_persisted(ch->position == POS_FIGHTING ? POS_STANDING : ch->position));
 
 		if (ch->practice != 0)
 			fprintf(fp, "Prac %d\n", ch->practice);
@@ -488,7 +489,7 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 		if (ch->pcdata->extitle)
 			fprintf(fp, "EXTitl %s~\n", ch->pcdata->extitle);
 
-		fprintf(fp, "TSex %d\n", ch->pcdata->true_sex);
+		fprintf(fp, "TSex %d\n", write_persisted(ch->pcdata->true_sex));
 		fprintf(fp, "LLev %d\n", ch->pcdata->last_level);
 		fprintf(fp, "HMVP %d %d %d\n", ch->pcdata->perm_hit, ch->pcdata->perm_mana, ch->pcdata->perm_move);
 		fprintf(fp, "Cnd  %d %d %d %d %d %d\n",
@@ -649,7 +650,7 @@ void fwrite_char(CHAR_DATA *ch, FILE *fp)
 
 	for (i = 0; i < MAX_WEAR; i++)
 	{
-		if ((obj = get_eq_char(ch, i)) == nullptr)
+		if ((obj = get_eq_char(ch, wear_slot(i))) == nullptr)
 			fprintf(fp, " 0");
 		else
 			fprintf(fp, " %d", obj->pIndexData->vnum);
@@ -682,7 +683,7 @@ void fwrite_pet(CHAR_DATA *pet, FILE *fp)
 	if (pet->cabal)
 		fprintf(fp, "Cabal %s~\n", cabal_table[pet->cabal].name);
 
-	fprintf(fp, "Sex  %d\n", pet->sex);
+	fprintf(fp, "Sex  %d\n", write_persisted(pet->sex));
 
 	if (pet->level != pet->pIndexData->level)
 		fprintf(fp, "Levl %d\n", pet->level);
@@ -704,7 +705,7 @@ void fwrite_pet(CHAR_DATA *pet, FILE *fp)
 	if (!IS_ZERO_VECTOR(pet->comm))
 		fprintf(fp, "Comm %s\n", print_flags(pet->comm));
 
-	fprintf(fp, "Pos  %d\n", pet->position == POS_FIGHTING ? POS_STANDING : pet->position);
+	fprintf(fp, "Pos  %d\n", write_persisted(pet->position == POS_FIGHTING ? POS_STANDING : pet->position));
 
 	if (pet->saving_throw != 0)
 		fprintf(fp, "Save %d\n", pet->saving_throw);
@@ -804,7 +805,7 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 		fprintf(fp, "WeaF %s\n", print_flags(obj->wear_flags));
 
 	if (obj->item_type != obj->pIndexData->item_type)
-		fprintf(fp, "Ityp %d\n", obj->item_type);
+		fprintf(fp, "Ityp %d\n", write_persisted(obj->item_type));
 
 	if (obj->weight != obj->pIndexData->weight)
 		fprintf(fp, "Wt   %d\n", obj->weight);
@@ -820,7 +821,7 @@ void fwrite_obj(CHAR_DATA *ch, OBJ_DATA *obj, FILE *fp, int iNest)
 
 	/* variable data */
 
-	fprintf(fp, "Wear %d\n", obj->wear_loc);
+	fprintf(fp, "Wear %d\n", write_persisted(obj->wear_loc));
 
 	if (obj->level != obj->pIndexData->level)
 		fprintf(fp, "Lev  %d\n", obj->level);
@@ -1006,7 +1007,7 @@ bool load_char_obj(DESCRIPTOR_DATA *d, char *name)
 	ch->disrupted = false;
 	ch->stolen_from = false;
 	ch->pcdata->souls = 0;
-	ch->position = 0;
+	ch->position = POS_DEAD;
 	ch->pcdata->cabal_level = 0;
 	ch->pcdata->bounty_killed = 0;
 	ch->pcdata->paladin_path = 0;
@@ -1256,11 +1257,11 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 					else
 						paf.type = sn;
 
-					paf.where = fread_number(fp);
+					paf.where = read_persisted<AffectWhere>(fread_number(fp), "affect where");
 					paf.level = fread_number(fp);
 					paf.duration = fread_number(fp);
 					paf.modifier = fread_number(fp);
-					paf.location = fread_number(fp);
+					paf.location = read_persisted<ApplyLocation>(fread_number(fp), "affect location");
 					fread_flag_new(paf.bitvector, fp);
 					paf.aftype = fread_number(fp);
 
@@ -1342,7 +1343,10 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 			case 'C':
 				if (!str_cmp(word, "Cla"))
 				{
-					ch->SetClass(CClass::Lookup(fread_string(fp)));
+					// A class name the table does not carry leaves the
+					// character with none, which is what the lookup's -1
+					// became one call further down.
+					ch->SetClass(CClass::Lookup(fread_string(fp)).value_or(CLASS_NONE));
 					fMatch = true;
 					break;
 				}
@@ -1627,8 +1631,8 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 				KEY("Pass", ch->pcdata->pwd, fread_string(fp))
 				KEY("Played", ch->played, fread_number(fp))
 				KEY("Plyd", ch->played, fread_number(fp))
-				KEY("Position", ch->position, fread_number(fp))
-				KEY("Pos", ch->position, fread_number(fp))
+				KEY("Position", ch->position, read_persisted<Position>(fread_number(fp), "Position"))
+				KEY("Pos", ch->position, read_persisted<Position>(fread_number(fp), "Pos"))
 				KEY("Practice", ch->practice, fread_number(fp))
 				KEY("Prac", ch->practice, fread_number(fp))
 				KEY("Prompt", ch->prompt, fread_string(fp))
@@ -1703,7 +1707,7 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 				KEY("SavingThrow", ch->saving_throw, fread_number(fp))
 				KEY("Save", ch->saving_throw, fread_number(fp))
 				KEY("Scro", ch->lines, fread_number(fp))
-				KEY("Sex", ch->sex, fread_number(fp))
+				KEY("Sex", ch->sex, read_persisted<Sex>(fread_number(fp), "Sex"))
 				KEY("ShortDescr", ch->short_descr, fread_string(fp))
 				KEY("ShD", ch->short_descr, fread_string(fp))
 				KEY("Sec", ch->pcdata->security, fread_number(fp)) /* OLC */
@@ -1750,8 +1754,8 @@ void fread_char(CHAR_DATA *ch, FILE *fp)
 
 				break;
 			case 'T':
-				KEY("TrueSex", ch->pcdata->true_sex, fread_number(fp))
-				KEY("TSex", ch->pcdata->true_sex, fread_number(fp))
+				KEY("TrueSex", ch->pcdata->true_sex, read_persisted<Sex>(fread_number(fp), "TrueSex"))
+				KEY("TSex", ch->pcdata->true_sex, read_persisted<Sex>(fread_number(fp), "TSex"))
 				KEY("Trai", ch->train, fread_number(fp))
 				KEY("Trust", ch->trust, fread_number(fp))
 				KEYV("TrSet", ch->pcdata->trust)
@@ -1907,11 +1911,11 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 					else
 						paf.type = sn;
 
-					paf.where = fread_number(fp);
+					paf.where = read_persisted<AffectWhere>(fread_number(fp), "affect where");
 					paf.level = fread_number(fp);
 					paf.duration = fread_number(fp);
 					paf.modifier = fread_number(fp);
-					paf.location = fread_number(fp);
+					paf.location = read_persisted<ApplyLocation>(fread_number(fp), "affect location");
 
 					fread_flag_new(paf.bitvector, fp);
 
@@ -2028,14 +2032,14 @@ void fread_pet(CHAR_DATA *ch, FILE *fp)
 				KEY("Name", pet->name, fread_string(fp))
 				break;
 			case 'P':
-				KEY("Pos", pet->position, fread_number(fp))
+				KEY("Pos", pet->position, read_persisted<Position>(fread_number(fp), "Pos"))
 				break;
 			case 'R':
 				KEY("Race", pet->race, race_lookup(fread_string(fp)))
 				break;
 			case 'S':
 				KEY("Save", pet->saving_throw, fread_number(fp))
-				KEY("Sex", pet->sex, fread_number(fp))
+				KEY("Sex", pet->sex, read_persisted<Sex>(fread_number(fp), "Sex"))
 				KEY("ShD", pet->short_descr, fread_string(fp))
 				break;
 		}
@@ -2133,10 +2137,13 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 					else
 						paf.type = sn;
 
-					paf.where = fread_number(fp);
+					paf.where = read_persisted<ObjAffectWhere>(fread_number(fp), "object affect where");
 					paf.level = fread_number(fp);
 					paf.duration = fread_number(fp);
 					paf.modifier = fread_number(fp);
+					// An object affect's location is one family or the other
+					// depending on the where above, so it is read as the plain
+					// number the file holds.
 					paf.location = fread_number(fp);
 
 					fread_flag_new(paf.bitvector, fp);
@@ -2166,7 +2173,7 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 				if (!str_cmp(word, "AddApp"))
 				{
 					OBJ_APPLY_DATA oad;
-					oad.location = fread_number(fp);
+					oad.location = read_persisted<ApplyLocation>(fread_number(fp), "object apply location");
 					oad.modifier = fread_number(fp);
 					oad.type = fread_number(fp);
 					obj->apply.push_front(oad);
@@ -2243,9 +2250,8 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 
 						if (make_new)
 						{
-							int wear;
+							WearLocation wear = obj->wear_loc;
 
-							wear = obj->wear_loc;
 							extract_obj(obj);
 							obj->pIndexData->limcount += 1;
 							obj = create_object(obj->pIndexData, 0);
@@ -2264,8 +2270,8 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 
 				break;
 			case 'I':
-				KEY("ItemType", obj->item_type, fread_number(fp))
-				KEY("Ityp", obj->item_type, fread_number(fp))
+				KEY("ItemType", obj->item_type, read_persisted<ItemType>(fread_number(fp), "ItemType"))
+				KEY("Ityp", obj->item_type, read_persisted<ItemType>(fread_number(fp), "Ityp"))
 				break;
 			case 'L':
 				KEY("Level", obj->level, fread_number(fp))
@@ -2390,8 +2396,8 @@ void fread_obj(CHAR_DATA *ch, FILE *fp)
 				KEYV("WearFlags", obj->wear_flags)
 				KEYV("WeaF", obj->wear_flags)
 				KEY("WLName", obj->wear_loc_name, fread_string(fp))
-				KEY("WearLoc", obj->wear_loc, fread_number(fp))
-				KEY("Wear", obj->wear_loc, fread_number(fp))
+				KEY("WearLoc", obj->wear_loc, read_persisted<WearLocation>(fread_number(fp), "WearLoc"))
+				KEY("Wear", obj->wear_loc, read_persisted<WearLocation>(fread_number(fp), "Wear"))
 				KEY("Weight", obj->weight, fread_number(fp))
 				KEY("Wt", obj->weight, fread_number(fp))
 				break;

@@ -149,7 +149,7 @@ void do_backstab(CHAR_DATA *ch, char *argument)
 		damage(ch, victim, 0, gsn_backstab, DAM_NONE, true);
 	}
 
-	if (ch->level < skill_table[gsn_dual_backstab].skill_level[ch->Class()->GetIndex()])
+	if (ch->level < skill_table[gsn_dual_backstab].skill_level[class_index(ch->Class()->GetIndex())])
 		return;
 
 	if (number_range(0, 3) == 0)
@@ -332,7 +332,7 @@ void do_blackjack(CHAR_DATA *ch, char *argument)
 
 	chance = get_skill(ch, gsn_blackjack);
 
-	if (chance == 0 || (ch->level < skill_table[gsn_blackjack].skill_level[ch->Class()->GetIndex()]))
+	if (chance == 0 || (ch->level < skill_table[gsn_blackjack].skill_level[class_index(ch->Class()->GetIndex())]))
 	{
 		send_to_char("You don't know how to blackjack.\n\r", ch);
 		return;
@@ -369,7 +369,7 @@ void do_blackjack(CHAR_DATA *ch, char *argument)
 
 	update_pc_last_fight(ch, victim);
 
-	size = victim->size - ch->size;
+	size = size_difference(victim->size, ch->size);
 
 	if (size >= 2)
 	{
@@ -412,7 +412,7 @@ void do_blackjack(CHAR_DATA *ch, char *argument)
 	af.where = TO_AFFECTS;
 	af.level = ch->level;
 	af.owner = ch->self;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.type = gsn_blackjack;
 	af.modifier = 0;
 	af.aftype = AFT_SKILL;
@@ -524,10 +524,15 @@ void do_ghetto_bind(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (is_affected(victim, AFF_HASTE))
+	// These read a bitvector flag, so they go through is_affected_by. The
+	// other overload searches the affect list for a skill number, and AFF_HASTE
+	// is 21, which is the row for "demand" in the skill table. Nothing creates
+	// an affect of that type, so both modifiers were dead and the bind has
+	// never accounted for haste in either direction.
+	if (is_affected_by(victim, AFF_HASTE))
 		chance -= 30;
 
-	if (is_affected(ch, AFF_HASTE))
+	if (is_affected_by(ch, AFF_HASTE))
 		chance += 30;
 
 	if (get_curr_stat(victim, STAT_DEX) > get_curr_stat(ch, STAT_DEX))
@@ -612,7 +617,7 @@ void do_plant(CHAR_DATA *ch, char *argument)
 	int percent;
 	int chance;
 
-	if (get_skill(ch, gsn_plant) == 0 || ch->level < skill_table[gsn_plant].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_plant) == 0 || ch->level < skill_table[gsn_plant].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("Huh?\n\r", ch);
 		return;
@@ -801,7 +806,7 @@ void do_gag(CHAR_DATA *ch, char *argument)
 
 	chance = get_skill(ch, gsn_gag);
 
-	if (chance == 0 || (ch->level < skill_table[gsn_gag].skill_level[ch->Class()->GetIndex()]))
+	if (chance == 0 || (ch->level < skill_table[gsn_gag].skill_level[class_index(ch->Class()->GetIndex())]))
 	{
 		send_to_char("Huh?\n\r", ch);
 		return;
@@ -951,7 +956,7 @@ void do_drag(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (victim->size > (ch->size + 1))
+	if (size_difference(victim->size, ch->size) > 1)
 	{
 		/* Can't push yourself */
 		if (victim == ch)
@@ -1010,7 +1015,7 @@ void do_drag(CHAR_DATA *ch, char *argument)
 		do_myell(victim, store, ch);
 	}
 
-	skill -= (victim->size - ch->size) * 15;
+	skill -= size_difference(victim->size, ch->size) * 15;
 
 	if (number_percent() < skill)
 	{
@@ -1051,13 +1056,25 @@ void do_tripwire(CHAR_DATA *ch, char *argument)
 	EXIT_DATA *pexit_opp;
 	CHAR_DATA *victim;
 	char *direction;
-	int skill, door = *((int *)argument);
+	int skill, door;
 
 	skill = get_skill(ch, gsn_tripwire);
 
 	if (skill == 0)
 	{
 		send_to_char("Huh?\n\r", ch);
+		return;
+	}
+
+	// The argument is the direction as the player typed it. This used to read
+	// it as a pointer to an integer, which the interpreter never passed, and
+	// the read happened in the declaration ahead of the skill check above, so
+	// a character who had never learned the skill took the same fault.
+	door = direction_lookup(argument);
+
+	if (door < 0 || ch->in_room->exit[door] == nullptr)
+	{
+		send_to_char("That's not a valid direction.\n\r", ch);
 		return;
 	}
 
@@ -2303,7 +2320,7 @@ void do_knife(CHAR_DATA *ch, char *argument)
 
 	one_argument(argument, arg);
 
-	if ((get_skill(ch, gsn_knife) == 0) || ch->level < skill_table[gsn_knife].skill_level[ch->Class()->GetIndex()])
+	if ((get_skill(ch, gsn_knife) == 0) || ch->level < skill_table[gsn_knife].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		if (!is_npc(ch))
 		{

@@ -15,6 +15,7 @@
 #include "../code/entity/obj_data.h"
 #include "../code/entity/obj_index_data.h"
 #include "../code/entity/room_index_data.h"
+#include "../code/entity/exit_data.h"
 #include "../code/entity/area_data.h"
 #include "../code/entity/mob_index_data.h"
 #include "../code/entity/descriptor_data.h"
@@ -99,6 +100,11 @@ public:
 			delete proto;
 		}
 
+		// The exits come down before the rooms they point at, so nothing walks
+		// through a link to a room that is already gone.
+		for (EXIT_DATA *pexit : exits)
+			delete pexit;
+
 		// room_index_data has no destructor, so its owned string is this
 		// fixture's to release.
 		for (ROOM_INDEX_DATA *room : rooms)
@@ -134,12 +140,27 @@ public:
 		return room;
 	}
 
+	/// Connects one room to another in a single direction, the way a one way
+	/// exit is linked in the world files. Only the exit named is created, so
+	/// the far room has no way back unless the test asks for one, and a test
+	/// that wants a two way passage calls this twice.
+	EXIT_DATA *LinkRooms(ROOM_INDEX_DATA *from, ROOM_INDEX_DATA *to, int door)
+	{
+		auto pexit = new exit_data();
+		pexit->u1.to_room = to;
+
+		from->exit[door] = pexit;
+		exits.push_back(pexit);
+
+		return pexit;
+	}
+
 	/// Builds a player: a character with pcdata, a class, a connection whose
 	/// output can be read back, and a place to stand. The pcdata is not
 	/// optional. can_see reaches pcdata->death_status through pers() for the $n
 	/// substitution without checking it, so a player built without one crashes
 	/// the first act() that mentions anybody.
-	CHAR_DATA *CreatePlayer(const char *name, ROOM_INDEX_DATA *room, int cclass = CLASS_WARRIOR)
+	CHAR_DATA *CreatePlayer(const char *name, ROOM_INDEX_DATA *room, CharClass cclass = CLASS_WARRIOR)
 	{
 		CHAR_DATA *ch = CreateCharacter(name, room);
 
@@ -186,6 +207,11 @@ public:
 		obj->short_descr = palloc_string(shortDescr);
 		obj->description = palloc_string("A test trinket lies here.");
 		obj->item_type = ITEM_TRASH;
+		// create_object gives every object this, and is_restricted reads it on
+		// every player equip: an object with no owner belongs to somebody else,
+		// so a player handed one by the fixture could not wear it. A literal
+		// rather than a pstring because nothing frees this field.
+		obj->owner = (char *)"none";
 		obj->wear_loc = WEAR_NONE;
 		obj->level = 1;
 		obj->condition = 100;
@@ -336,7 +362,7 @@ private:
 	{
 		static const struct
 		{
-			int index;
+			CharClass index;
 			const char *name;
 			const char *who_name;
 		} table[] = {
@@ -386,6 +412,7 @@ private:
 	std::vector<MOB_INDEX_DATA *> mobPrototypes;
 	std::vector<std::pair<DESCRIPTOR_DATA *, Handle<DESCRIPTOR_DATA>>> descriptors;
 	std::vector<ROOM_INDEX_DATA *> rooms;
+	std::vector<EXIT_DATA *> exits;
 	std::vector<CClass *> classes;
 	CClass *savedClassList = nullptr;
 };

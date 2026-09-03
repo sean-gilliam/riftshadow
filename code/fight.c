@@ -43,6 +43,7 @@
 #include <time.h>
 #include <algorithm>
 #include "merc.h"
+#include "persisted_enum.h"
 #include "entity/handles.h"
 #include "fight.h"
 #include "handler.h"
@@ -825,11 +826,12 @@ int one_hit(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 
 /* De-Ceranized by Cal on 10/24/01
  * return of -1 = Death			*/
-int one_hit_new(CHAR_DATA *ch, CHAR_DATA *victim, int dt, bool specials, bool blockable, int addition, int multiplier, char *dnoun)
+int one_hit_new(CHAR_DATA *ch, CHAR_DATA *victim, int dt, HitSpecials specials, HitBlockable blockable, int addition, int multiplier, char *dnoun)
 {
 	OBJ_DATA *wield = nullptr;
 	AFFECT_DATA *af;
-	int mdam, sn, skill, dam_type, result, rdt;
+	int mdam, sn, skill, result, rdt;
+	DamageType dam_type;
 	float dam;
 	bool truestrike = false;
 
@@ -868,7 +870,9 @@ int one_hit_new(CHAR_DATA *ch, CHAR_DATA *victim, int dt, bool specials, bool bl
 	else
 		dam_type = attack_table[ch->dam_type].damage;
 
-	if (dam_type == -1)
+	// The no-attack row of the attack table carries a damage class that is not
+	// one, so anybody swinging with it hits as though bashing.
+	if (dam_type == static_cast<DamageType>(-1))
 		dam_type = DAM_BASH;
 
 	sn = get_weapon_sn_new(ch, dt);
@@ -1040,7 +1044,7 @@ int one_hit_new(CHAR_DATA *ch, CHAR_DATA *victim, int dt, bool specials, bool bl
 /*
  * Inflict damage from a hit.
  */
-int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type, bool show, bool blockable, int addition, int multiplier, char *dnoun)
+int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, DamageType dam_type, bool show, HitBlockable blockable, int addition, int multiplier, char *dnoun)
 {
 	char buf[MSL];
 	OBJ_DATA *corpse, *wield;
@@ -1407,13 +1411,20 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 
 	if ((dt >= TYPE_HIT || dt == gsn_dual_wield) && ch != victim)
 	{
-		if (is_affected(victim, gsn_corona) && dam > 0 && dt != DAM_COLD)
+		// dt is a skill number or an attack table offset, not a damage class,
+		// and inside this block it is either at least TYPE_HIT or the dual
+		// wield skill, so neither of these two tests can ever be false. What
+		// they were reaching for is dam_type, which is the argument beside
+		// them. Left alone: making them read it stops these two auras firing
+		// against the element each was written to ignore, which is a change to
+		// how combat plays.
+		if (is_affected(victim, gsn_corona) && dam > 0 && dt != write_persisted(DAM_COLD))
 		{
 			kineticdam = dice(victim->level / 12, 6);
 			damage_old(victim, ch, kineticdam, gsn_corona, DAM_FIRE, true);
 		}
 
-		if (is_affected(victim, gsn_frigidaura) && dam > 0 && dt != DAM_FIRE)
+		if (is_affected(victim, gsn_frigidaura) && dam > 0 && dt != write_persisted(DAM_FIRE))
 		{
 			kineticdam = dice(victim->level / 12, 6);
 			damage_old(victim, ch, kineticdam, gsn_frigidaura, DAM_COLD, true);
@@ -1579,7 +1590,7 @@ int damage_new(CHAR_DATA *ch, CHAR_DATA *victim, int idam, int dt, int dam_type,
 	return (int)dam;
 }
 
-int damage(CHAR_DATA *ch, CHAR_DATA *victim, int dam, int dt, int dam_type, bool show)
+int damage(CHAR_DATA *ch, CHAR_DATA *victim, int dam, int dt, DamageType dam_type, bool show)
 {
 	return damage_new(ch, victim, dam, dt, dam_type, show, HIT_BLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
 }
@@ -1587,7 +1598,7 @@ int damage(CHAR_DATA *ch, CHAR_DATA *victim, int dam, int dt, int dam_type, bool
 /*
  * Inflict damage from a hit.
  */
-int damage_old(CHAR_DATA *ch, CHAR_DATA *victim, int dam, int dt, int dam_type, bool show)
+int damage_old(CHAR_DATA *ch, CHAR_DATA *victim, int dam, int dt, DamageType dam_type, bool show)
 {
 	return damage_new(ch, victim, dam, dt, dam_type, show, HIT_BLOCKABLE, HIT_NOADD, HIT_NOMULT, nullptr);
 }
@@ -1902,7 +1913,7 @@ bool is_safe_spell(CHAR_DATA *ch, CHAR_DATA *victim, bool area)
 	return false;
 }
 
-int check_armor(CHAR_DATA *ch, CHAR_DATA *victim, int dt, int dam_type, int dam)
+int check_armor(CHAR_DATA *ch, CHAR_DATA *victim, int dt, DamageType dam_type, int dam)
 {
 	int armor;
 	float chance;
@@ -2014,7 +2025,7 @@ bool check_parry(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	if (!is_npc(ch) && abs(ch->pcdata->energy_state) > 1)
 		chance -= pow(3, abs(ch->pcdata->energy_state));
 
-	chance -= 5 * abs((ch->size - victim->size));
+	chance -= 5 * abs(size_difference(ch->size, victim->size));
 
 	if (dt == gsn_dual_wield)
 		wield = get_eq_char(ch, WEAR_DUAL_WIELD);
@@ -2475,7 +2486,7 @@ bool check_avoid(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 		chance += dex;
 
 	chance += dex - dexa;
-	chance += (ch->size - victim->size) * 5;
+	chance += size_difference(ch->size, victim->size) * 5;
 
 	if (is_affected_room(ch->in_room, gsn_blanket))
 		chance *= 0.8;
@@ -2529,7 +2540,7 @@ bool check_avoid(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	if (is_npc(victim) || is_npc(ch))
 		chance += (victim->level - ch->level);
 
-	chance -= 5 * abs((ch->size - victim->size));
+	chance -= 5 * abs(size_difference(ch->size, victim->size));
 	chance -= victim->balance;
 	chance += ch->balance;
 
@@ -2608,7 +2619,7 @@ int check_evasion(CHAR_DATA *ch, int chance)
 		chance = 100 - (int)nododge;
 
 		if (ch->size > SIZE_MEDIUM)
-			chance -= (ch->size - SIZE_MEDIUM) * 10;
+			chance -= size_difference(ch->size, SIZE_MEDIUM) * 10;
 	}
 
 	return chance;
@@ -2693,8 +2704,8 @@ bool check_fend(CHAR_DATA *ch, CHAR_DATA *victim, int dt)
 	if (is_wielded(victim, WEAPON_POLEARM, WIELD_PRIMARY))
 		skill *= 1.2;
 
-	if (ch->size > victim->size + 1)
-		skill /= pow(2, (ch->size - (victim->size - 1)));
+	if (size_difference(ch->size, victim->size) > 1)
+		skill /= pow(2, size_difference(ch->size, victim->size) + 1);
 
 	if (Deref(victim->analyzePC) == ch)
 		skill += victim->analyze;
@@ -3053,7 +3064,7 @@ void make_corpse(CHAR_DATA *killer, CHAR_DATA *ch)
 	if (is_npc(ch) && (IS_SET(ch->act, ACT_UNDEAD) || IS_SET(ch->form, FORM_UNDEAD)))
 		SET_BIT(corpse->extra_flags, CORPSE_NO_ANIMATE);
 
-	corpse->value[2] = ch->size;
+	corpse->value[2] = write_persisted(ch->size);
 
 	sprintf(buf, corpse->short_descr, name);
 	free_pstring(corpse->short_descr);
@@ -3501,7 +3512,7 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 	af.type = skill_lookup("infravision");
 	af.name = palloc_string("ghost");
 	af.duration = 10;
-	af.location = 0;
+	af.location = APPLY_NONE;
 
 	if (!is_affected_by(victim, AFF_WATERBREATH))
 		SET_BIT(af.bitvector, AFF_WATERBREATH);
@@ -3577,7 +3588,7 @@ void raw_kill(CHAR_DATA *ch, CHAR_DATA *victim)
 		raf.type = gsn_infidels_fate;
 		raf.duration = ch->level;
 		raf.modifier = 0;
-		raf.location = 0;
+		raf.location = APPLY_ROOM_NONE;
 		affect_to_room(ch->in_room, &raf);
 
 		init_affect_area(&aaf);
@@ -4946,8 +4957,8 @@ bool can_bash(CHAR_DATA *ch, CHAR_DATA *victim)
 {
 	if ((is_npc(ch) && !IS_SET(ch->off_flags, OFF_BASH))
 		|| victim->position < POS_FIGHTING
-		|| ch->size + 1 < victim->size
-		|| ch->size - 1 > victim->size
+		|| size_difference(victim->size, ch->size) > 1
+		|| size_difference(ch->size, victim->size) > 1
 		|| is_affected(victim, gsn_protective_shield)
 		|| is_affected(victim, gsn_sanguine_ward)
 		|| is_affected(victim, gsn_heatshield)
@@ -5030,7 +5041,7 @@ void do_berserk(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 	if (chance == 0
 		|| (is_npc(ch) && !IS_SET(ch->off_flags, OFF_BERSERK))
-		|| (!is_npc(ch) && ch->level < skill_table[gsn_berserk].skill_level[ch->Class()->GetIndex()]))
+		|| (!is_npc(ch) && ch->level < skill_table[gsn_berserk].skill_level[class_index(ch->Class()->GetIndex())]))
 	{
 		send_to_char("You turn red in the face, but nothing happens.\n\r", ch);
 		return;
@@ -5178,13 +5189,13 @@ void do_bash(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->size + 1 < victim->size)
+	if (size_difference(victim->size, ch->size) > 1)
 	{
 		send_to_char("They are too large to bash.\n\r", ch);
 		return;
 	}
 
-	if (ch->size - 1 > victim->size)
+	if (size_difference(ch->size, victim->size) > 1)
 	{
 		send_to_char("They are too small to properly aim a bash at.\n\r", ch);
 		return;
@@ -5334,9 +5345,9 @@ void do_bash(CHAR_DATA *ch, char *argument)
 	chance -= victim->carry_weight / 200;
 
 	if (ch->size < victim->size)
-		chance += (ch->size - victim->size) * 20;
+		chance += size_difference(ch->size, victim->size) * 20;
 	else
-		chance += (ch->size - victim->size) * 10;
+		chance += size_difference(ch->size, victim->size) * 10;
 
 	/* stats */
 	chance += get_curr_stat(ch, STAT_STR);
@@ -5372,9 +5383,9 @@ void do_bash(CHAR_DATA *ch, char *argument)
 		act("$n sends $N sprawling with a powerful bash.", ch, nullptr, victim, TO_NOTVICT);
 
 		check_improve(ch, gsn_bash, true, 1);
-		damage_old(ch, victim, number_range(2, (int)(2 + 2 * ch->size + chance / 20)), gsn_bash, DAM_BASH, true);
+		damage_old(ch, victim, number_range(2, (int)(2 + 2 * static_cast<int>(ch->size) + chance / 20)), gsn_bash, DAM_BASH, true);
 
-		LAG_CHAR(victim, std::min(2, number_range(1, 2) + ch->size - victim->size) * PULSE_VIOLENCE);
+		LAG_CHAR(victim, std::min(2, number_range(1, 2) + size_difference(ch->size, victim->size)) * PULSE_VIOLENCE);
 		WAIT_STATE(ch, PULSE_VIOLENCE * 2);
 
 		victim->position = POS_RESTING;
@@ -5605,7 +5616,7 @@ void do_trip(CHAR_DATA *ch, char *argument)
 
 	if (chance == 0
 		|| (is_npc(ch) && !IS_SET(ch->off_flags, OFF_TRIP))
-		|| (!is_npc(ch) && ch->level < skill_table[gsn_trip].skill_level[ch->Class()->GetIndex()]))
+		|| (!is_npc(ch) && ch->level < skill_table[gsn_trip].skill_level[class_index(ch->Class()->GetIndex())]))
 	{
 		send_to_char("Tripping?  What's that?\n\r", ch);
 		return;
@@ -5668,7 +5679,7 @@ void do_trip(CHAR_DATA *ch, char *argument)
 
 	/* size */
 	if (ch->size < victim->size)
-		chance += (ch->size - victim->size) * 10; /* bigger = harder to trip */
+		chance += size_difference(ch->size, victim->size) * 10; /* bigger = harder to trip */
 
 	/* dex */
 	chance += get_curr_stat(ch, STAT_DEX);
@@ -5714,7 +5725,7 @@ void do_trip(CHAR_DATA *ch, char *argument)
 
 		check_improve(ch, gsn_trip, true, 1);
 		WAIT_STATE(ch, skill_table[gsn_trip].beats);
-		damage(ch, victim, number_range(2, 2 + 2 * victim->size), gsn_trip, DAM_BASH, true);
+		damage(ch, victim, number_range(2, 2 + 2 * static_cast<int>(victim->size)), gsn_trip, DAM_BASH, true);
 	}
 	else
 	{
@@ -6025,7 +6036,7 @@ void do_ambush(CHAR_DATA *ch, char *argument)
 	chance = get_skill(ch, gsn_moving_ambush);
 
 	if (Deref(victim->fighting) != nullptr &&
-		(chance < 3 || ch->level < skill_table[gsn_moving_ambush].skill_level[ch->Class()->GetIndex()]))
+		(chance < 3 || ch->level < skill_table[gsn_moving_ambush].skill_level[class_index(ch->Class()->GetIndex())]))
 	{
 		send_to_char("They are moving around too much to ambush.\n\r", ch);
 		return;
@@ -6387,7 +6398,7 @@ void do_herb(CHAR_DATA *ch, char *argument)
 
 	one_argument(argument, arg);
 
-	if (get_skill(ch, gsn_herb) == 0 || ch->level < skill_table[gsn_herb].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_herb) == 0 || ch->level < skill_table[gsn_herb].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("Huh?\n\r", ch);
 		return;
@@ -6459,7 +6470,7 @@ void do_herb(CHAR_DATA *ch, char *argument)
 	init_affect(&af);
 	af.where = TO_AFFECTS;
 	af.type = gsn_herb;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.duration = 4;
 	af.modifier = 0;
 	af.aftype = AFT_SKILL;
@@ -6472,7 +6483,8 @@ void do_cleave(CHAR_DATA *ch, char *argument)
 	OBJ_DATA *weapon;
 	CHAR_DATA *victim;
 	char arg[MAX_INPUT_LENGTH];
-	int dam, chance, dam_type;
+	int dam, chance;
+	DamageType dam_type;
 	char buf[MAX_STRING_LENGTH];
 	int sn;
 	int skill;
@@ -6480,7 +6492,7 @@ void do_cleave(CHAR_DATA *ch, char *argument)
 	chance = get_skill(ch, gsn_cleave);
 
 	if (chance == 0 ||
-		ch->level < skill_table[gsn_cleave].skill_level[ch->Class()->GetIndex()])
+		ch->level < skill_table[gsn_cleave].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to cleave.\n\r", ch);
 		return;
@@ -6616,7 +6628,7 @@ void check_ground_control(CHAR_DATA *ch, CHAR_DATA *victim, float chance, int da
 	chance -= number_range(5, 15);
 	chance = URANGE(5, chance, 60);
 
-	if (ch->level < skill_table[gsn_ground_control].skill_level[ch->Class()->GetIndex()])
+	if (ch->level < skill_table[gsn_ground_control].skill_level[class_index(ch->Class()->GetIndex())])
 		return;
 
 	if (number_percent() > chance)
@@ -6719,7 +6731,7 @@ void do_throw(CHAR_DATA *ch, char *argument)
 	chance = get_skill(ch, gsn_throw);
 
 	if (chance == 0
-		|| ch->level < skill_table[gsn_throw].skill_level[ch->Class()->GetIndex()])
+		|| ch->level < skill_table[gsn_throw].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("Throwing? What's that?\n\r", ch);
 		return;
@@ -6932,7 +6944,7 @@ void do_nerve(CHAR_DATA *ch, char *argument)
 	chance = get_skill(ch, gsn_nerve);
 
 	if (chance == 0 
-		|| ch->level < skill_table[gsn_nerve].skill_level[ch->Class()->GetIndex()])
+		|| ch->level < skill_table[gsn_nerve].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to use nerve pressure tactics.\n\r", ch);
 		return;
@@ -7017,7 +7029,7 @@ void do_endure(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	AFFECT_DATA af;
 
-	if (get_skill(ch, gsn_endure) == 0 || ch->level < skill_table[gsn_endure].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_endure) == 0 || ch->level < skill_table[gsn_endure].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("Huh?\n\r", ch);
 		return;
@@ -7071,7 +7083,7 @@ void do_blindness_dust(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	chance = get_skill(ch, gsn_blindness_dust);
 
 	if (chance == 0
-		|| ch->level < skill_table[gsn_blindness_dust].skill_level[ch->Class()->GetIndex()])
+		|| ch->level < skill_table[gsn_blindness_dust].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to make blindness dust to throw.\n\r", ch);
 		return;
@@ -7157,7 +7169,7 @@ void do_poison_dust(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	chance = get_skill(ch, gsn_poison_dust);
 
 	if (chance == 0
-		|| ch->level < skill_table[gsn_poison_dust].skill_level[ch->Class()->GetIndex()])
+		|| ch->level < skill_table[gsn_poison_dust].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to make poison dust to throw.\n\r", ch);
 		return;
@@ -7241,7 +7253,7 @@ void do_warcry(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	float chance = get_skill(ch, gsn_warcry);
 
 	if (chance == 0
-		|| ch->level < skill_table[gsn_warcry].skill_level[ch->Class()->GetIndex()])
+		|| ch->level < skill_table[gsn_warcry].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to warcry properly.\n\r", ch);
 		return;
@@ -7304,7 +7316,7 @@ void do_strangle(CHAR_DATA *ch, char *argument)
 	chance = get_skill(ch, gsn_strangle);
 
 	if (chance == 0
-		|| ch->level < skill_table[gsn_strangle].skill_level[ch->Class()->GetIndex()])
+		|| ch->level < skill_table[gsn_strangle].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to strangle properly.\n\r", ch);
 		return;
@@ -7359,7 +7371,7 @@ void do_strangle(CHAR_DATA *ch, char *argument)
 	af.level = ch->level;
 	af.duration = 2;
 	af.modifier = 0;
-	af.location = 0;
+	af.location = APPLY_NONE;
 
 	SET_BIT(af.bitvector, AFF_SLEEP);
 
@@ -7423,7 +7435,7 @@ void do_enlist(CHAR_DATA *ch, char *argument)
 
 	chance = get_skill(ch, gsn_enlist);
 
-	if (chance <= 10 || ch->level < skill_table[gsn_enlist].skill_level[ch->Class()->GetIndex()])
+	if (chance <= 10 || ch->level < skill_table[gsn_enlist].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You do not have the skills required to enlist mercenary aid.\n\r", ch);
 		return;
@@ -7514,7 +7526,7 @@ void do_enlist(CHAR_DATA *ch, char *argument)
 	SET_BIT(af.bitvector, AFF_CHARM);
 
 	af.duration = ch->level;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	affect_to_char(victim, &af);
 
 	af.duration = 15;
@@ -7592,7 +7604,7 @@ void do_find_water(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	if (chance > 95)
 		chance = 95;
 
-	if (chance == 0 || ch->level < skill_table[gsn_find_water].skill_level[ch->Class()->GetIndex()])
+	if (chance == 0 || ch->level < skill_table[gsn_find_water].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You poke the ground with a stick but find no water that way.\n\r", ch);
 		return;
@@ -7657,7 +7669,7 @@ void do_shield_cleave(CHAR_DATA *ch, char *argument)
 
 	chance = get_skill(ch, gsn_shield_cleave);
 
-	if (chance == 0 || ch->level < skill_table[gsn_shield_cleave].skill_level[ch->Class()->GetIndex()])
+	if (chance == 0 || ch->level < skill_table[gsn_shield_cleave].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know the methods to cleave a shield in two.\n\r", ch);
 		return;
@@ -7825,7 +7837,7 @@ void do_forage(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	chance = get_skill(ch, gsn_forage);
 
 	if (chance == 0
-		|| ch->level < skill_table[gsn_forage].skill_level[ch->Class()->GetIndex()])
+		|| ch->level < skill_table[gsn_forage].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You aren't able to decide on which plants are edible.\n\r", ch);
 		return;
@@ -7889,7 +7901,7 @@ void do_defend(CHAR_DATA *ch, char *argument)
 	CHAR_DATA *ward;
 
 	one_argument(argument, arg);
-	if (get_skill(ch, gsn_defend) == 0 || ch->level < skill_table[gsn_defend].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_defend) == 0 || ch->level < skill_table[gsn_defend].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You aren't able to defend other people.\n\r", ch);
 		return;
@@ -8213,7 +8225,7 @@ void do_assassinate(CHAR_DATA *ch, char *argument)
 		return;
 
 	if (get_skill(ch, gsn_assassinate) == 0 ||
-		ch->level < skill_table[gsn_assassinate].skill_level[ch->Class()->GetIndex()])
+		ch->level < skill_table[gsn_assassinate].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("Huh?\n\r", ch);
 		return;
@@ -8478,7 +8490,7 @@ void do_pugil(CHAR_DATA *ch, char *argument)
 
 	if (chance == 0
 		|| is_npc(ch)
-		|| (!is_npc(ch) && ch->level < skill_table[gsn_pugil].skill_level[ch->Class()->GetIndex()]))
+		|| (!is_npc(ch) && ch->level < skill_table[gsn_pugil].skill_level[class_index(ch->Class()->GetIndex())]))
 	{
 		send_to_char("You're not trained in the art of pugiling.\n\r", ch);
 		return;
@@ -8553,7 +8565,7 @@ void do_protection_heat_cold(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	int chance;
 	chance = get_skill(ch, gsn_protection_heat_cold);
 
-	if (chance == 0 || ch->level < skill_table[gsn_protection_heat_cold].skill_level[ch->Class()->GetIndex()])
+	if (chance == 0 || ch->level < skill_table[gsn_protection_heat_cold].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to protect yourself from the elements.\n\r", ch);
 		return;
@@ -8583,7 +8595,7 @@ void do_protection_heat_cold(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	SET_BIT(af.bitvector, RES_FIRE);
 	SET_BIT(af.bitvector, RES_COLD);
 
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.mod_name = MOD_RESISTANCE;
 	affect_to_char(ch, &af);
 
@@ -8712,7 +8724,7 @@ void do_iron_resolve(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	af.aftype = AFT_SKILL;
 	af.type = gsn_iron_resolve;
 	af.level = ch->level;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	af.duration = ch->level / 3;
 	// TODO: add affect_to_char ?
@@ -8727,7 +8739,7 @@ void do_quiet_movement(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 	chance = get_skill(ch, gsn_quiet_movement);
 
-	if (chance == 0 || ch->level < skill_table[gsn_quiet_movement].skill_level[ch->Class()->GetIndex()])
+	if (chance == 0 || ch->level < skill_table[gsn_quiet_movement].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to move with silent stealth through the wilderness.\n\r", ch);
 		return;
@@ -8769,7 +8781,7 @@ void do_quiet_movement(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	af.where = TO_AFFECTS;
 	af.type = gsn_quiet_movement;
 	af.aftype = AFT_SKILL;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	af.duration = ch->level;
 	af.level = ch->level;
@@ -9068,10 +9080,10 @@ void trophy_corpse(CHAR_DATA *ch, CHAR_DATA *victim)
 	oaf.level = ch->level;
 	oaf.duration = -1;
 	oaf.modifier = (newbelt->value[4] + 1) / 2;
-	oaf.location = APPLY_HITROLL;
+	oaf.location = obj_location(APPLY_HITROLL);
 	affect_to_obj(newbelt, &oaf);
 
-	oaf.location = APPLY_DAMROLL;
+	oaf.location = obj_location(APPLY_DAMROLL);
 	oaf.modifier = std::max((newbelt->value[4] + 1) / 2 - (newbelt->value[4] % 2) + 1, 1);
 	affect_to_obj(newbelt, &oaf);
 
@@ -9203,7 +9215,7 @@ int check_terrain_mastery(CHAR_DATA *ch)
 		if (total == 0)
 			return 0;
 
-		sect_per = (float)(ch->pcdata->sect_time[ch->in_room->sector_type]) / (float)total * 100;
+		sect_per = (float)(ch->pcdata->sect_time[sector_index(ch->in_room->sector_type)]) / (float)total * 100;
 
 		check_improve(ch, gsn_terrain_mastery, true, 4);
 		return (int)(sect_per / (10 - 0.36 * (ch->mod_stat[STAT_INT])));
@@ -9357,13 +9369,13 @@ void do_headbutt(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		return;
 	}
 
-	if (ch->size < (victim->size - 1))
+	if (size_difference(victim->size, ch->size) > 1)
 	{
 		send_to_char("They're too large to headbutt.\n\r", ch);
 		return;
 	}
 
-	if (ch->size > (victim->size + 1))
+	if (size_difference(ch->size, victim->size) > 1)
 	{
 		send_to_char("They're too small to headbutt.\n\r", ch);
 		return;

@@ -39,6 +39,7 @@
 #include <time.h>
 #include <iterator>
 #include "merc.h"
+#include "persisted_enum.h"
 #include "act_wiz.h"
 #include "entity/handles.h"
 #include "rift.h"
@@ -754,7 +755,7 @@ void do_outfit(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_POWER;
 	af.type = skill_lookup("outfit");
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.duration = 80;
 
 	SET_BIT(af.bitvector, AFF_DARK_VISION);
@@ -1755,7 +1756,7 @@ void do_rstat(CHAR_DATA *ch, char *argument)
 
 	sprintf(buf, "Vnum: %d  Sector: %s  Healing: %d%%  mana: %d%%\n\r",
 		location->vnum,
-		capitalize(sect_table[sect_numlookup(location->sector_type)].name),
+		capitalize(sector_row(location->sector_type)->name),
 		location->heal_rate,
 		location->mana_rate);
 	send_to_char(buf, ch);
@@ -2349,7 +2350,7 @@ void do_ostat(CHAR_DATA *ch, char *argument)
 				? str_cmp(oaffect_loc_name(paf.location), "none")
 					? oaffect_loc_name(paf.location)
 					: (paf.where == TO_OBJ_APPLY)
-						? affect_loc_name(paf.location)
+						? affect_loc_name(static_cast<ApplyLocation>(paf.location))
 						: apply_locations[paf.location].name
 				: "none",
 			paf.modifier,
@@ -2600,7 +2601,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	sprintf(buf, "Level:  %-11d Race:   %-10s  Sex:    %-10s Room: %-9d Class: %s\n\r",
 		victim->level,
 		race_table[victim->race].name,
-		sex_table[victim->sex].name,
+		sex_table[static_cast<int>(victim->sex)].name,
 		!victim->in_room ? 0 : victim->in_room->vnum,
 		victim->Class()->name.c_str());
 	send_to_char(buf, ch);
@@ -2630,8 +2631,8 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 					? "chaotic"
 					: "neutral",
 		victim->gold,
-		size_table[victim->size].name,
-		position_table[victim->position].name);
+		size_table[static_cast<int>(victim->size)].name,
+		position_row(victim->position)->name);
 	send_to_char(buf, ch);
 
 	opponent = Deref(victim->fighting);
@@ -2702,7 +2703,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		sprintf(buf, "Pracs:  %-10d  Trains: %-10d  Beauty: %-8s   Wimpy:  %-6d  Home:   %s\n\r",
 			victim->practice,
 			victim->train,
-			victim->sex == 2
+			victim->sex == SEX_FEMALE
 				? beauty_table[victim->pcdata->beauty].female
 				: beauty_table[victim->pcdata->beauty].male,
 			victim->wimpy, hometown_table[victim->hometown].name);
@@ -2998,7 +2999,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 	if (is_npc(victim) && victim->pIndexData->barred_entry)
 	{
 		barred = get_room_index(victim->pIndexData->barred_entry->vnum);
-		i = victim->pIndexData->barred_entry->comparison;
+		BarComparison comparison = victim->pIndexData->barred_entry->comparison;
 
 		if (!barred)
 			bugout("Error: No room for barred entry data was found.");
@@ -3006,24 +3007,24 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 		sprintf(buf, "Mobile bars entry to %s (%d) if %s is not %s %d.\n\r",
 			barred->name,
 			barred->vnum,
-			criterion_flags[victim->pIndexData->barred_entry->type].name,
-			i == BAR_EQUAL_TO
+			bar_criterion_name(victim->pIndexData->barred_entry->type),
+			comparison == BAR_EQUAL_TO
 				? "equal to"
-				: i == BAR_LESS_THAN ? "less than" : i == BAR_GREATER_THAN ? "greater than" : "unknown",
+				: comparison == BAR_LESS_THAN ? "less than" : comparison == BAR_GREATER_THAN ? "greater than" : "unknown",
 			victim->pIndexData->barred_entry->value);
 
 		send_to_char(buf, ch);
 
-		i = victim->pIndexData->barred_entry->msg_type;
+		BarMessage msg_type = victim->pIndexData->barred_entry->msg_type;
 
 		sprintf(buf, "Mobile forbids access by %s %s%s\n\r",
-			i == BAR_SAY ? "saying" : i == BAR_ECHO ? "echoing" : i == BAR_EMOTE ? "emoting" : "unknown",
+			msg_type == BAR_SAY ? "saying" : msg_type == BAR_ECHO ? "echoing" : msg_type == BAR_EMOTE ? "emoting" : "unknown",
 			victim->pIndexData->barred_entry->message,
-			i == BAR_ECHO ? " to the person." : "");
+			msg_type == BAR_ECHO ? " to the person." : "");
 
 		send_to_char(buf, ch);
 
-		if (i == BAR_ECHO && victim->pIndexData->barred_entry->message_two)
+		if (msg_type == BAR_ECHO && victim->pIndexData->barred_entry->message_two)
 		{
 			sprintf(buf, "Mobile forbids access by echoing %s to the room excluding the person.\n\r",
 				victim->pIndexData->barred_entry->message_two);
@@ -3082,7 +3083,7 @@ void do_mstat(CHAR_DATA *ch, char *argument)
 			paf.name ? ") " : "",
 			str_cmp(affect_loc_name(paf.location), "none")
 				? affect_loc_name(paf.location)
-				: apply_locations[paf.location].name,
+				: apply_locations[write_persisted(paf.location)].name,
 			paf.modifier,
 			(paf.duration == -1) ? -1 : (paf.duration / 2) + 1,
 			(paf.duration % 2 == 0) ? "" : (paf.duration == -1) ? "" : ".5",
@@ -5058,9 +5059,9 @@ void do_mset(CHAR_DATA *ch, char *argument)
 
 	if (!str_cmp(arg2, "size"))
 	{
-		if (value > -1 && value <= SIZE_IMMENSE)
+		if (value > -1 && value <= write_persisted(SIZE_IMMENSE))
 		{
-			victim->size = value;
+			victim->size = static_cast<Size>(value);
 			return;
 		}
 
@@ -5199,10 +5200,10 @@ void do_mset(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		victim->sex = value;
+		victim->sex = static_cast<Sex>(value);
 
 		if (!is_npc(victim))
-			victim->pcdata->true_sex = value;
+			victim->pcdata->true_sex = victim->sex;
 
 		return;
 	}
@@ -5215,18 +5216,18 @@ void do_mset(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		int sclass = CClass::Lookup(arg3);
-		if (sclass == -1)
+		auto sclass = CClass::Lookup(arg3);
+		if (!sclass)
 		{
 			char buf[MAX_STRING_LENGTH];
 
 			strcpy(buf, "Possible classes are: ");
-			for (sclass = 0; sclass < MAX_CLASS; sclass++)
+			for (int listed = 0; listed < MAX_CLASS; listed++)
 			{
-				if (sclass > 0)
+				if (listed > 0)
 					strcat(buf, " ");
 
-				strcat(buf, CClass::GetClass(sclass)->name.c_str());
+				strcat(buf, CClass::GetClass(static_cast<CharClass>(listed))->name.c_str());
 			}
 
 			strcat(buf, ".\n\r");
@@ -5235,7 +5236,7 @@ void do_mset(CHAR_DATA *ch, char *argument)
 			return;
 		}
 
-		victim->SetClass(sclass);
+		victim->SetClass(*sclass);
 		return;
 	}
 
@@ -5862,7 +5863,7 @@ void do_rset(CHAR_DATA *ch, char *argument)
 
 	if (!str_prefix(arg2, "sector"))
 	{
-		location->sector_type = value;
+		location->sector_type = static_cast<SectorType>(value);
 		return;
 	}
 
@@ -6469,7 +6470,7 @@ void do_classes(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		{
 			if (pc_race_table[iRace].classes[iClass] == 1)
 			{
-				sprintf(buf, "%s ", CClass::GetClass(iClass)->name.c_str());
+				sprintf(buf, "%s ", CClass::GetClass(static_cast<CharClass>(iClass))->name.c_str());
 				send_to_char(buf, ch);
 			}
 		}
@@ -6628,7 +6629,8 @@ void do_addapply(CHAR_DATA *ch, char *argument)
 	char arg1[MAX_INPUT_LENGTH];
 	char arg2[MAX_INPUT_LENGTH];
 	char arg3[MAX_INPUT_LENGTH];
-	int modifier, location;
+	int modifier;
+	ApplyLocation location;
 
 	argument = one_argument(argument, arg1);
 	argument = one_argument(argument, arg2);
@@ -6730,7 +6732,7 @@ void do_addapply(CHAR_DATA *ch, char *argument)
 
 		af.level = obj->level;
 		af.duration = -1;
-		af.location = 0;
+		af.location = APPLY_NONE;
 		af.modifier = 0;
 		af.owner = nullptr;
 		charaff_to_obj(obj, &af);

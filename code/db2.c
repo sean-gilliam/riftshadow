@@ -44,6 +44,7 @@
 #include "handler.h"
 #include "db.h"
 #include "lookup.h"
+#include "persisted_enum.h"
 #include "tables.h"
 #include "recycle.h"
 #include "spec.h"
@@ -275,7 +276,6 @@ void load_improgs(FILE *fp)
 				if (pObjIndex->iprogs == nullptr)
 				{
 					pObjIndex->iprogs = new_iprog();
-					CLEAR_MEM(pObjIndex->iprogs, sizeof(IPROG_DATA))
 				}
 
 				strcpy(progtype, fread_word(fp));
@@ -286,8 +286,7 @@ void load_improgs(FILE *fp)
 				room = get_room_index(fread_number(fp));
 				if (!room->rprogs)
 				{
-					room->rprogs = new RPROG_DATA;
-					CLEAR_MEM(room->rprogs, sizeof(RPROG_DATA))
+					room->rprogs = new RPROG_DATA();
 				}
 
 				strcpy(progtype, fread_word(fp));
@@ -297,8 +296,7 @@ void load_improgs(FILE *fp)
 			case 'A':
 				if (!area_last->aprogs)
 				{
-					area_last->aprogs = new APROG_DATA;
-					CLEAR_MEM(area_last->aprogs, sizeof(APROG_DATA))
+					area_last->aprogs = new APROG_DATA();
 				}
 
 				strcpy(progtype, fread_word(fp));
@@ -309,8 +307,7 @@ void load_improgs(FILE *fp)
 				pMobIndex = get_mob_index(fread_number(fp));
 				if (pMobIndex->mprogs == nullptr)
 				{
-					pMobIndex->mprogs = new MPROG_DATA;
-					CLEAR_MEM(pMobIndex->mprogs, sizeof(MPROG_DATA))
+					pMobIndex->mprogs = new MPROG_DATA();
 				}
 
 				strcpy(progtype, fread_word(fp));
@@ -512,9 +509,23 @@ void load_mobs(FILE *fp)
 		copy_vector(pMobIndex->vuln_flags, race_data_lookup(pMobIndex->race)->vuln);
 
 		/* vital statistics */
-		pMobIndex->start_pos = position_lookup(fread_word(fp));
-		pMobIndex->sex = sex_lookup(fread_word(fp));
-		pMobIndex->sex = std::max(0, (int)pMobIndex->sex);
+		char *start_word = fread_word(fp);
+		auto start_pos = position_lookup(start_word);
+
+		if (!start_pos)
+		{
+			// The value this has always stored for a word it does not know is
+			// -1, which is below dead, and the area writer turns that back into
+			// "dead" the next time the area is saved. Reported rather than
+			// corrected here: only an edit command should change what a file
+			// holds.
+			RS.Logger.Warn("Load_mobiles: mob {} has an unknown start position '{}'.", pMobIndex->vnum, start_word);
+		}
+
+		pMobIndex->start_pos = start_pos.value_or(position_at(-1));
+		// sex_lookup answers with the row index, and -1 for a word it does
+		// not know, which the loader has always read as neutral.
+		pMobIndex->sex = read_persisted<Sex>(std::max(0, sex_lookup(fread_word(fp))), "sex");
 		temp_wealth = fread_word(fp);
 		if (is_number(temp_wealth))
 			wealth = atoi(temp_wealth);
@@ -532,8 +543,9 @@ void load_mobs(FILE *fp)
 		BITWISE_OR(pMobIndex->parts, race_data_lookup(pMobIndex->race)->parts);
 
 		/* size */
-		pMobIndex->size = size_lookup(fread_word(fp));
-		pMobIndex->size = std::max((int)pMobIndex->size, 0);
+		// size_lookup answers with the row index, and -1 for a word it does
+		// not know, which the loader has always read as the smallest size.
+		pMobIndex->size = read_persisted<Size>(std::max(0, size_lookup(fread_word(fp))), "size");
 		pMobIndex->mprogs = nullptr;
 		pMobIndex->restrict_low = LOW_VNUM;
 		pMobIndex->restrict_high = HIGH_VNUM;
@@ -602,7 +614,10 @@ void load_mobs(FILE *fp)
 
 			if (!str_cmp(aword.c_str(), "CLASS"))
 			{
-				pMobIndex->SetClass(CClass::Lookup(bword.c_str()));
+				// A class name the table does not carry leaves the mobile with
+				// none, which is what the lookup's -1 used to be turned into
+				// one call further down.
+				pMobIndex->SetClass(CClass::Lookup(bword.c_str()).value_or(CLASS_NONE));
 				if (pMobIndex->Class()->GetIndex() == CLASS_WARRIOR)
 				{
 					// Warriors always carry two style words; unspecialized slots are
@@ -796,40 +811,34 @@ void load_mobs(FILE *fp)
 					bugout("Mobile has multiple barred entries.");
 
 				bar = new BARRED_DATA;
-				bar->type = flag_lookup(fread_word(fp), criterion_flags);
 
-				if (bar->type == NO_FLAG)
+				int criterion = flag_lookup(fread_word(fp), criterion_flags);
+
+				if (criterion == NO_FLAG)
 					bugout("Invalid barred entry type.");
 
+				bar->type = static_cast<BarCriterion>(criterion);
+
 				word = fread_word(fp);
-				bar->comparison = -1;
+				auto comparison = bar_comparison_lookup(word);
 
-				if (!str_cmp(word, "EQUALTO"))
-					bar->comparison = BAR_EQUAL_TO;
-
-				if (!str_cmp(word, "LESSTHAN"))
-					bar->comparison = BAR_LESS_THAN;
-
-				if (!str_cmp(word, "GREATERTHAN"))
-					bar->comparison = BAR_GREATER_THAN;
-
-				if (bar->comparison < 0)
+				if (!comparison)
 					bugout("Invalid comparison in barred entry.");
+
+				bar->comparison = comparison.value();
 
 				bar->value = fread_number(fp);
 				bar->vnum = fread_number(fp);
-				bar->msg_type = -1;
 				word = fread_word(fp);
+				auto msg_type = bar_message_lookup(word);
 
-				if (!str_cmp(word, "SAY"))
-					bar->msg_type = BAR_SAY;
+				if (!msg_type)
+					bugout("Invalid message type in barred entry.");
 
-				if (!str_cmp(word, "EMOTE"))
-					bar->msg_type = BAR_EMOTE;
+				bar->msg_type = msg_type.value();
 
-				if (!str_cmp(word, "ECHO"))
+				if (bar->msg_type == BAR_ECHO)
 				{
-					bar->msg_type = BAR_ECHO;
 					bar->message = fread_string(fp);
 					bar->message_two = fread_string(fp);
 
@@ -839,9 +848,6 @@ void load_mobs(FILE *fp)
 					pMobIndex->barred_entry = bar;
 					continue;
 				}
-
-				if (bar->msg_type < 0)
-					bugout("Invalid message type in barred entry.");
 
 				bar->message = fread_string(fp);
 				pMobIndex->barred_entry = bar;
@@ -1053,7 +1059,18 @@ void load_objs(FILE *fp)
 		pObjIndex->name = fread_string(fp);
 		pObjIndex->short_descr = fread_string(fp);
 		pObjIndex->description = fread_string(fp);
-		pObjIndex->item_type = item_lookup(fread_word(fp));
+		char *type_word = fread_word(fp);
+		auto item_type = item_lookup(type_word);
+
+		if (!item_type)
+		{
+			RS.Logger.Warn("Load_objects: object {} has an unknown item type '{}'.", pObjIndex->vnum, type_word);
+		}
+
+		// -1 is what this has always stored for a word it does not know. Kept
+		// rather than corrected, because only an edit command should change
+		// what a file holds.
+		pObjIndex->item_type = item_type.value_or(static_cast<ItemType>(-1));
 		pObjIndex->material = fread_string(fp);
 
 		pObjIndex->material_index = material_lookup(pObjIndex->material);
@@ -1178,10 +1195,15 @@ void load_objs(FILE *fp)
 				OBJ_APPLY_DATA apply;
 				// read in PPLY and discard it
 				discard = fread_word(fp);
-				apply.location = display_lookup(fread_word(fp), apply_locations);
+				int found = display_lookup(fread_word(fp), apply_locations);
 
-				if (apply.location == -1)
+				// display_lookup answers with 0 for a word it does not
+				// recognize rather than with -1, so this has never fired: an
+				// apply location the table does not carry loads as APPLY_NONE.
+				if (found == -1)
 					bugout("Invalid affect apply location.");
+
+				apply.location = read_persisted<ApplyLocation>(found, "object apply location");
 
 				apply.modifier = fread_number(fp);
 				pObjIndex->apply.insert(pObjIndex->apply.begin(), apply);
@@ -1226,7 +1248,7 @@ void load_objs(FILE *fp)
 
 					paf.level = pObjIndex->level;
 					paf.duration = -1;
-					paf.location = 0;
+					paf.location = APPLY_NONE;
 					paf.modifier = 0;
 					charaff_to_obj_index(pObjIndex, &paf);
 

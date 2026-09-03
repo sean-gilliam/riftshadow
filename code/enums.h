@@ -123,7 +123,7 @@ enum ConnectionState : int
 
 // act() message target ordinal. A separate family from the TO_* "where" values
 // below (which discriminate affect_data::bitvector); values 0-5 collide.
-enum ActTarget : int
+enum class ActTarget : int
 {
 	TO_ROOM						= 0,
 	TO_NOTVICT					= 1,
@@ -136,9 +136,23 @@ enum ActTarget : int
 	TO_AREA						= 8,
 };
 
-// Door-bar restriction criterion. Three separate BAR_ families follow, colliding
-// in value; each is its own enum. Wire format - never renumber.
-enum BarCriterion : int
+// Reachable unqualified, as the other promoted families are.
+constexpr ActTarget TO_ROOM = ActTarget::TO_ROOM;
+constexpr ActTarget TO_NOTVICT = ActTarget::TO_NOTVICT;
+constexpr ActTarget TO_VICT = ActTarget::TO_VICT;
+constexpr ActTarget TO_CHAR = ActTarget::TO_CHAR;
+constexpr ActTarget TO_ALL = ActTarget::TO_ALL;
+constexpr ActTarget TO_IMMINROOM = ActTarget::TO_IMMINROOM;
+constexpr ActTarget TO_GROUP = ActTarget::TO_GROUP;
+constexpr ActTarget TO_NOTGROUP = ActTarget::TO_NOTGROUP;
+constexpr ActTarget TO_AREA = ActTarget::TO_AREA;
+
+// Door-bar restriction criterion, and it says which of the mover's numbers
+// barred_data::value is being compared against. Three separate BAR_ families
+// follow and all three start at zero, so a value from any of them reads as a
+// member of the other two. The area file stores all three by name rather than
+// by number, so these can be renumbered freely.
+enum class BarCriterion : int
 {
 	BAR_CLASS					= 0,
 	BAR_CABAL					= 1,
@@ -147,21 +161,35 @@ enum BarCriterion : int
 	BAR_LEVEL					= 4,
 };
 
+constexpr BarCriterion BAR_CLASS = BarCriterion::BAR_CLASS;
+constexpr BarCriterion BAR_CABAL = BarCriterion::BAR_CABAL;
+constexpr BarCriterion BAR_SIZE = BarCriterion::BAR_SIZE;
+constexpr BarCriterion BAR_TATTOO = BarCriterion::BAR_TATTOO;
+constexpr BarCriterion BAR_LEVEL = BarCriterion::BAR_LEVEL;
+
 // Bar comparison operator.
-enum BarComparison : int
+enum class BarComparison : int
 {
 	BAR_EQUAL_TO				= 0,
 	BAR_LESS_THAN				= 1,
 	BAR_GREATER_THAN			= 2,
 };
 
+constexpr BarComparison BAR_EQUAL_TO = BarComparison::BAR_EQUAL_TO;
+constexpr BarComparison BAR_LESS_THAN = BarComparison::BAR_LESS_THAN;
+constexpr BarComparison BAR_GREATER_THAN = BarComparison::BAR_GREATER_THAN;
+
 // Bar rejection-message style.
-enum BarMessage : int
+enum class BarMessage : int
 {
 	BAR_SAY						= 0,
 	BAR_ECHO					= 1,
 	BAR_EMOTE					= 2,
 };
+
+constexpr BarMessage BAR_SAY = BarMessage::BAR_SAY;
+constexpr BarMessage BAR_ECHO = BarMessage::BAR_ECHO;
+constexpr BarMessage BAR_EMOTE = BarMessage::BAR_EMOTE;
 
 // Primary-stat index into char_data::perm_stat[] / mod_stat[]. Wire format -
 // rename freely, never renumber.
@@ -216,7 +244,7 @@ enum MagicCommand : int
 
 // affect_data::where - the discriminator that decides which family the sibling
 // bitvector holds and which field it applies to (handler.c dispatches on it).
-enum AffectWhere : int
+enum class AffectWhere : int
 {
 	TO_AFFECTS					= 0,
 	TO_OBJECT					= 1,
@@ -226,9 +254,18 @@ enum AffectWhere : int
 	TO_WEAPON					= 5,
 };
 
-// What a rune is applied to - an ordinal. Separate family from RUNE_TRIGGER_*
-// and the RUNE_* masks below (all three collide in value).
-enum RuneTarget : int
+constexpr AffectWhere TO_AFFECTS = AffectWhere::TO_AFFECTS;
+constexpr AffectWhere TO_OBJECT = AffectWhere::TO_OBJECT;
+constexpr AffectWhere TO_IMMUNE = AffectWhere::TO_IMMUNE;
+constexpr AffectWhere TO_RESIST = AffectWhere::TO_RESIST;
+constexpr AffectWhere TO_VULN = AffectWhere::TO_VULN;
+constexpr AffectWhere TO_WEAPON = AffectWhere::TO_WEAPON;
+
+// What a rune is applied to, and it also says which kind of thing rune_data's
+// placed_on points at. Separate family from RUNE_TRIGGER_* and the RUNE_* masks
+// below: all three collide in value, so the wrong one reads as a plausible
+// member of any of the others.
+enum class RuneTarget : int
 {
 	RUNE_TO_WEAPON				= 0,
 	RUNE_TO_ARMOR				= 1,
@@ -236,31 +273,57 @@ enum RuneTarget : int
 	RUNE_TO_ROOM				= 3,
 };
 
+constexpr RuneTarget RUNE_TO_WEAPON = RuneTarget::RUNE_TO_WEAPON;
+constexpr RuneTarget RUNE_TO_ARMOR = RuneTarget::RUNE_TO_ARMOR;
+constexpr RuneTarget RUNE_TO_PORTAL = RuneTarget::RUNE_TO_PORTAL;
+constexpr RuneTarget RUNE_TO_ROOM = RuneTarget::RUNE_TO_ROOM;
+
 // When a rune fires - an ordinal.
-enum RuneTrigger : int
+enum class RuneTrigger : int
 {
 	RUNE_TRIGGER_ENTRY			= 0,
 	RUNE_TRIGGER_EXIT			= 1,
 };
 
+constexpr RuneTrigger RUNE_TRIGGER_ENTRY = RuneTrigger::RUNE_TRIGGER_ENTRY;
+constexpr RuneTrigger RUNE_TRIGGER_EXIT = RuneTrigger::RUNE_TRIGGER_EXIT;
+
 // room_affect_data::where - discriminator for a room affect's bitvector.
-enum RoomAffectWhere : int
+enum class RoomAffectWhere : int
 {
 	TO_ROOM_AFFECTS				= 0,
 	TO_ROOM_CONST				= 1,
 	TO_ROOM_FLAGS				= 2,
 };
 
+constexpr RoomAffectWhere TO_ROOM_AFFECTS = RoomAffectWhere::TO_ROOM_AFFECTS;
+constexpr RoomAffectWhere TO_ROOM_CONST = RoomAffectWhere::TO_ROOM_CONST;
+constexpr RoomAffectWhere TO_ROOM_FLAGS = RoomAffectWhere::TO_ROOM_FLAGS;
+
 // obj_affect_data::where - discriminator for an object affect's bitvector.
-enum ObjAffectWhere : int
+enum class ObjAffectWhere : int
 {
 	TO_OBJ_AFFECTS				= 0,
 	TO_OBJ_APPLY				= 1,
 };
 
+constexpr ObjAffectWhere TO_OBJ_AFFECTS = ObjAffectWhere::TO_OBJ_AFFECTS;
+constexpr ObjAffectWhere TO_OBJ_APPLY = ObjAffectWhere::TO_OBJ_APPLY;
+
+// area_affect_data::where - discriminator for an area affect's bitvector. The
+// fifth and last TO_* family. It was a lone #define in merc.h rather than an
+// enumeration, which is why an area affect could be given a room affect's
+// discriminator instead and nothing said so: both are zero.
+enum class AreaAffectWhere : int
+{
+	TO_AREA_AFFECTS				= 0,
+};
+
+constexpr AreaAffectWhere TO_AREA_AFFECTS = AreaAffectWhere::TO_AREA_AFFECTS;
+
 // Room-affect apply locations. A separate family from the main APPLY_* below:
 // values 0-4 collide with APPLY_NONE..APPLY_WIS, so it must be its own enum.
-enum ApplyRoomLocation : int
+enum class ApplyRoomLocation : int
 {
 	APPLY_ROOM_NONE				= 0,
 	APPLY_ROOM_HEAL				= 1,
@@ -268,6 +331,29 @@ enum ApplyRoomLocation : int
 	APPLY_ROOM_SECT				= 3,
 	APPLY_ROOM_NOPE				= 4,
 };
+constexpr ApplyRoomLocation APPLY_ROOM_NONE = ApplyRoomLocation::APPLY_ROOM_NONE;
+constexpr ApplyRoomLocation APPLY_ROOM_HEAL = ApplyRoomLocation::APPLY_ROOM_HEAL;
+constexpr ApplyRoomLocation APPLY_ROOM_MANA = ApplyRoomLocation::APPLY_ROOM_MANA;
+constexpr ApplyRoomLocation APPLY_ROOM_SECT = ApplyRoomLocation::APPLY_ROOM_SECT;
+constexpr ApplyRoomLocation APPLY_ROOM_NOPE = ApplyRoomLocation::APPLY_ROOM_NOPE;
+
+
+// Area-affect apply locations. The fourth APPLY_* family, and the second one
+// that was a run of #defines in merc.h rather than an enumeration, which is
+// the same reason the area affect discriminator was: nothing about an area
+// affect had a type.
+enum class ApplyAreaLocation : int
+{
+	APPLY_AREA_NONE				= 0,
+	APPLY_AREA_TEMP				= 1,
+	APPLY_AREA_WIND				= 2,
+	APPLY_AREA_SKY				= 3,
+};
+
+constexpr ApplyAreaLocation APPLY_AREA_NONE = ApplyAreaLocation::APPLY_AREA_NONE;
+constexpr ApplyAreaLocation APPLY_AREA_TEMP = ApplyAreaLocation::APPLY_AREA_TEMP;
+constexpr ApplyAreaLocation APPLY_AREA_WIND = ApplyAreaLocation::APPLY_AREA_WIND;
+constexpr ApplyAreaLocation APPLY_AREA_SKY = ApplyAreaLocation::APPLY_AREA_SKY;
 
 // Object apply locations (the obj->value[] slots). Another separate family -
 // values 0-6 collide with both APPLY_ROOM_* and the main APPLY_*. Note
@@ -343,9 +429,12 @@ enum ActFlag : int
 	ACT_LAW						= 34,
 };
 
-// Damage classes - an ordinal passed around as an int and switched on. Wire
-// format - rename freely, never renumber.
-enum DamageType : int
+// What kind of damage a blow does. Passed around as an argument and switched
+// on, and not to be confused with char_data::dam_type, which despite the name
+// holds an attack table row number rather than one of these. An area file
+// stores it by the name of the attack that carries it, so rename freely, never
+// renumber.
+enum class DamageType : int
 {
 	DAM_NONE					= 0,
 	DAM_BASH					= 1,
@@ -367,7 +456,34 @@ enum DamageType : int
 	DAM_CHARM					= 17,
 	DAM_SOUND					= 18,
 	DAM_TRUESTRIKE				= 19,
+	// Damage from inside: thirst, suffocation, poison in the blood. It has its
+	// own immunity bit and its own case in the immunity check, and it was the
+	// one member of this family still living as a define in merc.h.
+	DAM_INTERNAL				= 20,
 };
+
+constexpr DamageType DAM_NONE = DamageType::DAM_NONE;
+constexpr DamageType DAM_BASH = DamageType::DAM_BASH;
+constexpr DamageType DAM_PIERCE = DamageType::DAM_PIERCE;
+constexpr DamageType DAM_SLASH = DamageType::DAM_SLASH;
+constexpr DamageType DAM_FIRE = DamageType::DAM_FIRE;
+constexpr DamageType DAM_COLD = DamageType::DAM_COLD;
+constexpr DamageType DAM_LIGHTNING = DamageType::DAM_LIGHTNING;
+constexpr DamageType DAM_ACID = DamageType::DAM_ACID;
+constexpr DamageType DAM_POISON = DamageType::DAM_POISON;
+constexpr DamageType DAM_NEGATIVE = DamageType::DAM_NEGATIVE;
+constexpr DamageType DAM_HOLY = DamageType::DAM_HOLY;
+constexpr DamageType DAM_ENERGY = DamageType::DAM_ENERGY;
+constexpr DamageType DAM_MENTAL = DamageType::DAM_MENTAL;
+constexpr DamageType DAM_DISEASE = DamageType::DAM_DISEASE;
+constexpr DamageType DAM_DROWNING = DamageType::DAM_DROWNING;
+constexpr DamageType DAM_LIGHT = DamageType::DAM_LIGHT;
+constexpr DamageType DAM_OTHER = DamageType::DAM_OTHER;
+constexpr DamageType DAM_CHARM = DamageType::DAM_CHARM;
+constexpr DamageType DAM_SOUND = DamageType::DAM_SOUND;
+constexpr DamageType DAM_TRUESTRIKE = DamageType::DAM_TRUESTRIKE;
+constexpr DamageType DAM_INTERNAL = DamageType::DAM_INTERNAL;
+
 
 // Offensive/assist bit indices into char_data::off_flags and
 // mob_index_data::off_flags. One contiguous 0-26 numbering carrying five name
@@ -647,12 +763,29 @@ enum AffectObjFlag : int
 };
 
 // Sex ordinal, in char_data::sex. Wire format - never renumber.
-enum Sex : int
+//
+// SEX_EITHER is what a mobile prototype carries to say "pick one at spawn",
+// and db.c resolves it to male or female as the mobile is created. It has
+// always been in the area files, as the word "either" in sex_table and
+// "random" in sex_flags, and as a bare 3 in the code that reads it. Naming it
+// here does not change what any file holds.
+enum class Sex : int
 {
 	SEX_NEUTRAL					= 0,
 	SEX_MALE					= 1,
 	SEX_FEMALE					= 2,
+	SEX_EITHER					= 3,
 };
+
+// The enumerators are reachable unqualified, the way every constant in this
+// header has always been. The type is what carries the safety: a Sex cannot be
+// assigned from an int, and an int field cannot be assigned a Sex. Scoping the
+// names as well would buy nothing, because each family already prefixes its
+// own, and would cost every call site in the tree.
+constexpr Sex SEX_NEUTRAL = Sex::SEX_NEUTRAL;
+constexpr Sex SEX_MALE = Sex::SEX_MALE;
+constexpr Sex SEX_FEMALE = Sex::SEX_FEMALE;
+constexpr Sex SEX_EITHER = Sex::SEX_EITHER;
 
 // Armor-class index into char_data::armor[]. Wire format - never renumber.
 enum ArmorClass : int
@@ -674,7 +807,7 @@ enum DiceField : int
 
 // Creature size, an ordinal in char_data::size; compared relationally. Wire
 // format - never renumber. Kept ascending so size comparisons hold.
-enum Size : int
+enum class Size : int
 {
 	SIZE_TINY					= 0,
 	SIZE_SMALL					= 1,
@@ -685,6 +818,17 @@ enum Size : int
 	SIZE_IMMENSE				= 6,
 };
 
+// Reachable unqualified, as Sex is. Relational comparison between two sizes
+// still works and is the point of the ordering; the arithmetic that used to be
+// written on these ordinals goes through size_difference in utility.h.
+constexpr Size SIZE_TINY = Size::SIZE_TINY;
+constexpr Size SIZE_SMALL = Size::SIZE_SMALL;
+constexpr Size SIZE_MEDIUM = Size::SIZE_MEDIUM;
+constexpr Size SIZE_LARGE = Size::SIZE_LARGE;
+constexpr Size SIZE_HUGE = Size::SIZE_HUGE;
+constexpr Size SIZE_GIANT = Size::SIZE_GIANT;
+constexpr Size SIZE_IMMENSE = Size::SIZE_IMMENSE;
+
 // Item TYPES - an ordinal scalar stored in obj_data::item_type (a short), not
 // a bit field. Compared with == and switched on; never passed to IS_SET.
 //
@@ -694,7 +838,7 @@ enum Size : int
 // They are separate enums for that reason. Names are unchanged, so no call site
 // moves; the split is documentation the compiler happens to hold.
 // Wire format (area files) - rename freely, never renumber.
-enum ItemType : int
+enum class ItemType : int
 {
 	ITEM_LIGHT					= 1,
 	ITEM_SCROLL					= 2,
@@ -738,6 +882,47 @@ enum ItemType : int
 	// an *extra flag* with value 33, which is a different family entirely.
 	ITEM_STONE					= 43,
 };
+
+constexpr ItemType ITEM_LIGHT = ItemType::ITEM_LIGHT;
+constexpr ItemType ITEM_SCROLL = ItemType::ITEM_SCROLL;
+constexpr ItemType ITEM_WAND = ItemType::ITEM_WAND;
+constexpr ItemType ITEM_STAFF = ItemType::ITEM_STAFF;
+constexpr ItemType ITEM_WEAPON = ItemType::ITEM_WEAPON;
+constexpr ItemType ITEM_NULL6 = ItemType::ITEM_NULL6;
+constexpr ItemType ITEM_DICE = ItemType::ITEM_DICE;
+constexpr ItemType ITEM_TREASURE = ItemType::ITEM_TREASURE;
+constexpr ItemType ITEM_ARMOR = ItemType::ITEM_ARMOR;
+constexpr ItemType ITEM_POTION = ItemType::ITEM_POTION;
+constexpr ItemType ITEM_CLOTHING = ItemType::ITEM_CLOTHING;
+constexpr ItemType ITEM_FURNITURE = ItemType::ITEM_FURNITURE;
+constexpr ItemType ITEM_TRASH = ItemType::ITEM_TRASH;
+constexpr ItemType ITEM_CONTAINER = ItemType::ITEM_CONTAINER;
+constexpr ItemType ITEM_DRINK_CON = ItemType::ITEM_DRINK_CON;
+constexpr ItemType ITEM_KEY = ItemType::ITEM_KEY;
+constexpr ItemType ITEM_FOOD = ItemType::ITEM_FOOD;
+constexpr ItemType ITEM_MONEY = ItemType::ITEM_MONEY;
+constexpr ItemType ITEM_BOAT = ItemType::ITEM_BOAT;
+constexpr ItemType ITEM_CORPSE_NPC = ItemType::ITEM_CORPSE_NPC;
+constexpr ItemType ITEM_CORPSE_PC = ItemType::ITEM_CORPSE_PC;
+constexpr ItemType ITEM_FOUNTAIN = ItemType::ITEM_FOUNTAIN;
+constexpr ItemType ITEM_PILL = ItemType::ITEM_PILL;
+constexpr ItemType ITEM_PROTECT = ItemType::ITEM_PROTECT;
+constexpr ItemType ITEM_MAP = ItemType::ITEM_MAP;
+constexpr ItemType ITEM_PORTAL = ItemType::ITEM_PORTAL;
+constexpr ItemType ITEM_WARP_STONE = ItemType::ITEM_WARP_STONE;
+constexpr ItemType ITEM_ROOM_KEY = ItemType::ITEM_ROOM_KEY;
+constexpr ItemType ITEM_GEM = ItemType::ITEM_GEM;
+constexpr ItemType ITEM_JEWELRY = ItemType::ITEM_JEWELRY;
+constexpr ItemType ITEM_CAMPFIRE = ItemType::ITEM_CAMPFIRE;
+constexpr ItemType ITEM_CABAL_ITEM = ItemType::ITEM_CABAL_ITEM;
+constexpr ItemType ITEM_SKELETON = ItemType::ITEM_SKELETON;
+constexpr ItemType ITEM_URN = ItemType::ITEM_URN;
+constexpr ItemType ITEM_GRAVITYWELL = ItemType::ITEM_GRAVITYWELL;
+constexpr ItemType ITEM_BOOK = ItemType::ITEM_BOOK;
+constexpr ItemType ITEM_PEN = ItemType::ITEM_PEN;
+constexpr ItemType ITEM_ALTAR = ItemType::ITEM_ALTAR;
+constexpr ItemType ITEM_STONE = ItemType::ITEM_STONE;
+
 
 // Extra flags - bit indices into obj_data::extra_flags, and into
 // obj_index_data's affect bitvector where ITEM_EVIL / ITEM_BURN_PROOF are set
@@ -935,7 +1120,7 @@ enum FurniturePosition : int
 // (short), not a bit field. Compared with == and switched on. APPLY_ROOM_* and
 // APPLY_OBJ_* (above) are separate families on separate location fields.
 // Wire format - rename freely, never renumber.
-enum ApplyLocation : int
+enum class ApplyLocation : int
 {
 	APPLY_NONE					= 0,
 	APPLY_STR					= 1,
@@ -979,6 +1164,61 @@ enum ApplyLocation : int
 	// numbering despite its APPLY_OBJ_ name. Kept in this enum, at its value.
 	APPLY_OBJ_PROPERTIES		= 100,
 };
+// Reachable unqualified, as the other promoted families are.
+constexpr ApplyLocation APPLY_NONE = ApplyLocation::APPLY_NONE;
+constexpr ApplyLocation APPLY_STR = ApplyLocation::APPLY_STR;
+constexpr ApplyLocation APPLY_DEX = ApplyLocation::APPLY_DEX;
+constexpr ApplyLocation APPLY_INT = ApplyLocation::APPLY_INT;
+constexpr ApplyLocation APPLY_WIS = ApplyLocation::APPLY_WIS;
+constexpr ApplyLocation APPLY_CON = ApplyLocation::APPLY_CON;
+constexpr ApplyLocation APPLY_SEX = ApplyLocation::APPLY_SEX;
+constexpr ApplyLocation APPLY_CLASS = ApplyLocation::APPLY_CLASS;
+constexpr ApplyLocation APPLY_LUCK = ApplyLocation::APPLY_LUCK;
+constexpr ApplyLocation APPLY_AGE = ApplyLocation::APPLY_AGE;
+constexpr ApplyLocation APPLY_HEIGHT = ApplyLocation::APPLY_HEIGHT;
+constexpr ApplyLocation APPLY_WEIGHT = ApplyLocation::APPLY_WEIGHT;
+constexpr ApplyLocation APPLY_MANA = ApplyLocation::APPLY_MANA;
+constexpr ApplyLocation APPLY_HIT = ApplyLocation::APPLY_HIT;
+constexpr ApplyLocation APPLY_MOVE = ApplyLocation::APPLY_MOVE;
+constexpr ApplyLocation APPLY_GOLD = ApplyLocation::APPLY_GOLD;
+constexpr ApplyLocation APPLY_EXP = ApplyLocation::APPLY_EXP;
+constexpr ApplyLocation APPLY_AC = ApplyLocation::APPLY_AC;
+constexpr ApplyLocation APPLY_HITROLL = ApplyLocation::APPLY_HITROLL;
+constexpr ApplyLocation APPLY_DAMROLL = ApplyLocation::APPLY_DAMROLL;
+constexpr ApplyLocation APPLY_SAVES = ApplyLocation::APPLY_SAVES;
+constexpr ApplyLocation APPLY_SAVING_PARA = ApplyLocation::APPLY_SAVING_PARA;
+constexpr ApplyLocation APPLY_SAVING_ROD = ApplyLocation::APPLY_SAVING_ROD;
+constexpr ApplyLocation APPLY_SAVING_PETRI = ApplyLocation::APPLY_SAVING_PETRI;
+constexpr ApplyLocation APPLY_SAVING_BREATH = ApplyLocation::APPLY_SAVING_BREATH;
+constexpr ApplyLocation APPLY_SAVING_SPELL = ApplyLocation::APPLY_SAVING_SPELL;
+constexpr ApplyLocation APPLY_SPELL_AFFECT = ApplyLocation::APPLY_SPELL_AFFECT;
+constexpr ApplyLocation APPLY_CARRY_WEIGHT = ApplyLocation::APPLY_CARRY_WEIGHT;
+constexpr ApplyLocation APPLY_DEFENSE = ApplyLocation::APPLY_DEFENSE;
+constexpr ApplyLocation APPLY_REGENERATION = ApplyLocation::APPLY_REGENERATION;
+constexpr ApplyLocation APPLY_SIZE = ApplyLocation::APPLY_SIZE;
+constexpr ApplyLocation APPLY_ENERGYSTATE = ApplyLocation::APPLY_ENERGYSTATE;
+constexpr ApplyLocation APPLY_DAM_MOD = ApplyLocation::APPLY_DAM_MOD;
+constexpr ApplyLocation APPLY_LEGS = ApplyLocation::APPLY_LEGS;
+constexpr ApplyLocation APPLY_ARMS = ApplyLocation::APPLY_ARMS;
+constexpr ApplyLocation APPLY_BEAUTY = ApplyLocation::APPLY_BEAUTY;
+constexpr ApplyLocation APPLY_ALIGNMENT = ApplyLocation::APPLY_ALIGNMENT;
+constexpr ApplyLocation APPLY_ETHOS = ApplyLocation::APPLY_ETHOS;
+constexpr ApplyLocation APPLY_OBJ_PROPERTIES = ApplyLocation::APPLY_OBJ_PROPERTIES;
+
+// An object affect's location field holds one of two families, chosen by the
+// affect's `where`: one of the object's own value slots, or a character apply
+// that the object hands to whoever wears it. The field is therefore a plain
+// number, and these say which family is being put into it or read out of it.
+constexpr short obj_location(ApplyObjLocation location)
+{
+	return static_cast<short>(location);
+}
+
+constexpr short obj_location(ApplyLocation location)
+{
+	return static_cast<short>(location);
+}
+
 
 // Spell/effect modifier type, an ordinal. MOD_NONE is the -1 sentinel, hence
 // the required : int underlying type. Wire format - never renumber.
@@ -1089,11 +1329,25 @@ enum AreaSector : int
 	ARE_SHRINE					= 6,
 };
 
-// Sector (terrain) types, an ordinal in room_index_data::sector_type. Note the
-// deliberate collision: SECT_INSIDE and SECT_UNUSED are both 7. SECT_MAX (21) is
-// a count/sentinel, not a terrain. Wire format - never renumber.
-enum SectorType : int
+// Sector (terrain) types, an ordinal in room_index_data::sector_type. Wire
+// format - never renumber.
+//
+// Two things here are worth knowing before reading a room's terrain.
+//
+// SECT_NONE is 0, which is what a room whose area file says "unused" loads as,
+// because that is the value sect_table's first row carries. 1,523 rooms in 46
+// area files hold it. It matches no terrain, so every test against a SECT_*
+// value is false for those rooms and they cost the least to walk through.
+//
+// SECT_UNUSED is 7, the same value as SECT_INSIDE, and it is not the value
+// above. It reaches nothing but sector_flags, which is the list the room
+// editor offers, so a builder who sets a room's sector to "unused" is setting
+// it to inside. A file that already said "unused" means 0 instead. The two
+// meanings of the word are left as they are here because changing either one
+// changes what a room is.
+enum class SectorType : int
 {
+	SECT_NONE					= 0,
 	SECT_INSIDE					= 7,
 	SECT_CITY					= 1,
 	SECT_FIELD					= 2,
@@ -1115,8 +1369,58 @@ enum SectorType : int
 	SECT_ICE					= 18,
 	SECT_SNOW					= 19,
 	SECT_CAVE					= 20,
-	SECT_MAX					= 21,	// count/sentinel, not a terrain
 };
+
+// How many sector values there are. A count, not a terrain, which is why it is
+// not one of the enumerators: it is an array bound and a loop limit, and a
+// value of the type would be neither.
+constexpr int SECT_MAX = 21;
+
+// The subscript for a per-sector array, such as the time a character has spent
+// in each terrain. Those arrays are SECT_MAX long and indexed by the terrain's
+// own number.
+constexpr int sector_index(SectorType sector)
+{
+	return static_cast<int>(sector);
+}
+
+// A room affect that changes terrain stores an offset rather than a terrain,
+// so that subtracting the same number again puts the room back what it was.
+// These two say which direction is which: sector_offset computes the number to
+// store, sector_shifted applies one.
+constexpr int sector_offset(SectorType to, SectorType from)
+{
+	return static_cast<int>(to) - static_cast<int>(from);
+}
+
+constexpr SectorType sector_shifted(SectorType sector, int offset)
+{
+	return static_cast<SectorType>(static_cast<int>(sector) + offset);
+}
+
+// Reachable unqualified, as the other promoted families are.
+constexpr SectorType SECT_NONE = SectorType::SECT_NONE;
+constexpr SectorType SECT_INSIDE = SectorType::SECT_INSIDE;
+constexpr SectorType SECT_CITY = SectorType::SECT_CITY;
+constexpr SectorType SECT_FIELD = SectorType::SECT_FIELD;
+constexpr SectorType SECT_FOREST = SectorType::SECT_FOREST;
+constexpr SectorType SECT_HILLS = SectorType::SECT_HILLS;
+constexpr SectorType SECT_MOUNTAIN = SectorType::SECT_MOUNTAIN;
+constexpr SectorType SECT_WATER = SectorType::SECT_WATER;
+constexpr SectorType SECT_UNUSED = SectorType::SECT_UNUSED;
+constexpr SectorType SECT_UNDERWATER = SectorType::SECT_UNDERWATER;
+constexpr SectorType SECT_AIR = SectorType::SECT_AIR;
+constexpr SectorType SECT_DESERT = SectorType::SECT_DESERT;
+constexpr SectorType SECT_ROAD = SectorType::SECT_ROAD;
+constexpr SectorType SECT_CONFLAGRATION = SectorType::SECT_CONFLAGRATION;
+constexpr SectorType SECT_BURNING = SectorType::SECT_BURNING;
+constexpr SectorType SECT_TRAIL = SectorType::SECT_TRAIL;
+constexpr SectorType SECT_SWAMP = SectorType::SECT_SWAMP;
+constexpr SectorType SECT_PARK = SectorType::SECT_PARK;
+constexpr SectorType SECT_VERTICAL = SectorType::SECT_VERTICAL;
+constexpr SectorType SECT_ICE = SectorType::SECT_ICE;
+constexpr SectorType SECT_SNOW = SectorType::SECT_SNOW;
+constexpr SectorType SECT_CAVE = SectorType::SECT_CAVE;
 
 // Trap effect ordinal. Wire format - never renumber.
 enum TrapType : int
@@ -1181,7 +1485,7 @@ enum Guild : int
 
 // Character class, an ordinal in char_data::Class()/class. The main CLASS_
 // family. Wire format - rename freely, never renumber.
-enum CharClass : int
+enum class CharClass : int
 {
 	CLASS_NONE					= 0,
 	CLASS_WARRIOR				= 1,
@@ -1197,10 +1501,34 @@ enum CharClass : int
 	CLASS_SORCERER				= 11,
 };
 
-// Worn-equipment slot index into char_data::equipment[]. WEAR_NONE is the -1
-// sentinel (hence : int); WEAR_DUAL_WIELD and WEAR_FLOAT deliberately share slot
-// 18. Wire format - rename freely, never renumber.
-enum WearLocation : int
+// Reachable unqualified, as the other promoted families are.
+constexpr CharClass CLASS_NONE = CharClass::CLASS_NONE;
+constexpr CharClass CLASS_WARRIOR = CharClass::CLASS_WARRIOR;
+constexpr CharClass CLASS_THIEF = CharClass::CLASS_THIEF;
+constexpr CharClass CLASS_ZEALOT = CharClass::CLASS_ZEALOT;
+constexpr CharClass CLASS_PALADIN = CharClass::CLASS_PALADIN;
+constexpr CharClass CLASS_ANTI_PALADIN = CharClass::CLASS_ANTI_PALADIN;
+constexpr CharClass CLASS_RANGER = CharClass::CLASS_RANGER;
+constexpr CharClass CLASS_ASSASSIN = CharClass::CLASS_ASSASSIN;
+constexpr CharClass CLASS_SHAPESHIFTER = CharClass::CLASS_SHAPESHIFTER;
+constexpr CharClass CLASS_HEALER = CharClass::CLASS_HEALER;
+constexpr CharClass CLASS_NECROMANCER = CharClass::CLASS_NECROMANCER;
+constexpr CharClass CLASS_SORCERER = CharClass::CLASS_SORCERER;
+
+// The subscript for a per-class array, such as a skill's level for each class
+// or the title table. Those arrays are MAX_CLASS long and indexed by the
+// class's own number.
+constexpr int class_index(CharClass cclass)
+{
+	return static_cast<int>(cclass);
+}
+
+// Where a worn object sits on a character, in obj_data::wear_loc. WEAR_NONE is
+// the -1 that means "carried, not worn", so it is a real member of the family
+// rather than an absence. WEAR_DUAL_WIELD and WEAR_FLOAT deliberately name the
+// same slot: nothing floats beside a character who is wielding two weapons.
+// A player file stores this as a number, so rename freely, never renumber.
+enum class WearLocation : int
 {
 	WEAR_NONE					= -1,
 	WEAR_LIGHT					= 0,
@@ -1228,25 +1556,75 @@ enum WearLocation : int
 	WEAR_COSMETIC				= 21,
 };
 
+constexpr WearLocation WEAR_NONE = WearLocation::WEAR_NONE;
+constexpr WearLocation WEAR_LIGHT = WearLocation::WEAR_LIGHT;
+constexpr WearLocation WEAR_FINGER_L = WearLocation::WEAR_FINGER_L;
+constexpr WearLocation WEAR_FINGER_R = WearLocation::WEAR_FINGER_R;
+constexpr WearLocation WEAR_NECK_1 = WearLocation::WEAR_NECK_1;
+constexpr WearLocation WEAR_NECK_2 = WearLocation::WEAR_NECK_2;
+constexpr WearLocation WEAR_BODY = WearLocation::WEAR_BODY;
+constexpr WearLocation WEAR_HEAD = WearLocation::WEAR_HEAD;
+constexpr WearLocation WEAR_LEGS = WearLocation::WEAR_LEGS;
+constexpr WearLocation WEAR_FEET = WearLocation::WEAR_FEET;
+constexpr WearLocation WEAR_HANDS = WearLocation::WEAR_HANDS;
+constexpr WearLocation WEAR_ARMS = WearLocation::WEAR_ARMS;
+constexpr WearLocation WEAR_SHIELD = WearLocation::WEAR_SHIELD;
+constexpr WearLocation WEAR_ABOUT = WearLocation::WEAR_ABOUT;
+constexpr WearLocation WEAR_WAIST = WearLocation::WEAR_WAIST;
+constexpr WearLocation WEAR_WRIST_L = WearLocation::WEAR_WRIST_L;
+constexpr WearLocation WEAR_WRIST_R = WearLocation::WEAR_WRIST_R;
+constexpr WearLocation WEAR_WIELD = WearLocation::WEAR_WIELD;
+constexpr WearLocation WEAR_HOLD = WearLocation::WEAR_HOLD;
+constexpr WearLocation WEAR_DUAL_WIELD = WearLocation::WEAR_DUAL_WIELD;
+constexpr WearLocation WEAR_FLOAT = WearLocation::WEAR_FLOAT;
+constexpr WearLocation WEAR_BRAND = WearLocation::WEAR_BRAND;
+constexpr WearLocation WEAR_STRAPPED = WearLocation::WEAR_STRAPPED;
+constexpr WearLocation WEAR_COSMETIC = WearLocation::WEAR_COSMETIC;
+
+// The slot numbered n, for the loops that walk every slot a character has.
+// Those loops count, and counting is the one thing this family does not do.
+constexpr WearLocation wear_slot(int slot)
+{
+	return static_cast<WearLocation>(slot);
+}
+
+// The number of the slot, for the one table that is laid out in slot order.
+// WEAR_NONE answers -1 here, which is not a row of anything, so a caller that
+// subscripts with this has to rule it out first.
+constexpr int wear_index(WearLocation location)
+{
+	return static_cast<int>(location);
+}
+
 // damage_new() flag arguments. Three independent two-value families, passed
 // positionally. Kept as three enums matching their argument slots.
-enum HitBlockable : int
+enum class HitBlockable : int
 {
 	HIT_UNBLOCKABLE				= 0,
 	HIT_BLOCKABLE				= 1,
 };
 
-enum HitSpecials : int
+enum class HitSpecials : int
 {
 	HIT_NOSPECIALS				= 0,
 	HIT_SPECIALS				= 1,
 };
 
-enum HitModifier : int
-{
-	HIT_NOMULT					= 1,
-	HIT_NOADD					= 0,
-};
+// Reachable unqualified, as the other promoted families are. These two are
+// what the hit and damage functions take for the arguments of those names.
+// They were bools sitting next to each other, so a call could swap them and
+// say nothing.
+constexpr HitBlockable HIT_UNBLOCKABLE = HitBlockable::HIT_UNBLOCKABLE;
+constexpr HitBlockable HIT_BLOCKABLE = HitBlockable::HIT_BLOCKABLE;
+constexpr HitSpecials HIT_NOSPECIALS = HitSpecials::HIT_NOSPECIALS;
+constexpr HitSpecials HIT_SPECIALS = HitSpecials::HIT_SPECIALS;
+
+// The remaining two are not a family and never were. They are the do-nothing
+// values for the two numeric arguments that follow: an addition of nothing is
+// zero, and the multiplier is a percentage that is skipped entirely when it is
+// one. Both are arithmetic, so they stay numbers.
+constexpr int HIT_NOADD = 0;
+constexpr int HIT_NOMULT = 1;
 
 // Combat posture, an ordinal spanning -1..1. POSTURE_DEFENSE is -1 (hence : int).
 enum Posture : int
@@ -1269,11 +1647,13 @@ enum ConditionType : int
 	COND_HUNGRY					= 50,
 };
 
-// Character position, an ordinal in char_data::position (a short). Ordering is
-// load-bearing: ~96 relational comparisons (position >= POS_RESTING etc.) and it
-// is stored in cmd_type::position for the command table. Wire format - never
-// renumber. Kept ascending exactly as-is so all comparisons hold.
-enum Position : int
+// How upright a character is, in char_data::position, and the least a command
+// or a spell will settle for. The ordering is the point: most of the ~96 tests
+// on it are relational, so POS_RESTING is "at least resting" rather than one
+// value. A scoped enumeration compares the same way, so those all still hold.
+// A player file stores this as a number, so rename freely, never renumber, and
+// never reorder either.
+enum class Position : int
 {
 	POS_DEAD					= 0,
 	POS_MORTAL					= 1,
@@ -1285,6 +1665,28 @@ enum Position : int
 	POS_FIGHTING				= 7,
 	POS_STANDING				= 8,
 };
+
+constexpr Position POS_DEAD = Position::POS_DEAD;
+constexpr Position POS_MORTAL = Position::POS_MORTAL;
+constexpr Position POS_INCAP = Position::POS_INCAP;
+constexpr Position POS_STUNNED = Position::POS_STUNNED;
+constexpr Position POS_SLEEPING = Position::POS_SLEEPING;
+constexpr Position POS_RESTING = Position::POS_RESTING;
+constexpr Position POS_SITTING = Position::POS_SITTING;
+constexpr Position POS_FIGHTING = Position::POS_FIGHTING;
+constexpr Position POS_STANDING = Position::POS_STANDING;
+
+// The row number of a position, for the two tables laid out in position order.
+constexpr int position_index(Position position)
+{
+	return static_cast<int>(position);
+}
+
+// The position with that row number, for the lookups that answer with one.
+constexpr Position position_at(int index)
+{
+	return static_cast<Position>(index);
+}
 
 // PK alignment-kill counters. Separate family from the killed[] index pair
 // below. Wire format - never renumber.

@@ -1,6 +1,7 @@
 #ifndef ENTITY_AFFECT_DATA_H
 #define ENTITY_AFFECT_DATA_H
 
+#include "../enums.h"
 #include "fwd.h"
 #include "limits.h"
 #include "../stdlibs/handle.h"
@@ -20,11 +21,11 @@ struct affect_data
 {
 	Handle<CHAR_DATA> owner;
 	char *name = nullptr;
-	short where = 0;
+	AffectWhere where = TO_AFFECTS;
 	short type = 0;
 	short level = 0;
 	short duration = 0;
-	short location = 0;
+	ApplyLocation location = APPLY_NONE;
 	short modifier = 0;
 	short mod_name = 0;
 	long bitvector[MAX_BITVECTOR] = {};
@@ -56,11 +57,11 @@ struct affect_data
 struct room_affect_data
 {
 	Handle<CHAR_DATA> owner;
-	short where = 0;
+	RoomAffectWhere where = TO_ROOM_AFFECTS;
 	short type = 0;
 	short level = 0;
 	short duration = 0;
-	short location = 0;
+	ApplyRoomLocation location = APPLY_ROOM_NONE;
 	short modifier = 0;
 	long bitvector[MAX_BITVECTOR] = {};
 	int aftype = 0;
@@ -81,11 +82,11 @@ struct room_affect_data
 struct area_affect_data
 {
 	Handle<CHAR_DATA> owner;
-	short where = 0;
+	AreaAffectWhere where = TO_AREA_AFFECTS;
 	short type = 0;
 	short level = 0;
 	short duration = 0;
-	short location = 0;
+	ApplyAreaLocation location = APPLY_AREA_NONE;
 	short modifier = 0;
 	long bitvector[MAX_BITVECTOR] = {};
 	int aftype = 0;
@@ -100,10 +101,15 @@ struct area_affect_data
 struct obj_affect_data
 {
 	Handle<CHAR_DATA> owner;
-	short where = 0;
+	ObjAffectWhere where = TO_OBJ_AFFECTS;
 	short type = 0;
 	short level = 0;
 	short duration = 0;
+	// Two families live in this field, and which one is here is decided
+	// by `where` above. TO_OBJ_AFFECTS means an ApplyObjLocation, one of
+	// the object's own value slots. TO_OBJ_APPLY means an ApplyLocation,
+	// a character apply that the object hands to whoever wears it. A
+	// single type here would be a claim that only one of them is true.
 	short location = 0;
 	short modifier = 0;
 	long bitvector[MAX_BITVECTOR] = {};
@@ -118,7 +124,7 @@ struct obj_affect_data
 // pointers across a second prepend, so nodes must not move).
 struct obj_apply_data
 {
-	short location = 0;
+	ApplyLocation location = APPLY_NONE;
 	short modifier = 0;
 	short type = 0;						// For gsns, if relevant.
 };

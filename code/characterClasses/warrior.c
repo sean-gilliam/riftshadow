@@ -444,7 +444,7 @@ void do_hobble(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		return;
 	}
 
-	if (victim->size < ch->size - 1)
+	if (size_difference(ch->size, victim->size) > 1)
 	{
 		send_to_char("You cannot aim at such a small target.\n\r", ch);
 		return;
@@ -730,7 +730,7 @@ void do_crippling_blow(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		return;
 	}
 
-	if (victim->size > ch->size + 1)
+	if (size_difference(victim->size, ch->size) > 1)
 	{
 		send_to_char("You cannot aim at such a large target.\n\r", ch);
 		return;
@@ -977,7 +977,7 @@ void do_gouge(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		return;
 	}
 
-	if (victim->size > ch->size + 1)
+	if (size_difference(victim->size, ch->size) > 1)
 	{
 		send_to_char("You cannot aim at such a large target.\n\r", ch);
 		return;
@@ -2122,7 +2122,7 @@ void do_overhead(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	if (victim->size > ch->size + 1)
+	if (size_difference(victim->size, ch->size) > 1)
 	{
 		send_to_char("They are too large for you to properly perform an overhead strike.\n\r", ch);
 		return;
@@ -2166,7 +2166,7 @@ void do_overhead(CHAR_DATA *ch, char *argument)
 			return;
 	}
 
-	special = (float)(skill * (1.00f + (ch->size - victim->size) / 4.00f) * (1.00f + weapon->weight / 200.00f));
+	special = (float)(skill * (1.00f + size_difference(ch->size, victim->size) / 4.00f) * (1.00f + weapon->weight / 200.00f));
 
 	if (number_percent() < .7 * skill)
 	{
@@ -2183,7 +2183,7 @@ void do_overhead(CHAR_DATA *ch, char *argument)
 				af.type = gsn_overhead;
 				af.level = ch->level;
 				af.aftype = AFT_MALADY;
-				af.location = 0;
+				af.location = APPLY_NONE;
 				af.modifier = 0;
 				af.mod_name = MOD_CONC;
 
@@ -2356,7 +2356,7 @@ void do_exchange(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	int AC;
 	float chance = get_skill(ch, gsn_exchange);
 
-	if ((chance == 0) || (ch->level < skill_table[gsn_exchange].skill_level[ch->Class()->GetIndex()] && !is_npc(ch)))
+	if ((chance == 0) || (ch->level < skill_table[gsn_exchange].skill_level[class_index(ch->Class()->GetIndex())] && !is_npc(ch)))
 	{
 		send_to_char("You don't know how to do that.\n\r", ch);
 		return;
@@ -2428,9 +2428,11 @@ int armor_weight(CHAR_DATA *ch)
 	if (is_npc(ch))
 		return 0;
 
-	for (i = 1; i < 16; i++)
+	// Armour only: the slots between the light and the weapons, so a lit torch
+	// and whatever is in the hands do not count as armour being worn.
+	for (i = wear_index(WEAR_FINGER_L); i < wear_index(WEAR_WIELD); i++)
 	{
-		eq = get_eq_char(ch, i);
+		eq = get_eq_char(ch, wear_slot(i));
 
 		if (eq != nullptr)
 			total_weight += eq->weight;
@@ -2484,7 +2486,7 @@ void do_charge(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	if (ch->size < victim->size - 1)
+	if (size_difference(victim->size, ch->size) > 1)
 	{
 		send_to_char("They are too massive to charge.\n\r", ch);
 		return;
@@ -2611,7 +2613,7 @@ void do_shieldbash(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		return;
 	}
 
-	if (ch->size > victim->size + 1)
+	if (size_difference(ch->size, victim->size) > 1)
 	{
 		send_to_char("They are too small to properly aim a shield bash at.\n\r", ch);
 		return;
@@ -2620,7 +2622,7 @@ void do_shieldbash(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	weight = armor_weight(ch);
 
 	chance = (int)(0.7 * (float)skill);
-	chance += 5 * (ch->size - victim->size);
+	chance += 5 * size_difference(ch->size, victim->size);
 	chance -= get_curr_stat(victim, STAT_DEX);
 
 	if (is_npc(victim))
@@ -2634,7 +2636,7 @@ void do_shieldbash(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 		dam = (int)((float)dice(ch->level / 4, 4) + ((float)weight / (float)20));
 
-		if (pow(2, ch->size - victim->size) * weight > 250)
+		if (pow(2, size_difference(ch->size, victim->size)) * weight > 250)
 			lag = 2;
 
 		WAIT_STATE(ch, PULSE_VIOLENCE * 2);
@@ -4599,7 +4601,7 @@ void do_concuss(CHAR_DATA *ch, char *argument)
 	one_argument(argument, arg);
 
 	chance = get_skill(ch, gsn_concuss);
-	if (chance == 0 || (ch->level < skill_table[gsn_concuss].skill_level[ch->Class()->GetIndex()] && !is_npc(ch)))
+	if (chance == 0 || (ch->level < skill_table[gsn_concuss].skill_level[class_index(ch->Class()->GetIndex())] && !is_npc(ch)))
 	{
 		send_to_char("You don't know how to do that.\n\r", ch);
 		return;
@@ -4633,7 +4635,7 @@ void do_concuss(CHAR_DATA *ch, char *argument)
 	if (is_safe(ch, victim))
 		return;
 
-	size = victim->size - ch->size;
+	size = size_difference(victim->size, ch->size);
 
 	if (size > 2)
 	{
@@ -4662,7 +4664,7 @@ void do_concuss(CHAR_DATA *ch, char *argument)
 	af.name = palloc_string(af_name);
 	af.where = TO_AFFECTS;
 	af.level = ch->level;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.aftype = AFT_MALADY;
 	af.type = gsn_concuss;
 	af.modifier = 0;
@@ -4902,7 +4904,7 @@ void do_leadership(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	int chance;
 
 	chance = get_skill(ch, gsn_leadership);
-	if (chance == 0 || ch->level < skill_table[gsn_leadership].skill_level[ch->Class()->GetIndex()])
+	if (chance == 0 || ch->level < skill_table[gsn_leadership].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("Huh?\n\r", ch);
 		return;
@@ -4951,7 +4953,7 @@ void do_leadership(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		af.where = TO_AFFECTS;
 		af.type = gsn_leadership;
 		af.modifier = 0;
-		af.location = 0;
+		af.location = APPLY_NONE;
 		af.duration = ch->level;
 		af.duration = ch->level / 3;
 		af.level = ch->level;

@@ -295,7 +295,7 @@ int sect_lookup(const char *name)
 	return 0;
 }
 
-int sect_numlookup(int number)
+int sect_numlookup(SectorType number)
 {
 	int flag;
 
@@ -306,6 +306,22 @@ int sect_numlookup(int number)
 	}
 
 	return 0;
+}
+
+//
+// The row describing a sector.
+//
+// sect_table is ordered by nothing in particular, and two of its rows do not
+// sit at the index their own value names: burning is row 12 and its value is
+// 13, conflagration is row 13 and its value is 12. Reaching into the table
+// with a sector type as the subscript therefore answers with the wrong row for
+// those two, which is why every caller goes through here instead. Never null:
+// a value the table does not carry answers with the first row, the way
+// sect_numlookup has always answered.
+//
+const struct sect_type *sector_row(SectorType sector_type)
+{
+	return &sect_table[sect_numlookup(sector_type)];
 }
 
 int cabal_lookup(const char *name)
@@ -321,17 +337,30 @@ int cabal_lookup(const char *name)
 	return 0;
 }
 
-int position_lookup(const char *name)
+const struct position_type *position_row(Position position)
+{
+	int index = position_index(position);
+
+	// A mob whose area file gave it a start position this does not understand
+	// is stored below dead, and both callers of this used to subscript the
+	// table with whatever it held.
+	if (index < position_index(POS_DEAD) || index > position_index(POS_STANDING))
+		index = position_index(POS_DEAD);
+
+	return &position_table[index];
+}
+
+std::optional<Position> position_lookup(const char *name)
 {
 	int pos;
 
 	for (pos = 0; position_table[pos].name != nullptr; pos++)
 	{
 		if (LOWER(name[0]) == LOWER(position_table[pos].name[0]) && !str_prefix(name, position_table[pos].name))
-			return pos;
+			return position_at(pos);
 	}
 
-	return -1;
+	return {};
 }
 
 int sex_lookup(const char *name)
@@ -435,4 +464,77 @@ char *chaldir(int dir)
 		return "down";
 	else
 		return "null";
+}
+
+/// The word an area file and the editor spell a criterion with. This one is a
+/// flag table rather than a switch, because the editor offers the same table to
+/// whoever is typing the entry in.
+const char *bar_criterion_name(BarCriterion type)
+{
+	return flag_name_lookup(static_cast<long>(type), criterion_flags);
+}
+
+/// The word an area file and the editor spell a comparison with. Total over the
+/// family, so a value that reaches here always produces a word rather than
+/// leaving the caller's buffer as it found it.
+const char *bar_comparison_name(BarComparison comparison)
+{
+	switch (comparison)
+	{
+		case BarComparison::BAR_EQUAL_TO:
+			return "EQUALTO";
+		case BarComparison::BAR_LESS_THAN:
+			return "LESSTHAN";
+		case BarComparison::BAR_GREATER_THAN:
+			return "GREATERTHAN";
+	}
+
+	return "EQUALTO";
+}
+
+/// Empty when the word is not one of the three. There is no comparison value
+/// that means "not a comparison", so the caller has to answer for it.
+std::optional<BarComparison> bar_comparison_lookup(const char *name)
+{
+	if (!str_cmp(name, "EQUALTO"))
+		return BarComparison::BAR_EQUAL_TO;
+
+	if (!str_cmp(name, "LESSTHAN"))
+		return BarComparison::BAR_LESS_THAN;
+
+	if (!str_cmp(name, "GREATERTHAN"))
+		return BarComparison::BAR_GREATER_THAN;
+
+	return {};
+}
+
+/// The word an area file and the editor spell a message style with.
+const char *bar_message_name(BarMessage msg_type)
+{
+	switch (msg_type)
+	{
+		case BarMessage::BAR_SAY:
+			return "SAY";
+		case BarMessage::BAR_ECHO:
+			return "ECHO";
+		case BarMessage::BAR_EMOTE:
+			return "EMOTE";
+	}
+
+	return "SAY";
+}
+
+/// Empty when the word is not one of the three.
+std::optional<BarMessage> bar_message_lookup(const char *name)
+{
+	if (!str_cmp(name, "SAY"))
+		return BarMessage::BAR_SAY;
+
+	if (!str_cmp(name, "EMOTE"))
+		return BarMessage::BAR_EMOTE;
+
+	if (!str_cmp(name, "ECHO"))
+		return BarMessage::BAR_ECHO;
+
+	return {};
 }

@@ -567,7 +567,7 @@ void redit(CHAR_DATA *ch, char *argument)
 
 	if ((value = flag_value(sector_flags, command)) != NO_FLAG)
 	{
-		pRoom->sector_type = value;
+		pRoom->sector_type = static_cast<SectorType>(value);
 
 		SET_BIT(pArea->area_flags, AREA_CHANGED);
 		send_to_char("Sector type set.\n\r", ch);
@@ -1284,7 +1284,7 @@ void display_resets(CHAR_DATA *ch)
 						pReset->arg1,
 						pObj->short_descr,
 						pReset->command == 'G'
-							? flag_string_old(wear_loc_strings, WEAR_NONE)
+							? flag_string_old(wear_loc_strings, wear_index(WEAR_NONE))
 							: flag_string_old(wear_loc_strings, pReset->arg3),
 						pMob->vnum, pMob->short_descr);
 				}
@@ -1625,7 +1625,7 @@ void do_resets(CHAR_DATA *ch, char *argument)
 					pReset->arg1 = atoi(arg3);
 					pReset->arg3 = flag_value(wear_loc_flags, arg4);
 
-					if (pReset->arg3 == WEAR_NONE)
+					if (pReset->arg3 == wear_index(WEAR_NONE))
 						pReset->command = 'G';
 					else
 						pReset->command = 'E';

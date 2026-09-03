@@ -2,6 +2,8 @@
 #define CONST_H
 
 #include <vector>
+
+#include "enums.h"
 #include "entity/fwd.h"
 #include "entity/limits.h"
 
@@ -30,7 +32,7 @@ struct attack_type
 {
 	char *name;		// name
 	char *noun;		// message
-	int damage;		// damage class
+	DamageType damage;	// damage class
 	int modifier;	// difficulty to parry, - for harder + for easier
 };
 
@@ -44,7 +46,7 @@ struct skill_type
 	short skill_level[MAX_CLASS];		// Level needed by class
 	SPELL_FUN *spell_fun;				// Spell pointer (for spells)
 	short target;						// Legal targets
-	short minimum_position;			// Position for caster / user
+	Position minimum_position;		// Position for caster / user
 	short *pgsn;						// Pointer to associated gsn
 	short dispel;						// affect bitvector for dispel
 	short min_mana;					// Minimum mana used
@@ -67,12 +69,6 @@ extern const std::vector<wiznet_type> wiznet_table;
 extern const std::vector<attack_type> attack_table;
 extern const struct skill_type skill_table[MAX_SKILL];
 extern const struct group_type group_table[MAX_GROUP];
-
-/*
- * The skill and spell table.
- * Slot numbers must never be changed as they appear in #OBJECTS sections.
- */
-#define SLOT(n)	n
 
 
 #endif /* CONST_H */

@@ -248,7 +248,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (IS_SET(pexit->exit_info, EX_CLOSED) && IS_SET(ch->parts, PART_HANDS))
 			do_open(ch, dir_name[door]);
 
-		if (IS_SET(pexit->exit_info, EX_CLOSED) && ch->size >= 3)
+		if (IS_SET(pexit->exit_info, EX_CLOSED) && ch->size >= SIZE_LARGE)
 			do_door_bash(ch, dir_name[door]);
 	}
 
@@ -374,7 +374,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 				return;
 		}
 
-		move = sect_table[to_room->sector_type].move_cost + sect_table[in_room->sector_type].move_cost;
+		move = sector_row(to_room->sector_type)->move_cost + sector_row(in_room->sector_type)->move_cost;
 		move /= 2; /* i.e. the average */
 
 		/* conditional effects */
@@ -384,7 +384,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 		if (is_affected_by(ch, AFF_SLOW))
 			move *= 2;
 
-		wait = sect_table[to_room->sector_type].wait;
+		wait = sector_row(to_room->sector_type)->wait;
 		if (ch->pcdata->energy_state < -2)
 			wait += 6;
 
@@ -931,7 +931,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 				cvaf.aftype = AFT_MALADY;
 				cvaf.level = raf->level;
 				cvaf.duration = 4;
-				cvaf.location = 0;
+				cvaf.location = APPLY_NONE;
 				cvaf.modifier = 0;
 				cvaf.owner = raf->owner;
 				new_affect_to_char(ch, &cvaf);
@@ -951,7 +951,7 @@ void move_char(CHAR_DATA *ch, int door, bool automatic, bool fcharm)
 			cvaf2.aftype = AFT_MALADY;
 			cvaf2.level = raf->level;
 			cvaf2.duration = 1;
-			cvaf2.location = 0;
+			cvaf2.location = APPLY_NONE;
 			cvaf2.modifier = 0;
 			cvaf2.owner = raf->owner;
 
@@ -1322,7 +1322,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 						af.type = gsn_sleep;
 						af.level = trap->quality * 6;
 						af.owner = vch->self;
-						af.location = 0;
+						af.location = APPLY_NONE;
 						af.modifier = 0;
 						af.duration = trap->quality * 4;
 
@@ -1362,7 +1362,7 @@ void trap_execute(CHAR_DATA *victim, ROOM_INDEX_DATA *room, TRAP_DATA *trap)
 					af.duration = trap->quality * 4;
 					af.owner = vch->self;
 					af.modifier = 0;
-					af.location = 0;
+					af.location = APPLY_NONE;
 					af.pulse_fun = mana_drain_pulse;
 					affect_to_char(vch, &af);
 				}
@@ -2794,7 +2794,7 @@ void do_vigilance(CHAR_DATA *ch, char *argument)
 {
 	AFFECT_DATA af;
 
-	if ((get_skill(ch,gsn_vigilance) == 0) || (ch->level < skill_table[gsn_vigilance].skill_level[ch->Class()->GetIndex()]))
+	if ((get_skill(ch,gsn_vigilance) == 0) || (ch->level < skill_table[gsn_vigilance].skill_level[class_index(ch->Class()->GetIndex())]))
 	{
 		send_to_char("Huh?\n\r",ch);
 		return;
@@ -2824,7 +2824,7 @@ void do_vigilance(CHAR_DATA *ch, char *argument)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_POWER;
 	af.level = ch->level;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.duration = 48;
 	af.modifier = 0;
 	af.type = gsn_vigilance;
@@ -2848,7 +2848,7 @@ void do_vigilance(CHAR_DATA *ch, char *argument)
 void do_acute_vision(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	if (get_skill(ch, gsn_acute_vision) == 0 ||
-		ch->level < skill_table[gsn_acute_vision].skill_level[ch->Class()->GetIndex()])
+		ch->level < skill_table[gsn_acute_vision].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know which bushes to look at.\n\r", ch);
 		return;
@@ -2879,7 +2879,7 @@ void do_acute_vision(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SKILL;
 	af.type = gsn_acute_vision;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	af.level = ch->level;
 	af.duration = ch->level;
@@ -2897,7 +2897,7 @@ void do_acute_vision(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 void do_camp(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
-	if (get_skill(ch, gsn_camp) == 0 || ch->level < skill_table[gsn_camp].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_camp) == 0 || ch->level < skill_table[gsn_camp].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to effectively camp.\n\r", ch);
 		return;
@@ -2933,7 +2933,7 @@ void do_camp(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	init_affect(&af);
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SKILL;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.duration = 5;
 	af.modifier = 0;
 	af.level = ch->level;
@@ -3042,7 +3042,7 @@ void do_creep(CHAR_DATA *ch, char *argument)
 	af.aftype = AFT_SKILL;
 	af.type = gsn_creep;
 	af.modifier = 0;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.duration = 1;
 	af.level = ch->level;
 	affect_join(ch, &af);
@@ -3452,7 +3452,7 @@ void do_bear_call(CHAR_DATA *ch, char *argument)
 	char arg1[MAX_INPUT_LENGTH];
 	one_argument(argument, arg1);
 
-	if (get_skill(ch, gsn_bear_call) == 0 || ch->level < skill_table[gsn_bear_call].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_bear_call) == 0 || ch->level < skill_table[gsn_bear_call].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to call bears?\n\r", ch);
 		return;
@@ -3538,7 +3538,7 @@ void do_bear_call(CHAR_DATA *ch, char *argument)
 	af.level = ch->level;
 	af.modifier = 0;
 	af.duration = 24;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.type = gsn_bear_call;
 
 	affect_to_char(ch, &af);
@@ -3551,7 +3551,7 @@ void do_animal_call(CHAR_DATA *ch, char *argument)
 	one_argument(argument, arg);
 
 	auto chance = get_skill(ch, gsn_animal_call);
-	if (chance == 0 || ch->level < skill_table[gsn_animal_call].skill_level[ch->Class()->GetIndex()])
+	if (chance == 0 || ch->level < skill_table[gsn_animal_call].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to call upon animals for aid.\n\r", ch);
 		return;
@@ -3766,7 +3766,7 @@ void do_animal_call(CHAR_DATA *ch, char *argument)
 	af.type = gsn_animal_call;
 	af.level = ch->level;
 	af.duration = 24;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	affect_to_char(ch, &af);
 }
@@ -4070,7 +4070,7 @@ int find_first_step(ROOM_INDEX_DATA *from, ROOM_INDEX_DATA *goal)
 
 void do_aura_of_sustenance(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
-	if (get_skill(ch, gsn_aura_of_sustenance) == 0 || ch->level < skill_table[gsn_aura_of_sustenance].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_aura_of_sustenance) == 0 || ch->level < skill_table[gsn_aura_of_sustenance].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("Huh?\n\r", ch);
 		return;
@@ -4092,7 +4092,7 @@ void do_aura_of_sustenance(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	init_affect(&af);
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SKILL;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.level = ch->level;
 	af.duration = ch->level;
 	af.type = gsn_aura_of_sustenance;
@@ -4110,7 +4110,7 @@ void do_aura_of_sustenance(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 void do_vanish(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	auto chance = get_skill(ch, gsn_vanish);
-	if (chance == 0 || ch->level < skill_table[gsn_vanish].skill_level[ch->Class()->GetIndex()])
+	if (chance == 0 || ch->level < skill_table[gsn_vanish].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("Huh?\n\r", ch);
 		return;
@@ -4206,7 +4206,7 @@ void do_door_bash(CHAR_DATA *ch, char *argument)
 	if (is_npc(ch))
 		chance = 50;
 
-	if (!is_npc(ch) && (chance == 0 || ch->level < skill_table[gsn_door_bash].skill_level[ch->Class()->GetIndex()]))
+	if (!is_npc(ch) && (chance == 0 || ch->level < skill_table[gsn_door_bash].skill_level[class_index(ch->Class()->GetIndex())]))
 	{
 		send_to_char("You'd hurt yourself doing that.\n\r", ch);
 		return;
@@ -4307,7 +4307,7 @@ void do_door_bash(CHAR_DATA *ch, char *argument)
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_SKILL;
 	af.type = gsn_door_bash;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	af.duration = -1;
 	af.level = ch->level;
@@ -4407,13 +4407,13 @@ bool check_barred(CHAR_DATA *ch, ROOM_INDEX_DATA *to_room)
 		{
 
 			if (blocker->pIndexData->barred_entry->type == BAR_CLASS)
-				field = ch->Class()->GetIndex();
+				field = class_index(ch->Class()->GetIndex());
 
 			if (blocker->pIndexData->barred_entry->type == BAR_CABAL)
 				field = ch->cabal;
 
 			if (blocker->pIndexData->barred_entry->type == BAR_SIZE)
-				field = ch->size;
+				field = static_cast<int>(ch->size);
 
 			if (blocker->pIndexData->barred_entry->type == BAR_LEVEL)
 				field = ch->level;
@@ -4425,11 +4425,13 @@ bool check_barred(CHAR_DATA *ch, ROOM_INDEX_DATA *to_room)
 				if (!tattoo && blocker->pIndexData->barred_entry->value)
 					return bar_entry(ch, blocker, to_room);
 
-				field = tattoo->pIndexData->vnum;
+				// A mob that bars on tattoo vnum 0 lets anyone through, so a
+				// mover with no brand reaches here with nothing to read.
+				field = tattoo != nullptr ? tattoo->pIndexData->vnum : 0;
 			}
 
 			if (blocker->pIndexData->barred_entry->type == BAR_CLASS
-				&& ch->Class()->GetIndex() == blocker->pIndexData->barred_entry->value
+				&& class_index(ch->Class()->GetIndex()) == blocker->pIndexData->barred_entry->value
 				&& IS_SET(blocker->act, ACT_GUILDGUARD)
 				&& ch->pause > 0
 				&& ch->ghost <= 0
@@ -4454,9 +4456,11 @@ bool check_barred(CHAR_DATA *ch, ROOM_INDEX_DATA *to_room)
 bool bar_entry(CHAR_DATA *ch, CHAR_DATA *blocker, ROOM_INDEX_DATA *to_room)
 {
 	char buf[MAX_STRING_LENGTH];
-	auto str = palloc_string(blocker->pIndexData->barred_entry->message);
 
-	parse_bar(buf, sizeof(buf), str, ch, blocker, to_room);
+	// The message is read, not written, and it belongs to the mob's prototype
+	// for as long as the area is loaded. The copy this used to take was never
+	// released, so every refusal leaked one.
+	parse_bar(buf, sizeof(buf), blocker->pIndexData->barred_entry->message, ch, blocker, to_room);
 
 	if (blocker->pIndexData->barred_entry->msg_type == BAR_SAY)
 		do_say(blocker, buf);
@@ -4474,8 +4478,7 @@ bool bar_entry(CHAR_DATA *ch, CHAR_DATA *blocker, ROOM_INDEX_DATA *to_room)
 		if (blocker->pIndexData->barred_entry->message_two)
 		{
 			char buf2[MAX_STRING_LENGTH];
-			auto strtwo = palloc_string(blocker->pIndexData->barred_entry->message_two);
-			parse_bar(buf2, sizeof(buf2), strtwo, ch, blocker, to_room);
+			parse_bar(buf2, sizeof(buf2), blocker->pIndexData->barred_entry->message_two, ch, blocker, to_room);
 
 			buf2[0] = UPPER(buf2[0]);
 

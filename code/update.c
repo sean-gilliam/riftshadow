@@ -98,7 +98,7 @@ void advance_level(CHAR_DATA *ch, bool hide)
 
 	ch->pcdata->last_level = (ch->played + (int)(current_time - ch->logon)) / 3600;
 
-	sprintf(buf, "the %s", title_table[ch->Class()->GetIndex()][ch->level][ch->sex == SEX_FEMALE ? 1 : 0]);
+	sprintf(buf, "the %s", title_table[class_index(ch->Class()->GetIndex())][ch->level][ch->sex == SEX_FEMALE ? 1 : 0]);
 	set_title(ch, buf);
 
 	int_mod = get_curr_stat(ch, STAT_INT) - 2;
@@ -1302,7 +1302,7 @@ void char_update(void)
 		if (!is_npc(ch) && ch->in_room)
 		{
 			ch->pcdata->sect_time[0]++;
-			ch->pcdata->sect_time[ch->in_room->sector_type]++;
+			ch->pcdata->sect_time[sector_index(ch->in_room->sector_type)]++;
 		}
 
 		if (!is_npc(ch) && ch->pcdata->save_timer)
@@ -2784,7 +2784,7 @@ void room_affect_update(void)
 							cvaf.aftype = AFT_MALADY;
 							cvaf.level = af->level;
 							cvaf.duration = 4;
-							cvaf.location = 0;
+							cvaf.location = APPLY_NONE;
 							cvaf.modifier = 0;
 							cvaf.owner = af->owner;
 							new_affect_to_char(vch, &cvaf);
@@ -2804,7 +2804,7 @@ void room_affect_update(void)
 						cvaf2.aftype = AFT_MALADY;
 						cvaf.level = af->level;
 						cvaf.duration = 1;
-						cvaf.location = 0;
+						cvaf.location = APPLY_NONE;
 						cvaf.modifier = 0;
 						cvaf.owner = af->owner;
 

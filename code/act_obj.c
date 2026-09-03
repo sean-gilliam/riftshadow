@@ -38,6 +38,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include "merc.h"
+#include "persisted_enum.h"
 #include "act_obj.h"
 #include "entity/handles.h"
 #include "rift.h"
@@ -1133,7 +1134,7 @@ void do_skin(CHAR_DATA *ch, char *argument)
 	char buf2[MAX_STRING_LENGTH];
 
 	corpse = nullptr;
-	if (get_skill(ch, gsn_skin) == 0 || ch->level < skill_table[gsn_skin].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_skin) == 0 || ch->level < skill_table[gsn_skin].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("But you don't know how to skin a corpse.\n\r", ch);
 		return;
@@ -1229,7 +1230,7 @@ void do_skin(CHAR_DATA *ch, char *argument)
 	af.aftype = AFT_SKILL;
 	af.type = gsn_skin;
 	af.modifier = 0;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.duration = 24;
 	af.level = ch->level;
 	affect_to_char(ch, &af);
@@ -1252,7 +1253,7 @@ void do_butcher(CHAR_DATA *ch, char *argument)
 	corpse = nullptr;
 
 	if (get_skill(ch, gsn_butcher) == 0
-		|| ch->level < skill_table[gsn_butcher].skill_level[ch->Class()->GetIndex()])
+		|| ch->level < skill_table[gsn_butcher].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("But you don't know how to butcher.\n\r", ch);
 		return;
@@ -1418,7 +1419,15 @@ void do_envenom(CHAR_DATA *ch, char *argument)
 		if (percent < skill)
 		{
 			init_affect_obj(&oaf);
-			oaf.where = TO_WEAPON;
+			// TO_WEAPON is a character affect's discriminator, not an object
+			// affect's, and this is an object affect. affect_modify_obj
+			// switches on the two values an object affect can carry, so this
+			// one matches neither and the bitvector below is never applied.
+			// Nothing else in the tree ever applies a TO_WEAPON affect. Kept
+			// as it is here, value and all, because the affect is written to
+			// player files and correcting it is a behaviour change rather than
+			// a rename.
+			oaf.where = static_cast<ObjAffectWhere>(write_persisted(TO_WEAPON));
 			oaf.aftype = AFT_SKILL;
 			oaf.type = gsn_poison;
 			oaf.level = ch->level * percent / 100;
@@ -1858,7 +1867,7 @@ void do_eat(CHAR_DATA *ch, char *argument)
 /*
  * Remove an object.
  */
-bool remove_obj(CHAR_DATA *ch, int iWear, bool fReplace)
+bool remove_obj(CHAR_DATA *ch, WearLocation iWear, bool fReplace)
 {
 	OBJ_DATA *obj, *secondary, *revealed;
 
@@ -2327,7 +2336,7 @@ void wear_obj(CHAR_DATA *ch, OBJ_DATA *obj, bool fReplace)
 		if (get_skill(ch, gsn_dual_wield) < 3 && (!is_npc(ch)))
 			wield_primary = true;
 
-		if (ch->level < skill_table[gsn_dual_wield].skill_level[ch->Class()->GetIndex()] && !is_npc(ch))
+		if (ch->level < skill_table[gsn_dual_wield].skill_level[class_index(ch->Class()->GetIndex())] && !is_npc(ch))
 			wield_primary = true;
 
 		if (ch->size < SIZE_LARGE && is_weapon_stat(obj, WEAPON_TWO_HANDS))
@@ -3257,7 +3266,7 @@ void do_steal(CHAR_DATA *ch, char *argument)
 	OBJ_DATA *obj;
 	int chance;
 
-	if (get_skill(ch, gsn_steal) == 0 || ch->level < skill_table[gsn_steal].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_steal) == 0 || ch->level < skill_table[gsn_steal].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("Huh?\n\r", ch);
 		return;
@@ -3372,7 +3381,7 @@ void do_steal(CHAR_DATA *ch, char *argument)
 			case 1:
 				sprintf(buf, "%s couldn't rob %s way out of a paper bag!",
 					pers(ch, victim), 
-					(ch->sex == 2) ? "her" : "his");
+					(ch->sex == SEX_FEMALE) ? "her" : "his");
 				break;
 			case 2:
 				sprintf(buf, "%s tried to rob me!", pers(ch, victim));
@@ -4366,7 +4375,7 @@ void do_request(CHAR_DATA *ch, char *argument)
 	af.type = gsn_request;
 	af.modifier = 0;
 	af.duration = 5;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.level = ch->level;
 	affect_to_char(ch, &af);
 
@@ -4420,7 +4429,7 @@ void do_embalm(CHAR_DATA *ch, char *argument)
 	OBJ_DATA *corpse;
 	char arg[100];
 
-	if (get_skill(ch, gsn_embalm) == 0 || ch->level < skill_table[gsn_embalm].skill_level[ch->Class()->GetIndex()])
+	if (get_skill(ch, gsn_embalm) == 0 || ch->level < skill_table[gsn_embalm].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You don't know how to embalm corpses.\n\r", ch);
 		return;
@@ -4628,7 +4637,7 @@ void do_demand(CHAR_DATA *ch, char *argument)
 
 	chance = ch->pcdata->learned[gsn_demand];
 
-	if (chance == 0 || ch->level < skill_table[gsn_demand].skill_level[ch->Class()->GetIndex()])
+	if (chance == 0 || ch->level < skill_table[gsn_demand].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		send_to_char("You are hardly intimidating enough to demand off others.\n\r", ch);
 		return;
@@ -4823,7 +4832,7 @@ void report_weapon_skill(CHAR_DATA *ch, OBJ_DATA *obj)
 	if (obj->item_type != ITEM_WEAPON)
 	{
 		RS.Logger.Debug("report_weapon_skill: Bad obj->type, {}, vnum {}, carried by {}.", 
-			obj->item_type,
+			write_persisted(obj->item_type),
 			obj->pIndexData->vnum,
 			ch->name);
 		return;
@@ -4881,7 +4890,7 @@ void wear_obj_fallen_wings(CHAR_DATA *ch, OBJ_DATA *obj)
 	af.aftype = AFT_SKILL;
 	af.type = skill_lookup("fly");
 	af.modifier = 0;
-	af.location = 0;
+	af.location = APPLY_NONE;
 
 	SET_BIT(af.bitvector, AFF_FLYING);
 
@@ -5135,11 +5144,11 @@ bool is_carrying(CHAR_DATA *ch, int vnum)
 	return false;
 }
 
-bool is_carrying_type(CHAR_DATA *ch, int type)
+bool is_carrying_type(CHAR_DATA *ch, ItemType type)
 {
 	for (OBJ_DATA *obj = ch->carrying; obj; obj = obj->next_content)
 	{
-		if (obj->item_type == ITEM_BOAT)
+		if (obj->item_type == type)
 			return true;
 	}
 

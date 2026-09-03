@@ -38,6 +38,7 @@
 #include <time.h>
 #include <algorithm>
 #include "merc.h"
+#include "persisted_enum.h"
 #include "handler.h"
 #include "entity/handles.h"
 #include "entity/list_cursor.h"
@@ -214,27 +215,29 @@ char *weapon_name_lookup(int type, char* default_name)
 
 /// Queries the item table for the type of the given item.
 /// @param name: The name of the item to query.
-/// @returns The type of the given item. (Default: -1)
-int item_lookup(const char *name)
+/// @returns The type, or nothing when the name is not one. There is no item
+///          type that means "not an item type", and the -1 this used to answer
+///          with was not one either.
+std::optional<ItemType> item_lookup(const char *name)
 {
 	auto it = std::find_if(item_table.begin(), item_table.end(), [name] (auto item) {
 		return item.name != nullptr && !str_prefix(name, item.name);
 	});
 
 	if (it == item_table.end())
-		return -1;
+		return {};
 
 	auto idx = it - item_table.begin();
-	return item_table[idx].type;
+	return static_cast<ItemType>(item_table[idx].type);
 }
 
 /// Queries the item table for the name of the given item type.
 /// @param item_type: The type of the item to query.
 /// @returns The name of the given item type. (Default: none)
-char *item_name_lookup(int item_type)
+char *item_name_lookup(ItemType item_type)
 {
 	auto it = std::find_if(item_table.begin(), item_table.end(), [item_type] (auto item) {
-		return item.name != nullptr && item_type == item.type;
+		return item.name != nullptr && write_persisted(item_type) == item.type;
 	});
 
 	if (it == item_table.end())
@@ -345,7 +348,7 @@ int strlen_color(char *argument)
    the 'globals' (magic and weapons) may be overriden
    three other cases -- wood, silver, and iron -- are checked in fight.c */
 
-int check_immune(CHAR_DATA *ch, int dam_type)
+int check_immune(CHAR_DATA *ch, DamageType dam_type)
 {
 	int immune, def;
 	int bit;
@@ -356,7 +359,7 @@ int check_immune(CHAR_DATA *ch, int dam_type)
 	if (dam_type == DAM_NONE)
 		return immune;
 
-	if (dam_type <= 3)
+	if (dam_type <= DAM_SLASH)
 	{
 		if (IS_SET(ch->imm_flags, IMM_WEAPON))
 			def = IS_IMMUNE;
@@ -516,7 +519,7 @@ int get_skill(CHAR_DATA *ch, int sn)
 	}
 	else if (!is_npc(ch))
 	{
-		if (ch->level < skill_table[sn].skill_level[ch->Class()->GetIndex()] && !is_immortal(ch))
+		if (ch->level < skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())] && !is_immortal(ch))
 			skill = 0;
 		else
 			skill = ch->pcdata->learned[sn];
@@ -526,7 +529,7 @@ int get_skill(CHAR_DATA *ch, int sn)
 	}
 	else if (ch->pIndexData->Class()->GetIndex() > CLASS_NONE)
 	{
-		if (ch->level < skill_table[sn].skill_level[ch->pIndexData->Class()->GetIndex()])
+		if (ch->level < skill_table[sn].skill_level[class_index(ch->pIndexData->Class()->GetIndex())])
 		{
 			skill = 0;
 		}
@@ -535,7 +538,7 @@ int get_skill(CHAR_DATA *ch, int sn)
 			if (!style_check(sn, ch->mobstyle))
 				skill = 0;
 			else
-				skill = URANGE(0, 50 + 2 * (ch->level - skill_table[sn].skill_level[ch->pIndexData->Class()->GetIndex()]), 100);
+				skill = URANGE(0, 50 + 2 * (ch->level - skill_table[sn].skill_level[class_index(ch->pIndexData->Class()->GetIndex())]), 100);
 		}
 		else if (ch->pIndexData->Class()->GetIndex() == CLASS_SORCERER)
 		{
@@ -543,7 +546,7 @@ int get_skill(CHAR_DATA *ch, int sn)
 		}
 		else
 		{
-			skill = URANGE(0, 50 + 2 * (ch->level - skill_table[sn].skill_level[ch->pIndexData->Class()->GetIndex()]), 100);
+			skill = URANGE(0, 50 + 2 * (ch->level - skill_table[sn].skill_level[class_index(ch->pIndexData->Class()->GetIndex())]), 100);
 		}
 	}
 	else
@@ -758,7 +761,7 @@ void reset_char(CHAR_DATA *ch)
 		/* do a FULL reset */
 		for (loc = 0; loc < MAX_WEAR; loc++)
 		{
-			obj = get_eq_char(ch, loc);
+			obj = get_eq_char(ch, wear_slot(loc));
 
 			if (obj == nullptr)
 				continue;
@@ -780,12 +783,12 @@ void reset_char(CHAR_DATA *ch)
 		ch->pcdata->perm_move = ch->max_move;
 		ch->pcdata->last_level = ch->played / 3600;
 
-		if (ch->pcdata->true_sex < 0 || ch->pcdata->true_sex > 2)
+		if (!is_character_sex(ch->pcdata->true_sex))
 		{
-			if (ch->sex > 0 && ch->sex < 3)
+			if (ch->sex == SEX_MALE || ch->sex == SEX_FEMALE)
 				ch->pcdata->true_sex = ch->sex;
 			else
-				ch->pcdata->true_sex = 0;
+				ch->pcdata->true_sex = SEX_NEUTRAL;
 		}
 	}
 
@@ -795,8 +798,8 @@ void reset_char(CHAR_DATA *ch)
 		ch->mod_stat[stat] = 0;
 	}
 
-	if (ch->pcdata->true_sex < 0 || ch->pcdata->true_sex > 2)
-		ch->pcdata->true_sex = 0;
+	if (!is_character_sex(ch->pcdata->true_sex))
+		ch->pcdata->true_sex = SEX_NEUTRAL;
 
 	ch->sex = ch->pcdata->true_sex;
 	ch->max_hit = ch->pcdata->perm_hit;
@@ -815,14 +818,14 @@ void reset_char(CHAR_DATA *ch)
 	/* now start adding back the effects */
 	for (loc = 0; loc < MAX_WEAR; loc++)
 	{
-		obj = get_eq_char(ch, loc);
+		obj = get_eq_char(ch, wear_slot(loc));
 
 		if (obj == nullptr)
 			continue;
 
 		for (i = 0; i < 4; i++)
 		{
-			ch->armor[i] += apply_ac(obj, loc, i);
+			ch->armor[i] += apply_ac(obj, wear_slot(loc), i);
 		}
 
 		for (auto &af : obj->charaffs)
@@ -843,7 +846,7 @@ void reset_char(CHAR_DATA *ch)
 	}
 
 	/* make sure sex is RIGHT!!!! */
-	if (ch->sex < 0 || ch->sex > 2)
+	if (!is_character_sex(ch->sex))
 		ch->sex = ch->pcdata->true_sex;
 }
 
@@ -886,7 +889,7 @@ int get_curr_stat(CHAR_DATA *ch, int stat)
 
 		if (!str_cmp(race_table[ch->race].name, "human"))
 		{
-			int iClass = ch->Class()->GetIndex();
+			CharClass iClass = ch->Class()->GetIndex();
 			switch (ch->Class()->attr_prime)
 			{
 				case STAT_STR:
@@ -935,7 +938,7 @@ int get_curr_stat(CHAR_DATA *ch, int stat)
 			mod = 2;
 	}
 
-	return std::min(URANGE(3, ch->perm_stat[stat] + ch->mod_stat[stat], max) + mod, 25);
+	return std::min<int>(URANGE(3, ch->perm_stat[stat] + ch->mod_stat[stat], max) + mod, 25);
 }
 
 /* command for returning max training score */
@@ -1148,7 +1151,7 @@ void init_affect(AFFECT_DATA *paf)
 	paf->level = 0;
 	paf->init_duration = 0;
 	paf->duration = 0;
-	paf->location = 0;
+	paf->location = APPLY_NONE;
 	paf->modifier = 0;
 	paf->mod_name = MOD_NONE;
 
@@ -1367,7 +1370,7 @@ AREA_AFFECT_DATA *affect_find_area(std::list<AREA_AFFECT_DATA> &affects, int sn)
 }
 
 /* fix object affects when removing one */
-void affect_check(CHAR_DATA *ch, int where, long vector[])
+void affect_check(CHAR_DATA *ch, AffectWhere where, long vector[])
 {
 	if (where == TO_OBJECT || where == TO_WEAPON || vector == 0)
 		return;
@@ -1436,7 +1439,7 @@ void new_affect_to_char(CHAR_DATA *ch, AFFECT_DATA *paf)
  */
 void affect_remove(CHAR_DATA *ch, AFFECT_DATA *paf)
 {
-	int where;
+	AffectWhere where;
 	long vector[MAX_BITVECTOR];
 
 	if (ch->affected.empty())
@@ -1785,7 +1788,7 @@ void obj_from_char(OBJ_DATA *obj)
 /*
  * Find the ac value of an obj, including position effect.
  */
-int apply_ac(OBJ_DATA *obj, int iWear, int type)
+int apply_ac(OBJ_DATA *obj, WearLocation iWear, int type)
 {
 	if (obj->item_type != ITEM_ARMOR)
 		return 0;
@@ -1834,7 +1837,7 @@ int apply_ac(OBJ_DATA *obj, int iWear, int type)
 /*
  * Find a piece of eq on a character.
  */
-OBJ_DATA *get_eq_char(CHAR_DATA *ch, int iWear)
+OBJ_DATA *get_eq_char(CHAR_DATA *ch, WearLocation iWear)
 {
 	OBJ_DATA *obj;
 
@@ -1861,13 +1864,13 @@ bool is_worn(OBJ_DATA *obj)
 /*
  * Equip a char with an obj.
  */
-void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
+void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, WearLocation iWear, bool show)
 {
 	int i;
 
 	if (iWear != WEAR_COSMETIC && get_eq_char(ch, iWear) != nullptr)
 	{
-		RS.Logger.Warn("Equip_char: already equipped ({}) -- {} -- {}.", iWear, ch->name, ch->in_room->area->file_name);
+		RS.Logger.Warn("Equip_char: already equipped ({}) -- {} -- {}.", write_persisted(iWear), ch->name, ch->in_room->area->file_name);
 		return;
 	}
 
@@ -1952,7 +1955,8 @@ void equip_char(CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show)
  */
 void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 {
-	int i, wearloc = obj->wear_loc;
+	int i;
+	WearLocation wearloc = obj->wear_loc;
 
 	if (obj->wear_loc == WEAR_NONE)
 	{
@@ -1967,7 +1971,7 @@ void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 		do_uncoil(carrier, "automagic");
 	}
 
-	obj->wear_loc = -1;
+	obj->wear_loc = WEAR_NONE;
 
 	if (show && IS_SET(obj->progtypes, IPROG_REMOVE))
 		(obj->pIndexData->iprogs->remove_prog)(obj, ch);
@@ -1975,7 +1979,11 @@ void unequip_char(CHAR_DATA *ch, OBJ_DATA *obj, bool show)
 	if (show)
 		spec_obj_remove(obj, ch);
 
-	if (obj->wear_loc == WEAR_COSMETIC)
+	// The slot the object was in, not the one it is in now. This asked the
+	// object where it was after clearing the field, so it never matched, and a
+	// cosmetic had the armour, applies and flag sets taken off it that
+	// equip_char returns without ever putting on.
+	if (wearloc == WEAR_COSMETIC)
 		return;
 
 	for (i = 0; i < 4; i++)
@@ -2976,15 +2984,15 @@ bool can_drop_obj(CHAR_DATA *ch, OBJ_DATA *obj)
 /*
  * Return ascii name of an affect location.
  */
-char *affect_loc_name(int location)
+char *affect_loc_name(ApplyLocation location)
 {
 	for (int i = 0; apply_locations[i].name != nullptr; i++)
 	{
-		if (apply_locations[i].bit == location)
+		if (apply_locations[i].bit == write_persisted(location))
 			return apply_locations[i].display;
 	}
 
-	RS.Logger.Warn("Affect_location_name: unknown location {}.", location);
+	RS.Logger.Warn("Affect_location_name: unknown location {}.", write_persisted(location));
 	return "(unknown)";
 }
 
@@ -3882,7 +3890,7 @@ void init_affect_room(ROOM_AFFECT_DATA *paf)
 	paf->aftype = AFT_SPELL;
 	paf->level = 0;
 	paf->duration = 0;
-	paf->location = 0;
+	paf->location = APPLY_ROOM_NONE;
 	paf->modifier = 0;
 
 	zero_vector(paf->bitvector);
@@ -3941,10 +3949,12 @@ void affect_modify_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf, bool fAdd)
 			room->mana_rate += mod;
 			break;
 		case APPLY_ROOM_SECT:
-			room->sector_type += mod;
+			// An affect shifts the terrain by an offset, which is how a room
+			// is set alight and put back.
+			room->sector_type = sector_shifted(room->sector_type, mod);
 			break;
 		default:
-			RS.Logger.Warn("Affect_modify_room: unknown location {}.", paf->location);
+			RS.Logger.Warn("Affect_modify_room: unknown location {}.", write_persisted(paf->location));
 			break;
 	}
 }
@@ -3989,7 +3999,7 @@ void new_affect_to_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 	affect_modify_room(room, &room->affected.front(), true);
 }
 
-void affect_check_room(ROOM_INDEX_DATA *room, int where, long vector[])
+void affect_check_room(ROOM_INDEX_DATA *room, RoomAffectWhere where, long vector[])
 {
 	if (IS_ZERO_VECTOR(vector))
 		return;
@@ -4020,7 +4030,7 @@ void affect_check_room(ROOM_INDEX_DATA *room, int where, long vector[])
  */
 void affect_remove_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 {
-	int where;
+	RoomAffectWhere where;
 	long vector[MAX_BITVECTOR];
 
 	if (room->affected.empty())
@@ -4141,7 +4151,7 @@ void affect_join_room(ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf)
 /*
  * Return ascii name of an raffect location.
  */
-char *raffect_loc_name(int location)
+char *raffect_loc_name(ApplyRoomLocation location)
 {
 	switch (location)
 	{
@@ -4157,7 +4167,7 @@ char *raffect_loc_name(int location)
 			return "nope";
 	}
 
-	RS.Logger.Warn("raffect_location_name: unknown location {}.", location);
+	RS.Logger.Warn("raffect_location_name: unknown location {}.", write_persisted(location));
 	return "(unknown)";
 }
 
@@ -4229,7 +4239,7 @@ void init_affect_obj(OBJ_AFFECT_DATA *paf)
 	paf->aftype = AFT_SPELL;
 	paf->level = 0;
 	paf->duration = 0;
-	paf->location = 0;
+	paf->location = obj_location(APPLY_OBJ_NONE);
 	paf->modifier = 0;
 	zero_vector(paf->bitvector);
 	paf->tick_fun = nullptr;
@@ -4241,7 +4251,8 @@ void init_affect_obj(OBJ_AFFECT_DATA *paf)
 void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 {
 	CHAR_DATA *ch;
-	int mod, wear;
+	int mod;
+	WearLocation wear;
 	mod = paf->modifier;
 
 	if (fAdd)
@@ -4259,7 +4270,9 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 					unequip_char(ch, obj, false);
 
 				OBJ_APPLY_DATA app;
-				app.location = paf->location;
+				// This affect is TO_OBJ_APPLY, so the location it carries is a
+				// character apply rather than one of the object's own slots.
+				app.location = static_cast<ApplyLocation>(paf->location);
 				app.modifier = paf->modifier;
 				app.type = paf->type;
 				obj->apply.push_front(app);
@@ -4288,7 +4301,7 @@ void affect_modify_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd)
 				auto it = obj->apply.begin();
 				for (; it != obj->apply.end(); ++it)
 				{
-					if (it->type == paf->type && it->location == paf->location)
+					if (it->type == paf->type && it->location == static_cast<ApplyLocation>(paf->location))
 						break;
 				}
 
@@ -4356,7 +4369,7 @@ void affect_to_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf)
 	affect_modify_obj(obj, &obj->affected.front(), true);
 }
 
-void affect_check_obj(OBJ_DATA *obj, int where, long vector[])
+void affect_check_obj(OBJ_DATA *obj, ObjAffectWhere where, long vector[])
 {
 	if (IS_ZERO_VECTOR(vector))
 		return;
@@ -4379,7 +4392,7 @@ void affect_check_obj(OBJ_DATA *obj, int where, long vector[])
 
 void affect_remove_obj(OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool show)
 {
-	int where;
+	ObjAffectWhere where;
 	long vector[MAX_BITVECTOR];
 
 	if (obj->affected.empty())
@@ -4503,7 +4516,7 @@ void init_affect_area(AREA_AFFECT_DATA *paf)
 	paf->aftype = AFT_SPELL;
 	paf->level = 0;
 	paf->duration = 0;
-	paf->location = 0;
+	paf->location = APPLY_AREA_NONE;
 	paf->modifier = 0;
 	zero_vector(paf->bitvector);
 	paf->pulse_fun = nullptr;
@@ -4565,7 +4578,7 @@ void affect_modify_area(AREA_DATA *area, AREA_AFFECT_DATA *paf, bool fAdd)
 
 			break;
 		default:
-			RS.Logger.Warn("affect_modify_area: unknown location {}.", paf->location);
+			RS.Logger.Warn("affect_modify_area: unknown location {}.", write_persisted(paf->location));
 	}
 }
 
@@ -4576,7 +4589,7 @@ void affect_to_area(AREA_DATA *area, AREA_AFFECT_DATA *paf)
 	affect_modify_area(area, &area->affected.front(), true);
 }
 
-void affect_check_area(AREA_DATA *area, int where, long vector[])
+void affect_check_area(AREA_DATA *area, AreaAffectWhere where, long vector[])
 {
 	if (vector == 0)
 		return;
@@ -4599,7 +4612,7 @@ void affect_check_area(AREA_DATA *area, int where, long vector[])
 
 void affect_remove_area(AREA_DATA *area, AREA_AFFECT_DATA *paf)
 {
-	int where;
+	AreaAffectWhere where;
 	long vector[MAX_BITVECTOR];
 
 	if (area->affected.empty())
@@ -4679,7 +4692,7 @@ void affect_join_area(AREA_DATA *area, AREA_AFFECT_DATA *paf)
 	affect_to_area(area, paf);
 }
 
-char *aaffect_loc_name(int location)
+char *aaffect_loc_name(ApplyAreaLocation location)
 {
 	switch (location)
 	{
@@ -4693,7 +4706,7 @@ char *aaffect_loc_name(int location)
 			return "wind";
 	}
 
-	RS.Logger.Warn("aaffect_loc_name: unknown  location {}.", location);
+	RS.Logger.Warn("aaffect_loc_name: unknown  location {}.", write_persisted(location));
 	return "(unknown)";
 }
 
@@ -4784,7 +4797,7 @@ char *flag_room_name(int vector)
 	return (buf[0] != '\0') ? buf + 1 : (char *)"none";
 }
 
-void modify_location(CHAR_DATA *ch, int location, int mod, bool add)
+void modify_location(CHAR_DATA *ch, ApplyLocation location, int mod, bool add)
 {
 	int i;
 	if (!add)
@@ -4810,7 +4823,11 @@ void modify_location(CHAR_DATA *ch, int location, int mod, bool add)
 			ch->mod_stat[STAT_CON] += mod;
 			break;
 		case APPLY_SEX:
-			ch->sex += mod;
+			// An affect shifts the ordinal, which is how a spell turns a
+			// character into the other sex. It can land outside the three a
+			// character can be, and the guard at the end of reset_char puts it
+			// back.
+			ch->sex = static_cast<Sex>(static_cast<int>(ch->sex) + mod);
 			break;
 		case APPLY_CLASS:
 			break;
@@ -4870,7 +4887,8 @@ void modify_location(CHAR_DATA *ch, int location, int mod, bool add)
 			ch->defense_mod += mod;
 			break;
 		case APPLY_SIZE:
-			ch->size += mod;
+			// An affect shifts the ordinal, the way enlarge and reduce do.
+			ch->size = static_cast<Size>(static_cast<int>(ch->size) + mod);
 			break;
 		case APPLY_REGENERATION:
 			ch->regen_rate += mod;
@@ -4923,12 +4941,12 @@ int get_ethos(CHAR_DATA *ch)
 	return 0;
 }
 
-int damage_queue(CHAR_DATA *ch, CHAR_DATA *victim, int dam, int damtype, bool blockable, int add, int mult, char *dnoun)
+int damage_queue(CHAR_DATA *ch, CHAR_DATA *victim, int dam, DamageType damtype, HitBlockable blockable, int add, int mult, char *dnoun)
 {
 	return damage_new(ch, victim, dam, gsn_bash, damtype, true, blockable, add, mult, dnoun);
 }
 
-int damage_queued(CHAR_DATA *ch, CHAR_DATA *victim, int dam, int damtype, bool blockable, int add, int mult, std::string dnoun)
+int damage_queued(CHAR_DATA *ch, CHAR_DATA *victim, int dam, DamageType damtype, HitBlockable blockable, int add, int mult, std::string dnoun)
 {
 	return damage_new(ch, victim, dam, gsn_bash, damtype, true, blockable, add, mult, dnoun.data());
 }

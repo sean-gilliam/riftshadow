@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include "../merc.h"
+#include "../persisted_enum.h"
 #include "../entity/handles.h"
 #include "necro.h"
 #include "../comm.h"
@@ -497,7 +498,7 @@ void animate_four(CHAR_DATA *ch, OBJ_DATA *corpse)
 	af.level = ch->level;
 	af.duration = 24;
 	af.modifier = 0;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	affect_to_char(ch, &af);
 
 	act("$p convulses slightly and rises to its feet to serve $n!", ch, corpse, nullptr, TO_ROOM);
@@ -511,7 +512,7 @@ void animate_four(CHAR_DATA *ch, OBJ_DATA *corpse)
 
 	zombie->level = corpse->level;
 	zombie->max_hit = (short)(corpse->ohp * .55);
-	zombie->size = corpse->value[2];
+	zombie->size = read_persisted<Size>(corpse->value[2], "corpse size");
 
 	if (corpse->item_type == ITEM_CORPSE_PC)
 		zombie->max_hit = corpse->ohp * 6;
@@ -540,12 +541,12 @@ void animate_four(CHAR_DATA *ch, OBJ_DATA *corpse)
 
 	zombie->defense_mod = (short)dmod;
 
-	auto zombieSize = zombie->size == 0 ? "tiny, " :
-			zombie->size == 1 ? "small, " :
-			zombie->size == 2 ? "" :
-			zombie->size == 3 ? "large, " :
-			zombie->size == 4 ? "huge, " :
-			zombie->size == 5 ? "giant, " : "immense, ";
+	auto zombieSize = zombie->size == SIZE_TINY ? "tiny, " :
+			zombie->size == SIZE_SMALL ? "small, " :
+			zombie->size == SIZE_MEDIUM ? "" :
+			zombie->size == SIZE_LARGE ? "large, " :
+			zombie->size == SIZE_HUGE ? "huge, " :
+			zombie->size == SIZE_GIANT ? "giant, " : "immense, ";
 
 	auto zombieLevel = zombie->level < 11 ? "pathetic" :
 			zombie->level < 21 ? "weak" :
@@ -636,7 +637,7 @@ void spell_black_circle(int sn, int /* level */, CHAR_DATA *ch, SpellTarget /* v
 	af.aftype = AFT_TIMER;
 	af.type = sn;
 	af.modifier = 0;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.duration = 60;
 	af.owner = nullptr;
 	af.level = ch->level;
@@ -1065,7 +1066,7 @@ void spell_decrepify(int sn, [[maybe_unused]] int level, CHAR_DATA *ch, SpellTar
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_MALADY;
 	af.type = sn;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	af.duration = ch->level / 5;
 	af.level = ch->level;
@@ -1331,7 +1332,7 @@ void spell_corpse_trap(int sn, int /* level */, CHAR_DATA *ch, SpellTarget /* vo
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_TIMER;
 	af.type = sn;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	af.duration = 24;
 	af.level = ch->level;
@@ -1424,7 +1425,7 @@ void spell_lesser_golem(int sn, int /* level */, CHAR_DATA *ch, SpellTarget /* v
 	init_affect(&af);
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_TIMER;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	af.duration = dice(5, 8);
 	af.type = sn;
@@ -1556,7 +1557,7 @@ void spell_greater_golem(int sn, int /* level */, CHAR_DATA *ch, SpellTarget /* 
 	init_affect(&af);
 	af.where = TO_AFFECTS;
 	af.aftype = AFT_TIMER;
-	af.location = 0;
+	af.location = APPLY_NONE;
 	af.modifier = 0;
 	af.duration = dice(5, 8);
 	af.type = sn;

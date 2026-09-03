@@ -34,12 +34,15 @@
 #ifndef LOOKUP_H
 #define LOOKUP_H
 
+#include <optional>
 #include <string>
 
+#include "enums.h"
 #include "entity/fwd.h"
 
 struct flag_type;		// code/tables.h
 struct display_type;	// code/tables.h
+struct position_type;	// code/tables.h
 
 //
 // LOCAL FUNCTIONS
@@ -61,9 +64,26 @@ int flag_index_ilookup (int i, const struct flag_type *flag_table);
 int flag_index_lookup (const char *name, const struct flag_type *flag_table);
 int material_lookup (const char *name);
 int sect_lookup (const char *name);
-int sect_numlookup (int number);
+int sect_numlookup (SectorType number);
+const struct sect_type *sector_row (SectorType sector_type);
+/// The two barred-entry word families. A mob's barred entry is stored in the
+/// area file by name and typed in by name in the editor, so both directions of
+/// each family answer from one place instead of four.
+const char *bar_criterion_name (BarCriterion type);
+const char *bar_comparison_name (BarComparison comparison);
+std::optional<BarComparison> bar_comparison_lookup (const char *name);
+const char *bar_message_name (BarMessage msg_type);
+std::optional<BarMessage> bar_message_lookup (const char *name);
 int cabal_lookup  (const char *name);
-int position_lookup	(const char *name);
+/// The row for a position, for the two places that need its long or short name.
+/// Total over the family: a position with no row answers with the dead row, so
+/// a caller never reads past the end of the table.
+const struct position_type *position_row (Position position);
+
+/// The position that name means. Empty when the name is not one: there is no
+/// position value that means "not a position", and the -1 this used to answer
+/// with is below dead rather than beside it.
+std::optional<Position> position_lookup (const char *name);
 int sex_lookup (const char *name);
 int size_lookup	(const char *name);
 int hometown_lookup (const char *name);

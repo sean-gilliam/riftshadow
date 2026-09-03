@@ -2,8 +2,10 @@
 #define HANDLER_H
 
 #include <list>
+#include <optional>
 #include <string>
 
+#include "enums.h"
 #include "entity/fwd.h"
 
 //
@@ -28,8 +30,8 @@ int liq_lookup (const char *name);
 int weapon_lookup (const char *name);
 int weapon_type_lookup (const char *name);
 char *weapon_name_lookup (int type, char* default_name = "weapon");
-int item_lookup (const char *name);
-char *item_name_lookup (int item_type);
+std::optional<ItemType> item_lookup (const char *name);
+char *item_name_lookup (ItemType item_type);
 int attack_lookup  (const char *name);
 /* returns a flag for wiznet */
 long wiznet_lookup (const char *name);
@@ -38,7 +40,7 @@ int strlen_color (char *argument);
 /* for immunity, vulnerability, and resistant
    the 'globals' (magic and weapons) may be overriden
    three other cases -- wood, silver, and iron -- are checked in fight.c */
-int check_immune (CHAR_DATA *ch, int dam_type);
+int check_immune (CHAR_DATA *ch, DamageType dam_type);
 bool is_cabal (CHAR_DATA *ch);
 bool is_same_cabal (CHAR_DATA *ch, CHAR_DATA *victim);
 /* checks mob format */
@@ -89,7 +91,7 @@ OBJ_AFFECT_DATA *affect_find_obj (std::list<OBJ_AFFECT_DATA> &affects, int sn);
 ROOM_AFFECT_DATA *affect_find_room (std::list<ROOM_AFFECT_DATA> &affects, int sn);
 AREA_AFFECT_DATA *affect_find_area (std::list<AREA_AFFECT_DATA> &affects, int sn);
 /* fix object affects when removing one */
-void affect_check (CHAR_DATA *ch, int where, long vector[]);
+void affect_check (CHAR_DATA *ch, AffectWhere where, long vector[]);
 /*
  * Give an affect to a char.
  */
@@ -135,16 +137,16 @@ void obj_from_char (OBJ_DATA *obj);
 /*
  * Find the ac value of an obj, including position effect.
  */
-int apply_ac (OBJ_DATA *obj, int iWear, int type);
+int apply_ac (OBJ_DATA *obj, WearLocation iWear, int type);
 /*
  * Find a piece of eq on a character.
  */
-OBJ_DATA *get_eq_char (CHAR_DATA *ch, int iWear);
+OBJ_DATA *get_eq_char (CHAR_DATA *ch, WearLocation iWear);
 bool is_worn (OBJ_DATA *obj);
 /*
  * Equip a char with an obj.
  */
-void equip_char (CHAR_DATA *ch, OBJ_DATA *obj, int iWear, bool show);
+void equip_char (CHAR_DATA *ch, OBJ_DATA *obj, WearLocation iWear, bool show);
 /*
  * Unequip a char with an obj.
  */
@@ -262,7 +264,7 @@ bool can_drop_obj (CHAR_DATA *ch, OBJ_DATA *obj);
 /*
  * Return ascii name of an affect location.
  */
-char *affect_loc_name (int location);
+char *affect_loc_name (ApplyLocation location);
 /*
  * Return ascii name of an affect bit vector.
  */
@@ -295,7 +297,7 @@ void affect_modify_room (ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf, bool fAdd
  */
 void affect_to_room (ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf);
 void new_affect_to_room (ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf);
-void affect_check_room (ROOM_INDEX_DATA *room,int where, long vector[]);
+void affect_check_room (ROOM_INDEX_DATA *room, RoomAffectWhere where, long vector[]);
 /*
  * Remove an affect from a room.
  */
@@ -315,7 +317,7 @@ void affect_join_room (ROOM_INDEX_DATA *room, ROOM_AFFECT_DATA *paf);
 /*
  * Return ascii name of an raffect location.
  */
-char *raffect_loc_name (int location);
+char *raffect_loc_name (ApplyRoomLocation location);
 /*
  * Return ascii name of an affect bit vector.
  */
@@ -329,7 +331,7 @@ void charaff_from_obj_index (OBJ_INDEX_DATA *obj, AFFECT_DATA *paf);
 void init_affect_obj (OBJ_AFFECT_DATA *paf);
 void affect_modify_obj (OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool fAdd);
 void affect_to_obj (OBJ_DATA *obj, OBJ_AFFECT_DATA *paf);
-void affect_check_obj (OBJ_DATA *obj, int where, long vector[]);
+void affect_check_obj (OBJ_DATA *obj, ObjAffectWhere where, long vector[]);
 void affect_remove_obj (OBJ_DATA *obj, OBJ_AFFECT_DATA *paf, bool show);
 void affect_strip_obj (OBJ_DATA *obj, int sn);
 bool is_affected_obj (OBJ_DATA *obj, int sn);
@@ -342,22 +344,22 @@ char *oaffect_bit_name (long vector[]);
 void init_affect_area (AREA_AFFECT_DATA *paf);
 void affect_modify_area (AREA_DATA *area, AREA_AFFECT_DATA *paf, bool fAdd);
 void affect_to_area (AREA_DATA *area, AREA_AFFECT_DATA *paf);
-void affect_check_area (AREA_DATA *area, int where, long vector[]);
+void affect_check_area (AREA_DATA *area, AreaAffectWhere where, long vector[]);
 void affect_remove_area (AREA_DATA *area, AREA_AFFECT_DATA *paf);
 void affect_strip_area (AREA_DATA *area, int sn);
 bool is_affected_area (AREA_DATA *area, int sn);
 void affect_join_area (AREA_DATA *area, AREA_AFFECT_DATA *paf);
-char *aaffect_loc_name (int location);
+char *aaffect_loc_name (ApplyAreaLocation location);
 bool is_safe_rspell_nom (int level, CHAR_DATA *victim);
 bool is_safe_rspell (int level, CHAR_DATA *victim);
 /*
  * Return ascii name of an affect bit vector.
  */
 char *flag_room_name (int vector);
-void modify_location (CHAR_DATA *ch, int location, int mod, bool add);
+void modify_location (CHAR_DATA *ch, ApplyLocation location, int mod, bool add);
 int get_align (CHAR_DATA *ch);
 int get_ethos (CHAR_DATA *ch);
-int damage_queue (CHAR_DATA *ch, CHAR_DATA *victim, int dam, int damtype, bool blockable, int add, int mult, char *dnoun);
-int damage_queued (CHAR_DATA *ch, CHAR_DATA *victim, int dam, int damtype, bool blockable, int add, int mult, std::string dnoun);
+int damage_queue (CHAR_DATA *ch, CHAR_DATA *victim, int dam, DamageType damtype, HitBlockable blockable, int add, int mult, char *dnoun);
+int damage_queued (CHAR_DATA *ch, CHAR_DATA *victim, int dam, DamageType damtype, HitBlockable blockable, int add, int mult, std::string dnoun);
 
 #endif /* HANDLER_H */

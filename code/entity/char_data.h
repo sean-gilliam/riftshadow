@@ -21,7 +21,7 @@
 //
 
 
-extern CProficiencies prof_none; //empty proficiencies for jackasses who are going to ref ch->Profs() without checking IS_NPC
+extern CProficiencies prof_none; //empty proficiencies for jackasses who are going to ref ch->Profs() without checking is_npc
 
 /// The global character list owns every character in the world. Declared here
 /// rather than in db.h because a character caches its own node in it.
@@ -136,7 +136,7 @@ public:
 	char *prefix;
 	short group;
 	short cabal;
-	short sex;
+	Sex sex;
 
 	CClass *Class()
 	{
@@ -147,7 +147,7 @@ public:
 			: my_class;
 	}
 
-	void		SetClass(int nClassIndex)
+	void		SetClass(CharClass nClassIndex)
 	{
 		my_class = CClass::GetClass(nClassIndex);
 	}
@@ -179,7 +179,7 @@ public:
 	short invis_level;
 	short incog_level;
 	long affected_by[MAX_BITVECTOR];
-	short position;
+	Position position = POS_STANDING;
 	short practice;
 	short train;
 	short carry_weight;
@@ -205,7 +205,7 @@ public:
 
 	long form[MAX_BITVECTOR];
 	long parts[MAX_BITVECTOR];
-	short size;
+	Size size;
 	char *material;
 
 	//
@@ -217,7 +217,7 @@ public:
 	long off_flags[MAX_BITVECTOR];
 	short damage[3];
 	short dam_type;
-	short start_pos;
+	Position start_pos = POS_STANDING;
 	short pause;
 	short ghost;
 	int status;

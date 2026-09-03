@@ -33,6 +33,7 @@
 #include <time.h>
 #include <algorithm>
 #include "merc.h"
+#include "persisted_enum.h"
 #include "olc_save.h"
 #include "rift.h"
 #include "stdlibs/cfilesystem.h"
@@ -164,8 +165,8 @@ void save_mobile(FILE *fp, MOB_INDEX_DATA *pMobIndex)
 		pMobIndex->ac[AC_SLASH],
 		pMobIndex->ac[AC_EXOTIC]);
 	fprintf(fp, "%s %s ",
-		position_table[std::max((int)pMobIndex->start_pos, 0)].name,
-		sex_table[std::max((int)pMobIndex->sex, 1)].name);
+		position_row(pMobIndex->start_pos)->name,
+		sex_table[std::max(static_cast<int>(pMobIndex->sex), 1)].name);
 	fprintf(fp, "%s\n", wealth_lookup(pMobIndex->wealth));
 
 	copy_vector(dummy, pMobIndex->form);
@@ -265,38 +266,12 @@ void save_mobile(FILE *fp, MOB_INDEX_DATA *pMobIndex)
 
 	if (pMobIndex->barred_entry)
 	{
-		switch (pMobIndex->barred_entry->comparison)
-		{
-			case BAR_EQUAL_TO:
-				sprintf(buf, "EQUALTO");
-				break;
-			case BAR_LESS_THAN:
-				sprintf(buf, "LESSTHAN");
-				break;
-			case BAR_GREATER_THAN:
-				sprintf(buf, "GREATERTHAN");
-				break;
-		}
-
-		switch (pMobIndex->barred_entry->msg_type)
-		{
-			case BAR_SAY:
-				sprintf(buf2, "SAY");
-				break;
-			case BAR_EMOTE:
-				sprintf(buf2, "EMOTE");
-				break;
-			case BAR_ECHO:
-				sprintf(buf2, "ECHO");
-				break;
-		}
-
 		fprintf(fp, "B %s %s %d %d %s %s~\n%s%s",
-			flag_name_lookup(pMobIndex->barred_entry->type, criterion_flags),
-			buf,
+			bar_criterion_name(pMobIndex->barred_entry->type),
+			bar_comparison_name(pMobIndex->barred_entry->comparison),
 			pMobIndex->barred_entry->value,
 			pMobIndex->barred_entry->vnum,
-			buf2,
+			bar_message_name(pMobIndex->barred_entry->msg_type),
 			pMobIndex->barred_entry->message,
 			(pMobIndex->barred_entry->message_two
 				&& pMobIndex->barred_entry->msg_type == BAR_ECHO) ? pMobIndex->barred_entry->message_two : "",
@@ -475,7 +450,7 @@ void save_object(FILE *fp, OBJ_INDEX_DATA *pObjIndex)
 	for (const auto &app : pObjIndex->apply)
 	{
 		fprintf(fp, "APPLY %s %d\n",
-			upstring(display_name_lookup(app.location, apply_locations)),
+			upstring(display_name_lookup(write_persisted(app.location), apply_locations)),
 			app.modifier);
 	}
 
@@ -570,7 +545,7 @@ void save_rooms(FILE *fp, AREA_DATA *pArea)
 
 			fprintf(fp, "#%d\n", pRoom->vnum);
 			fprintf(fp, "%s~\n%s~\n", buf1, buf2);
-			fprintf(fp, "%s\n", sect_table[std::max(0, (int)pRoom->sector_type)].name);
+			fprintf(fp, "%s\n", sector_row(pRoom->sector_type)->name);
 
 			rs_temp = 0;
 

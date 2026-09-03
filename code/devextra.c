@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <iterator>
 #include "merc.h"
+#include "persisted_enum.h"
 #include "entity/handles.h"
 #include "devextra.h"
 #include "rift.h"
@@ -812,7 +813,7 @@ void plug_graveyard(CHAR_DATA *ch, int type)
 	if (type == 1)
 	{
 		type_death = "DEL";
-		message_death = fmt::sprintf("took %s own life.", (ch->sex == 2) ? "her" : "his");
+		message_death = fmt::sprintf("took %s own life.", (ch->sex == SEX_FEMALE) ? "her" : "his");
 	}
 	else if (type == 2)
 	{
@@ -827,7 +828,7 @@ void plug_graveyard(CHAR_DATA *ch, int type)
 	else
 	{
 		type_death = "AUTO";
-		message_death = fmt::sprintf("perished in %s sleep.", (ch->sex == 2) ? "her" : "his");
+		message_death = fmt::sprintf("perished in %s sleep.", (ch->sex == SEX_FEMALE) ? "her" : "his");
 	}
 
 	auto strf_time = [](const char *format) {
@@ -894,7 +895,7 @@ void plug_graveyard(CHAR_DATA *ch, int type)
 		ch->pcdata->birth_date,
 		get_hours(ch),
 		race_table[ch->race].name,
-		sex_table[ch->sex].name,
+		sex_table[static_cast<int>(ch->sex)].name,
 		ch->Class()->name.c_str());
 
 	if (ch->Class()->GetIndex() == CLASS_WARRIOR)
@@ -916,7 +917,7 @@ void plug_graveyard(CHAR_DATA *ch, int type)
 		message += fmt::sprintf("%s's major elemental focus was %s and %s para-elemental focus was %s.\r",
 			(const char *)ch->true_name,
 			sphere_table[ch->pcdata->ele_major].name,
-			(ch->sex == 2) ? "her" : "his",
+			(ch->sex == SEX_FEMALE) ? "her" : "his",
 			sphere_table[ch->pcdata->ele_para].name);
 	}
 
@@ -1717,7 +1718,12 @@ void do_affto(CHAR_DATA *ch, char *argument)
 	CHAR_DATA *victim;
 	char cname[MAX_INPUT_LENGTH], skill_name[MAX_INPUT_LENGTH], location[MAX_INPUT_LENGTH],
 		targ[MAX_INPUT_LENGTH], saftype[MAX_INPUT_LENGTH], sbitvector[MAX_INPUT_LENGTH];
-	int duration = -2, sn = 2, nlocation = -2, modifier = 0, aftype = -2;
+	int duration = -2, sn = 2, modifier = 0, aftype = -2;
+
+	// -2 is this command's "not given yet" marker for the arguments it reads,
+	// and an apply location has no such value, so the marker stays a number
+	// and is converted once it has been checked.
+	int nlocation = -2;
 	long bitvector = 0;
 	char returnstr[MAX_INPUT_LENGTH];
 
@@ -1805,7 +1811,7 @@ void do_affto(CHAR_DATA *ch, char *argument)
 	af.type = sn;
 	af.aftype = aftype;
 	af.level = ch->level;
-	af.location = nlocation;
+	af.location = read_persisted<ApplyLocation>(nlocation, "affect location");
 	af.modifier = modifier;
 	af.duration = duration;
 	SET_BIT(af.bitvector, bitvector);
@@ -2093,7 +2099,7 @@ void do_supps(CHAR_DATA *ch, char *argument)
 		if (skill_table[sn].name == nullptr)
 			break;
 
-		level = skill_table[sn].skill_level[ch->Class()->GetIndex()];
+		level = skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())];
 
 		if (level < LEVEL_HERO + 1
 			&& level >= min_lev
@@ -2103,7 +2109,7 @@ void do_supps(CHAR_DATA *ch, char *argument)
 			&& (skill_table[sn].ctype == CMD_COMMUNE || skill_table[sn].ctype == CMD_BOTH))
 		{
 			found = true;
-			level = skill_table[sn].skill_level[ch->Class()->GetIndex()];
+			level = skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())];
 
 			if (ch->level < level)
 			{
@@ -2229,7 +2235,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 
 		if (paf)
 		{
-			if (skill_table[sn].skill_level[ch->Class()->GetIndex()] > paf->modifier)
+			if (skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())] > paf->modifier)
 			{
 				send_to_char("The ties to your god are severed and you can not commune that prayer.\n\r", ch);
 				return;
@@ -2237,7 +2243,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		}
 	}
 
-	if (skill_table[sn].skill_level[ch->Class()->GetIndex()] >= 25
+	if (skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())] >= 25
 		&& !IS_SET(ch->act, PLR_EMPOWERED)
 		&& !is_immortal(ch))
 	{
@@ -2263,7 +2269,7 @@ void do_commune(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->level + 2 == skill_table[sn].skill_level[ch->Class()->GetIndex()])
+	if (ch->level + 2 == skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())])
 	{
 		mana = 50;
 	}
@@ -2271,11 +2277,11 @@ void do_commune(CHAR_DATA *ch, char *argument)
 	{
 		if (is_affected(ch, gsn_concuss))
 		{
-			mana = std::max(skill_table[sn].min_mana * 4, 100 / (2 + ch->level - skill_table[sn].skill_level[ch->Class()->GetIndex()]));
+			mana = std::max(skill_table[sn].min_mana * 4, 100 / (2 + ch->level - skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())]));
 		}
 		else
 		{
-			mana = std::max((int)skill_table[sn].min_mana, 100 / (2 + ch->level - skill_table[sn].skill_level[ch->Class()->GetIndex()]));
+			mana = std::max((int)skill_table[sn].min_mana, 100 / (2 + ch->level - skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())]));
 		}
 	}
 
@@ -2641,10 +2647,10 @@ void do_call(CHAR_DATA *ch, char *argument)
 	if (cabal_down(ch, ch->cabal))
 		return;
 
-	if (ch->level + 2 == skill_table[sn].skill_level[ch->Class()->GetIndex()])
+	if (ch->level + 2 == skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())])
 		mana = 50;
 	else
-		mana = std::max((int)skill_table[sn].min_mana, 100 / (2 + ch->level - skill_table[sn].skill_level[ch->Class()->GetIndex()]));
+		mana = std::max((int)skill_table[sn].min_mana, 100 / (2 + ch->level - skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())]));
 
 	/*
 	 * Locate targets.
@@ -2946,7 +2952,7 @@ void do_snare(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	af.type = gsn_snare;
 	af.level = ch->level;
 	af.duration = 24;
-	af.location = APPLY_NONE;
+	af.location = APPLY_ROOM_NONE;
 	af.modifier = 0;
 	af.owner = ch->self;
 	af.end_fun = nullptr;

@@ -11,6 +11,7 @@ set_target_properties(TestMain PROPERTIES LINKER_LANGUAGE CXX)
 
 set(TEST_SRC_FILES act_obj_tests.c
 	ban_tests.c
+	barred_tests.c
 	entity_storage_tests.c
 	bitflag_tests.c
 	bug_tests.c
@@ -27,6 +28,7 @@ set(TEST_SRC_FILES act_obj_tests.c
 	mprog_tests.c
 	note_tests.c
 	pathfind_tests.c
+	persisted_enum_tests.c
 	offering_tests.c
 	pklog_tests.c
 	sitecomment_tests.c
@@ -39,6 +41,7 @@ set(TEST_SRC_FILES act_obj_tests.c
 	rune_tests.c
 	spell_target_tests.c
 	theft_tests.c
+	thief_tests.c
 	vote_tests.c
 	utility_tests.c
 	standalone_tests.c

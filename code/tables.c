@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <time.h>
 #include "merc.h"
+#include "persisted_enum.h"
 #include "tables.h"
 #include "direction.h"
 
@@ -57,44 +58,44 @@ const struct flag_type aftype_table[] =
 const struct display_type apply_locations[] =
 {
 	//	name				bit						display
-	{	"none",				APPLY_NONE,				"none"					},
-	{	"str",				APPLY_STR,				"strength"				},
-	{	"dex",				APPLY_DEX,				"dexterity"				},
-	{	"int",				APPLY_INT,				"intelligence"			},
-	{	"wis",				APPLY_WIS,				"wisdom"				},
-	{	"con",				APPLY_CON,				"constitution"			},
-	{	"sex",				APPLY_SEX,				"sex"					},
-	{	"class",			APPLY_CLASS,			"class"					},
-	{	"luck",				APPLY_LUCK,				"luck"					},
-	{	"age",				APPLY_AGE,				"age"					},
-	{	"height",			APPLY_HEIGHT,			"none"					},
-	{	"weight",			APPLY_WEIGHT,			"none"					},
-	{	"mana",				APPLY_MANA,				"mana"					},
-	{	"hp",				APPLY_HIT,				"health"				},
-	{	"move",				APPLY_MOVE,				"moves"					},
-	{	"gold",				APPLY_GOLD,				"none"					},
-	{	"exp",				APPLY_EXP,				"none"					},
-	{	"ac",				APPLY_AC,				"armor class"			},
-	{	"hitroll",			APPLY_HITROLL,			"hitroll"				},
-	{	"damroll",			APPLY_DAMROLL,			"damroll"				},
-	{	"saves",			APPLY_SAVES,			"saves"					},
-	{	"spara",			APPLY_SAVING_PARA,		"save vs paralysis"		},
-	{	"srod",				APPLY_SAVING_ROD,		"save vs rod"			},
-	{	"spetri",			APPLY_SAVING_PETRI,		"save vs petrification"	},
-	{	"sbreath",			APPLY_SAVING_BREATH,	"save vs breath"		},
-	{	"svspell",			APPLY_SAVING_SPELL,		"save vs spell"			},
-	{	"affect",			APPLY_SPELL_AFFECT,		"none"					},
-	{	"carry_weight", 	APPLY_CARRY_WEIGHT,		"weight carried"		},
-	{	"defense",			APPLY_DEFENSE,			"none"					},
-	{	"regen",			APPLY_REGENERATION,		"regeneration"			},
-	{	"size",				APPLY_SIZE,				"size"					},
-	{	"energystate",		APPLY_ENERGYSTATE,		"energy state"			},
-	{	"dammod",			APPLY_DAM_MOD,			"none"					},
-	{	"legs",				APPLY_LEGS,				"none"					},
-	{	"arms",				APPLY_ARMS,				"none"					},
-	{	"beauty",			APPLY_BEAUTY,			"none"					},
-	{	"alignment",		APPLY_ALIGNMENT,		"none"					},
-	{	"ethos",			APPLY_ETHOS,			"none"					},
+	{	"none",				write_persisted(APPLY_NONE),				"none"					},
+	{	"str",				write_persisted(APPLY_STR),				"strength"				},
+	{	"dex",				write_persisted(APPLY_DEX),				"dexterity"				},
+	{	"int",				write_persisted(APPLY_INT),				"intelligence"			},
+	{	"wis",				write_persisted(APPLY_WIS),				"wisdom"				},
+	{	"con",				write_persisted(APPLY_CON),				"constitution"			},
+	{	"sex",				write_persisted(APPLY_SEX),				"sex"					},
+	{	"class",			write_persisted(APPLY_CLASS),			"class"					},
+	{	"luck",				write_persisted(APPLY_LUCK),				"luck"					},
+	{	"age",				write_persisted(APPLY_AGE),				"age"					},
+	{	"height",			write_persisted(APPLY_HEIGHT),			"none"					},
+	{	"weight",			write_persisted(APPLY_WEIGHT),			"none"					},
+	{	"mana",				write_persisted(APPLY_MANA),				"mana"					},
+	{	"hp",				write_persisted(APPLY_HIT),				"health"				},
+	{	"move",				write_persisted(APPLY_MOVE),				"moves"					},
+	{	"gold",				write_persisted(APPLY_GOLD),				"none"					},
+	{	"exp",				write_persisted(APPLY_EXP),				"none"					},
+	{	"ac",				write_persisted(APPLY_AC),				"armor class"			},
+	{	"hitroll",			write_persisted(APPLY_HITROLL),			"hitroll"				},
+	{	"damroll",			write_persisted(APPLY_DAMROLL),			"damroll"				},
+	{	"saves",			write_persisted(APPLY_SAVES),			"saves"					},
+	{	"spara",			write_persisted(APPLY_SAVING_PARA),		"save vs paralysis"		},
+	{	"srod",				write_persisted(APPLY_SAVING_ROD),		"save vs rod"			},
+	{	"spetri",			write_persisted(APPLY_SAVING_PETRI),		"save vs petrification"	},
+	{	"sbreath",			write_persisted(APPLY_SAVING_BREATH),	"save vs breath"		},
+	{	"svspell",			write_persisted(APPLY_SAVING_SPELL),		"save vs spell"			},
+	{	"affect",			write_persisted(APPLY_SPELL_AFFECT),		"none"					},
+	{	"carry_weight", 	write_persisted(APPLY_CARRY_WEIGHT),		"weight carried"		},
+	{	"defense",			write_persisted(APPLY_DEFENSE),			"none"					},
+	{	"regen",			write_persisted(APPLY_REGENERATION),		"regeneration"			},
+	{	"size",				write_persisted(APPLY_SIZE),				"size"					},
+	{	"energystate",		write_persisted(APPLY_ENERGYSTATE),		"energy state"			},
+	{	"dammod",			write_persisted(APPLY_DAM_MOD),			"none"					},
+	{	"legs",				write_persisted(APPLY_LEGS),				"none"					},
+	{	"arms",				write_persisted(APPLY_ARMS),				"none"					},
+	{	"beauty",			write_persisted(APPLY_BEAUTY),			"none"					},
+	{	"alignment",		write_persisted(APPLY_ALIGNMENT),		"none"					},
+	{	"ethos",			write_persisted(APPLY_ETHOS),			"none"					},
 	{	nullptr,			0,						0						} // nullptr, 0, FALSE
 };
 
@@ -421,29 +422,39 @@ const struct flag_type extra_flags[] =
 	{	nullptr,			0,						0		}
 };
 
+// flag_type carries its value as a long and a wear location is its own type,
+// so the three tables below say so once rather than at every row.
+static constexpr long wear_value(WearLocation location)
+{
+	return static_cast<long>(location);
+}
+
 const struct flag_type wear_locations[] =
 {
 	//	name			bit					settable
-	{	"light",		WEAR_LIGHT,			true	},
-	{	"lfinger",		WEAR_FINGER_L,		true	},
-	{	"rfinger",		WEAR_FINGER_R,		true	},
-	{	"neckone",		WEAR_NECK_1,		true	},
-	{	"necktwo",		WEAR_NECK_2,		true	},
-	{	"body",			WEAR_BODY,			true	},
-	{	"head",			WEAR_HEAD,			true	},
-	{	"legs",			WEAR_LEGS,			true	},
-	{	"feet",			WEAR_FEET,			true	},
-	{	"hands",		WEAR_HANDS,			true	},
-	{	"arms",			WEAR_ARMS,			true	},
-	{	"shield",		WEAR_SHIELD,		true	},
-	{	"about",		WEAR_ABOUT,			true	},
-	{	"waist",		WEAR_WAIST,			true	},
-	{	"wristone",		WEAR_WRIST_R,		true	},
-	{	"wristtwo",		WEAR_WRIST_L,		true	},
-	{	"wield",		WEAR_WIELD,			true	},
-	{	"dualwield",	WEAR_DUAL_WIELD,	true	},
-	{	"tattooed",		WEAR_BRAND,			true	},
-	{	"hold",			WEAR_HOLD,			true	},
+	{	"light",		wear_value(WEAR_LIGHT),				true	},
+	{	"lfinger",		wear_value(WEAR_FINGER_L),			true	},
+	{	"rfinger",		wear_value(WEAR_FINGER_R),			true	},
+	{	"neckone",		wear_value(WEAR_NECK_1),			true	},
+	{	"necktwo",		wear_value(WEAR_NECK_2),			true	},
+	{	"body",			wear_value(WEAR_BODY),				true	},
+	{	"head",			wear_value(WEAR_HEAD),				true	},
+	{	"legs",			wear_value(WEAR_LEGS),				true	},
+	{	"feet",			wear_value(WEAR_FEET),				true	},
+	{	"hands",		wear_value(WEAR_HANDS),				true	},
+	{	"arms",			wear_value(WEAR_ARMS),				true	},
+	{	"shield",		wear_value(WEAR_SHIELD),			true	},
+	{	"about",		wear_value(WEAR_ABOUT),				true	},
+	{	"waist",		wear_value(WEAR_WAIST),				true	},
+	{	"wristone",		wear_value(WEAR_WRIST_R),			true	},
+	{	"wristtwo",		wear_value(WEAR_WRIST_L),			true	},
+	{	"wield",		wear_value(WEAR_WIELD),				true	},
+	{	"dualwield",	wear_value(WEAR_DUAL_WIELD),		true	},
+	{	"tattooed",		wear_value(WEAR_BRAND),				true	},
+	{	"hold",			wear_value(WEAR_HOLD),				true	},
+	// flag_lookup and flag_name_lookup both scan until the null name, so this
+	// row is what stops them walking off the end of the table.
+	{	nullptr,		0,									true	},
 };
 
 const struct flag_type wear_flags[] =
@@ -564,15 +575,17 @@ const struct flag_type comm_flags[] =
 	{	nullptr,		0,					0		}
 };
 
+// A mob's barred entry is stored in the area file by the name in this table
+// rather than by the number beside it, so the numbers are free to move.
 const struct flag_type criterion_flags[] =
 {
-	//	name			bit				settable
-	{	"class",		BAR_CLASS,		true	},
-	{	"cabal",		BAR_CABAL,		true	},
-	{	"size",			BAR_SIZE,		true	},
-	{	"tattoo",		BAR_TATTOO,		true	},
-	{	"level",		BAR_LEVEL,		true	},
-	{	nullptr,		0,				true	}
+	//	name			bit										settable
+	{	"class",		static_cast<long>(BAR_CLASS),			true	},
+	{	"cabal",		static_cast<long>(BAR_CABAL),			true	},
+	{	"size",			static_cast<long>(BAR_SIZE),			true	},
+	{	"tattoo",		static_cast<long>(BAR_TATTOO),			true	},
+	{	"level",		static_cast<long>(BAR_LEVEL),			true	},
+	{	nullptr,		0,										true	}
 };
 
 const struct flag_type trap_table[] =
@@ -668,7 +681,7 @@ const struct color_event_type color_event[MAX_EVENTS] =
 const struct sect_type sect_table[] =
 {
 	//	keyword,			number				moves	wait
-	{	"unused",			0,					1,		1 },
+	{	"unused",			SECT_NONE,			1,		1 },
 	{	"city",				SECT_CITY,			1,		1 },
 	{	"field",			SECT_FIELD,			2,		1 },
 	{	"forest",			SECT_FOREST,		3,		2 },
@@ -689,7 +702,7 @@ const struct sect_type sect_table[] =
 	{	"ice",				SECT_ICE,			2,		3 },
 	{	"snow",				SECT_SNOW,			6,		2 },
 	{	"cave",				SECT_CAVE,			2,		2 },
-	{	nullptr,			0,					0,		0 }
+	{	nullptr,			SECT_NONE,			0,		0 }
 };
 
 const struct flag_type room_flags[] =
@@ -1277,11 +1290,11 @@ const struct flag_type area_flags[] =
 const struct flag_type sex_flags[] =
 {
 	//	name,			bit,			settable
-	{	"male",			SEX_MALE,		true	},
-	{	"female",		SEX_FEMALE,		true	},
-	{	"neutral",		SEX_NEUTRAL,	true	},
-	{	"random",		3,				true	},   /* ROM */
-	{	"none",			SEX_NEUTRAL,	true	},
+	{	"male",			write_persisted(SEX_MALE),		true	},
+	{	"female",		write_persisted(SEX_FEMALE),	true	},
+	{	"neutral",		write_persisted(SEX_NEUTRAL),	true	},
+	{	"random",		write_persisted(SEX_EITHER),	true	},
+	{	"none",			write_persisted(SEX_NEUTRAL),	true	},
 	{	nullptr,		0,				0		}
 };
 
@@ -1297,63 +1310,63 @@ const struct flag_type door_resets[] =
 const struct flag_type sector_flags[] =
 {
 	//	name,				bit,				settable
-	{	"inside",			SECT_INSIDE,		true	},
-	{	"city",				SECT_CITY,			true	},
-	{	"field",			SECT_FIELD,			true	},
-	{	"forest",			SECT_FOREST,		true	},
-	{	"hills",			SECT_HILLS,			true	},
-	{	"mountain",			SECT_MOUNTAIN,		true	},
-	{	"water",			SECT_WATER,			true	},
-	{	"unused",			SECT_UNUSED,		true	},
-	{	"underwater",		SECT_UNDERWATER,	true	},
-	{	"air",				SECT_AIR,			true	},
-	{	"desert",			SECT_DESERT,		true	},
-	{	"road",				SECT_ROAD,			true	},
-	{	"conflagration",	SECT_CONFLAGRATION,	true	},
-	{	"burning",			SECT_BURNING,		true	},
-	{	"trail",			SECT_TRAIL,			true	},
-	{	"swamp",			SECT_SWAMP,			true	},
-	{	"park",				SECT_PARK,			true	},
-	{	"vertical",			SECT_VERTICAL,		true	},
-	{	"ice",				SECT_ICE,			true	},
-	{	"snow",				SECT_SNOW,			true	},
-	{	"cave",				SECT_CAVE,			true	},
+	{	"inside",			write_persisted(SECT_INSIDE),		true	},
+	{	"city",				write_persisted(SECT_CITY),			true	},
+	{	"field",			write_persisted(SECT_FIELD),			true	},
+	{	"forest",			write_persisted(SECT_FOREST),		true	},
+	{	"hills",			write_persisted(SECT_HILLS),			true	},
+	{	"mountain",			write_persisted(SECT_MOUNTAIN),		true	},
+	{	"water",			write_persisted(SECT_WATER),			true	},
+	{	"unused",			write_persisted(SECT_UNUSED),		true	},
+	{	"underwater",		write_persisted(SECT_UNDERWATER),	true	},
+	{	"air",				write_persisted(SECT_AIR),			true	},
+	{	"desert",			write_persisted(SECT_DESERT),		true	},
+	{	"road",				write_persisted(SECT_ROAD),			true	},
+	{	"conflagration",	write_persisted(SECT_CONFLAGRATION),	true	},
+	{	"burning",			write_persisted(SECT_BURNING),		true	},
+	{	"trail",			write_persisted(SECT_TRAIL),			true	},
+	{	"swamp",			write_persisted(SECT_SWAMP),			true	},
+	{	"park",				write_persisted(SECT_PARK),			true	},
+	{	"vertical",			write_persisted(SECT_VERTICAL),		true	},
+	{	"ice",				write_persisted(SECT_ICE),			true	},
+	{	"snow",				write_persisted(SECT_SNOW),			true	},
+	{	"cave",				write_persisted(SECT_CAVE),			true	},
 	{	nullptr,			0,					0		}
 };
 
 const struct flag_type type_flags[] =
 {
 	//	name,				bit,				settable
-	{	"light",			ITEM_LIGHT,			true	},
-	{	"scroll",			ITEM_SCROLL,		true	},
-	{	"wand",				ITEM_WAND,			true	},
-	{	"staff",			ITEM_STAFF,			true	},
-	{	"weapon",			ITEM_WEAPON,		true	},
-	{	"treasure",			ITEM_TREASURE,		true	},
-	{	"stone",			ITEM_STONE,			true	},
-	{	"armor",			ITEM_ARMOR,			true	},
-	{	"potion",			ITEM_POTION,		true	},
-	{	"furniture",		ITEM_FURNITURE,		true	},
-	{	"trash",			ITEM_TRASH,			true	},
-	{	"container",		ITEM_CONTAINER,		true	},
-	{	"drinkcontainer",	ITEM_DRINK_CON,		true	},
-	{	"key",				ITEM_KEY,			true	},
-	{	"food",				ITEM_FOOD,			true	},
-	{	"money",			ITEM_MONEY,			true	},
-	{	"boat",				ITEM_BOAT,			true	},
-	{	"npccorpse",		ITEM_CORPSE_NPC,	true	},
-	{	"pc corpse",		ITEM_CORPSE_PC,		false	},
-	{	"fountain",			ITEM_FOUNTAIN,		true	},
-	{	"pill",				ITEM_PILL,			true	},
-	{	"protect",			ITEM_PROTECT,		true	},
-	{	"map",				ITEM_MAP,			true	},
-	{	"portal",			ITEM_PORTAL,		true	},
-	{	"warpstone",		ITEM_WARP_STONE,	true	},
-	{	"roomkey",			ITEM_ROOM_KEY,		true	},
-	{	"gem",				ITEM_GEM,			true	},
-	{	"jewelry",			ITEM_JEWELRY,		true	},
-	{	"campfire",			ITEM_CAMPFIRE,		true	},
-	{	"altar",			ITEM_ALTAR,			true	},
+	{	"light",			write_persisted(ITEM_LIGHT),			true	},
+	{	"scroll",			write_persisted(ITEM_SCROLL),		true	},
+	{	"wand",				write_persisted(ITEM_WAND),			true	},
+	{	"staff",			write_persisted(ITEM_STAFF),			true	},
+	{	"weapon",			write_persisted(ITEM_WEAPON),		true	},
+	{	"treasure",			write_persisted(ITEM_TREASURE),		true	},
+	{	"stone",			write_persisted(ITEM_STONE),			true	},
+	{	"armor",			write_persisted(ITEM_ARMOR),			true	},
+	{	"potion",			write_persisted(ITEM_POTION),		true	},
+	{	"furniture",		write_persisted(ITEM_FURNITURE),		true	},
+	{	"trash",			write_persisted(ITEM_TRASH),			true	},
+	{	"container",		write_persisted(ITEM_CONTAINER),		true	},
+	{	"drinkcontainer",	write_persisted(ITEM_DRINK_CON),		true	},
+	{	"key",				write_persisted(ITEM_KEY),			true	},
+	{	"food",				write_persisted(ITEM_FOOD),			true	},
+	{	"money",			write_persisted(ITEM_MONEY),			true	},
+	{	"boat",				write_persisted(ITEM_BOAT),			true	},
+	{	"npccorpse",		write_persisted(ITEM_CORPSE_NPC),	true	},
+	{	"pc corpse",		write_persisted(ITEM_CORPSE_PC),		false	},
+	{	"fountain",			write_persisted(ITEM_FOUNTAIN),		true	},
+	{	"pill",				write_persisted(ITEM_PILL),			true	},
+	{	"protect",			write_persisted(ITEM_PROTECT),		true	},
+	{	"map",				write_persisted(ITEM_MAP),			true	},
+	{	"portal",			write_persisted(ITEM_PORTAL),		true	},
+	{	"warpstone",		write_persisted(ITEM_WARP_STONE),	true	},
+	{	"roomkey",			write_persisted(ITEM_ROOM_KEY),		true	},
+	{	"gem",				write_persisted(ITEM_GEM),			true	},
+	{	"jewelry",			write_persisted(ITEM_JEWELRY),		true	},
+	{	"campfire",			write_persisted(ITEM_CAMPFIRE),		true	},
+	{	"altar",			write_persisted(ITEM_ALTAR),			true	},
 	{	nullptr,			0,		  			0		}
 };
 
@@ -1365,33 +1378,33 @@ const struct flag_type type_flags[] =
 const struct flag_type apply_flags[] =
 {
 	//	name,				bit,					settable
-	{	"none",				APPLY_NONE,				true	},
-	{	"strength",			APPLY_STR,				true	},
-	{	"dexterity",		APPLY_DEX,				true	},
-	{	"intelligence",		APPLY_INT,				true	},
-	{	"wisdom",			APPLY_WIS,				true	},
-	{	"constitution",		APPLY_CON,				true	},
-	{	"sex",				APPLY_SEX,				true	},
-	{	"class",			APPLY_CLASS,			true	},
-	{	"age",				APPLY_AGE,				true	},
-	{	"height",			APPLY_HEIGHT,			true	},
-	{	"weight",			APPLY_WEIGHT,			true	},
-	{	"mana",				APPLY_MANA,				true	},
-	{	"hp",				APPLY_HIT,				true	},
-	{	"move",				APPLY_MOVE,				true	},
-	{	"gold",				APPLY_GOLD,				true	},
-	{	"experience",		APPLY_EXP,				true	},
-	{	"ac",				APPLY_AC,				true	},
-	{	"hitroll",			APPLY_HITROLL,			true	},
-	{	"damroll",			APPLY_DAMROLL,			true	},
-	{	"saves",			APPLY_SAVES,			true	},
-	{	"savingpara",		APPLY_SAVING_PARA,		true	},
-	{	"savingrod",		APPLY_SAVING_ROD,		true	},
-	{	"savingpetri",		APPLY_SAVING_PETRI,		true	},
-	{	"savingbreath",		APPLY_SAVING_BREATH,	true	},
-	{	"savingspell",		APPLY_SAVING_SPELL,		true	},
-	{	"spellaffect",		APPLY_SPELL_AFFECT,		false	},
-	{	"beauty",			APPLY_BEAUTY,			true,	},
+	{	"none",				write_persisted(APPLY_NONE),				true	},
+	{	"strength",			write_persisted(APPLY_STR),				true	},
+	{	"dexterity",		write_persisted(APPLY_DEX),				true	},
+	{	"intelligence",		write_persisted(APPLY_INT),				true	},
+	{	"wisdom",			write_persisted(APPLY_WIS),				true	},
+	{	"constitution",		write_persisted(APPLY_CON),				true	},
+	{	"sex",				write_persisted(APPLY_SEX),				true	},
+	{	"class",			write_persisted(APPLY_CLASS),			true	},
+	{	"age",				write_persisted(APPLY_AGE),				true	},
+	{	"height",			write_persisted(APPLY_HEIGHT),			true	},
+	{	"weight",			write_persisted(APPLY_WEIGHT),			true	},
+	{	"mana",				write_persisted(APPLY_MANA),				true	},
+	{	"hp",				write_persisted(APPLY_HIT),				true	},
+	{	"move",				write_persisted(APPLY_MOVE),				true	},
+	{	"gold",				write_persisted(APPLY_GOLD),				true	},
+	{	"experience",		write_persisted(APPLY_EXP),				true	},
+	{	"ac",				write_persisted(APPLY_AC),				true	},
+	{	"hitroll",			write_persisted(APPLY_HITROLL),			true	},
+	{	"damroll",			write_persisted(APPLY_DAMROLL),			true	},
+	{	"saves",			write_persisted(APPLY_SAVES),			true	},
+	{	"savingpara",		write_persisted(APPLY_SAVING_PARA),		true	},
+	{	"savingrod",		write_persisted(APPLY_SAVING_ROD),		true	},
+	{	"savingpetri",		write_persisted(APPLY_SAVING_PETRI),		true	},
+	{	"savingbreath",		write_persisted(APPLY_SAVING_BREATH),	true	},
+	{	"savingspell",		write_persisted(APPLY_SAVING_SPELL),		true	},
+	{	"spellaffect",		write_persisted(APPLY_SPELL_AFFECT),		false	},
+	{	"beauty",			write_persisted(APPLY_BEAUTY),			true,	},
 	{	nullptr,			0,						0		}
 };
 
@@ -1401,26 +1414,26 @@ const struct flag_type apply_flags[] =
 const struct flag_type wear_loc_strings[] =
 {
 	//	name,					bit,			settable
-	{	"in the inventory",		WEAR_NONE,		true	},
-	{	"as a light",			WEAR_LIGHT,		true	},
-	{	"on the left finger",	WEAR_FINGER_L,	true	},
-	{	"on the right finger",	WEAR_FINGER_R,	true	},
-	{	"around the neck (1)",	WEAR_NECK_1,	true	},
-	{	"around the neck (2)",	WEAR_NECK_2,	true	},
-	{	"on the body",			WEAR_BODY,		true	},
-	{	"over the head",		WEAR_HEAD,		true	},
-	{	"on the legs",			WEAR_LEGS,		true	},
-	{	"on the feet",			WEAR_FEET,		true	},
-	{	"on the hands",			WEAR_HANDS,		true	},
-	{	"on the arms",			WEAR_ARMS,		true	},
-	{	"as a shield",			WEAR_SHIELD,	true	},
-	{	"about the shoulders",	WEAR_ABOUT,		true	},
-	{	"around the waist",		WEAR_WAIST,		true	},
-	{	"on the left wrist",	WEAR_WRIST_L,	true	},
-	{	"on the right wrist",	WEAR_WRIST_R,	true	},
-	{	"wielded",				WEAR_WIELD,		true	},
-	{	"held in the hands",	WEAR_HOLD,		true	},
-	{	"floating nearby",		WEAR_FLOAT,		true	},
+	{	"in the inventory",		wear_value(WEAR_NONE),				true	},
+	{	"as a light",			wear_value(WEAR_LIGHT),				true	},
+	{	"on the left finger",	wear_value(WEAR_FINGER_L),			true	},
+	{	"on the right finger",	wear_value(WEAR_FINGER_R),			true	},
+	{	"around the neck (1)",	wear_value(WEAR_NECK_1),			true	},
+	{	"around the neck (2)",	wear_value(WEAR_NECK_2),			true	},
+	{	"on the body",			wear_value(WEAR_BODY),				true	},
+	{	"over the head",		wear_value(WEAR_HEAD),				true	},
+	{	"on the legs",			wear_value(WEAR_LEGS),				true	},
+	{	"on the feet",			wear_value(WEAR_FEET),				true	},
+	{	"on the hands",			wear_value(WEAR_HANDS),				true	},
+	{	"on the arms",			wear_value(WEAR_ARMS),				true	},
+	{	"as a shield",			wear_value(WEAR_SHIELD),			true	},
+	{	"about the shoulders",	wear_value(WEAR_ABOUT),				true	},
+	{	"around the waist",		wear_value(WEAR_WAIST),				true	},
+	{	"on the left wrist",	wear_value(WEAR_WRIST_L),			true	},
+	{	"on the right wrist",	wear_value(WEAR_WRIST_R),			true	},
+	{	"wielded",				wear_value(WEAR_WIELD),				true	},
+	{	"held in the hands",	wear_value(WEAR_HOLD),				true	},
+	{	"floating nearby",		wear_value(WEAR_FLOAT),				true	},
 	{	nullptr,				0,				0		}
 };
 
@@ -1428,27 +1441,27 @@ const struct flag_type wear_loc_strings[] =
 const struct flag_type wear_loc_flags[] =
 {
 	//	name,		bit,			settable
-	{	"none",		WEAR_NONE,		true	},
-	{	"light",	WEAR_LIGHT,		true	},
-	{	"lfinger",	WEAR_FINGER_L,	true	},
-	{	"rfinger",	WEAR_FINGER_R,	true	},
-	{	"neck1",	WEAR_NECK_1,	true	},
-	{	"neck2",	WEAR_NECK_2,	true	},
-	{	"body",		WEAR_BODY,		true	},
-	{	"head",		WEAR_HEAD,		true	},
-	{	"legs",		WEAR_LEGS,		true	},
-	{	"feet",		WEAR_FEET,		true	},
-	{	"hands",	WEAR_HANDS,		true	},
-	{	"arms",		WEAR_ARMS,		true	},
-	{	"shield",	WEAR_SHIELD,	true	},
-	{	"about",	WEAR_ABOUT,		true	},
-	{	"waist",	WEAR_WAIST,		true	},
-	{	"lwrist",	WEAR_WRIST_L,	true	},
-	{	"rwrist",	WEAR_WRIST_R,	true	},
-	{	"wielded",	WEAR_WIELD,		true	},
-	{	"hold",		WEAR_HOLD,		true	},
-	{	"floating",	WEAR_FLOAT,		true	},
-	{	"tattoo",	WEAR_BRAND,		true	},
+	{	"none",			wear_value(WEAR_NONE),				true	},
+	{	"light",		wear_value(WEAR_LIGHT),				true	},
+	{	"lfinger",		wear_value(WEAR_FINGER_L),			true	},
+	{	"rfinger",		wear_value(WEAR_FINGER_R),			true	},
+	{	"neck1",		wear_value(WEAR_NECK_1),			true	},
+	{	"neck2",		wear_value(WEAR_NECK_2),			true	},
+	{	"body",			wear_value(WEAR_BODY),				true	},
+	{	"head",			wear_value(WEAR_HEAD),				true	},
+	{	"legs",			wear_value(WEAR_LEGS),				true	},
+	{	"feet",			wear_value(WEAR_FEET),				true	},
+	{	"hands",		wear_value(WEAR_HANDS),				true	},
+	{	"arms",			wear_value(WEAR_ARMS),				true	},
+	{	"shield",		wear_value(WEAR_SHIELD),			true	},
+	{	"about",		wear_value(WEAR_ABOUT),				true	},
+	{	"waist",		wear_value(WEAR_WAIST),				true	},
+	{	"lwrist",		wear_value(WEAR_WRIST_L),			true	},
+	{	"rwrist",		wear_value(WEAR_WRIST_R),			true	},
+	{	"wielded",		wear_value(WEAR_WIELD),				true	},
+	{	"hold",			wear_value(WEAR_HOLD),				true	},
+	{	"floating",		wear_value(WEAR_FLOAT),				true	},
+	{	"tattoo",		wear_value(WEAR_BRAND),				true	},
 	{	nullptr,	0,				0		}
 };
 
@@ -1548,12 +1561,12 @@ const struct flag_type ac_type[] =
 const struct flag_type size_flags[] =
 {
 	//	name,			bit,			settable
-	{	"tiny",			SIZE_TINY,		true	},
-	{	"small",		SIZE_SMALL,		true	},
-	{	"medium",		SIZE_MEDIUM,	true	},
-	{	"large",		SIZE_LARGE,		true	},
-	{	"huge",			SIZE_HUGE,		true	},
-	{	"giant",		SIZE_GIANT,		true	},
+	{	"tiny",			write_persisted(SIZE_TINY),		true	},
+	{	"small",		write_persisted(SIZE_SMALL),	true	},
+	{	"medium",		write_persisted(SIZE_MEDIUM),	true	},
+	{	"large",		write_persisted(SIZE_LARGE),	true	},
+	{	"huge",			write_persisted(SIZE_HUGE),		true	},
+	{	"giant",		write_persisted(SIZE_GIANT),	true	},
 	{	nullptr,		0,				0		}
 };
 
@@ -1657,15 +1670,15 @@ const struct flag_type material_type[] =    /* not yet implemented */
 const struct flag_type position_flags[] =
 {
 	//	name,			bit,				settable
-	{	"dead",			POS_DEAD,			false	},
-	{	"mortal",		POS_MORTAL,			false	},
-	{	"incap",		POS_INCAP,			false	},
-	{	"stunned",		POS_STUNNED,		false	},
-	{	"sleeping",		POS_SLEEPING,		true	},
-	{	"resting",		POS_RESTING,		true	},
-	{	"sitting",		POS_SITTING,		true	},
-	{	"fighting",		POS_FIGHTING,		false	},
-	{	"standing",		POS_STANDING,		true	},
+	{	"dead",			position_index(POS_DEAD),			false	},
+	{	"mortal",		position_index(POS_MORTAL),			false	},
+	{	"incap",		position_index(POS_INCAP),			false	},
+	{	"stunned",		position_index(POS_STUNNED),		false	},
+	{	"sleeping",		position_index(POS_SLEEPING),		true	},
+	{	"resting",		position_index(POS_RESTING),		true	},
+	{	"sitting",		position_index(POS_SITTING),		true	},
+	{	"fighting",		position_index(POS_FIGHTING),		false	},
+	{	"standing",		position_index(POS_STANDING),		true	},
 	{	nullptr,		0,					0		}
 };
 

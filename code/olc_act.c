@@ -24,6 +24,7 @@
 #include <time.h>
 #include <algorithm>
 #include "merc.h"
+#include "persisted_enum.h"
 #include "olc_act.h"
 #include "handler.h"
 #include "olc.h"
@@ -101,25 +102,30 @@ const struct olc_help_type help_table[] =
 
 const struct wear_type wear_table[] =
 {
-	{WEAR_NONE, ITEM_TAKE},
-	{WEAR_LIGHT, ITEM_LIGHT},
-	{WEAR_FINGER_L, ITEM_WEAR_FINGER},
-	{WEAR_FINGER_R, ITEM_WEAR_FINGER},
-	{WEAR_NECK_1, ITEM_WEAR_NECK},
-	{WEAR_NECK_2, ITEM_WEAR_NECK},
-	{WEAR_BODY, ITEM_WEAR_BODY},
-	{WEAR_HEAD, ITEM_WEAR_HEAD},
-	{WEAR_LEGS, ITEM_WEAR_LEGS},
-	{WEAR_FEET, ITEM_WEAR_FEET},
-	{WEAR_HANDS, ITEM_WEAR_HANDS},
-	{WEAR_ARMS, ITEM_WEAR_ARMS},
-	{WEAR_SHIELD, ITEM_WEAR_SHIELD},
-	{WEAR_ABOUT, ITEM_WEAR_ABOUT},
-	{WEAR_WAIST, ITEM_WEAR_WAIST},
-	{WEAR_WRIST_L, ITEM_WEAR_WRIST},
-	{WEAR_WRIST_R, ITEM_WEAR_WRIST},
-	{WEAR_WIELD, ITEM_WEAR_WIELD},
-	{WEAR_HOLD, ITEM_WEAR_HOLD},
+	{wear_index(WEAR_NONE), ITEM_TAKE},
+	// ITEM_LIGHT is an item type, not a wear flag, and its value is 1, which
+	// in the wear flag family is ITEM_WEAR_FINGER. There is no wear flag for
+	// the light slot at all, so this row asks whether an object can be worn on
+	// a finger. Left alone: giving the slot a wear flag of its own changes what
+	// an area file can say about an object.
+	{wear_index(WEAR_LIGHT), write_persisted(ITEM_LIGHT)},
+	{wear_index(WEAR_FINGER_L), ITEM_WEAR_FINGER},
+	{wear_index(WEAR_FINGER_R), ITEM_WEAR_FINGER},
+	{wear_index(WEAR_NECK_1), ITEM_WEAR_NECK},
+	{wear_index(WEAR_NECK_2), ITEM_WEAR_NECK},
+	{wear_index(WEAR_BODY), ITEM_WEAR_BODY},
+	{wear_index(WEAR_HEAD), ITEM_WEAR_HEAD},
+	{wear_index(WEAR_LEGS), ITEM_WEAR_LEGS},
+	{wear_index(WEAR_FEET), ITEM_WEAR_FEET},
+	{wear_index(WEAR_HANDS), ITEM_WEAR_HANDS},
+	{wear_index(WEAR_ARMS), ITEM_WEAR_ARMS},
+	{wear_index(WEAR_SHIELD), ITEM_WEAR_SHIELD},
+	{wear_index(WEAR_ABOUT), ITEM_WEAR_ABOUT},
+	{wear_index(WEAR_WAIST), ITEM_WEAR_WAIST},
+	{wear_index(WEAR_WRIST_L), ITEM_WEAR_WRIST},
+	{wear_index(WEAR_WRIST_R), ITEM_WEAR_WRIST},
+	{wear_index(WEAR_WIELD), ITEM_WEAR_WIELD},
+	{wear_index(WEAR_HOLD), ITEM_WEAR_HOLD},
 	{NO_FLAG, NO_FLAG}
 };
 
@@ -496,7 +502,7 @@ bool redit_olist(CHAR_DATA *ch, char *argument)
 
 		if (pObjIndex)
 		{
-			if (fAll || is_name(arg, pObjIndex->name) || flag_value(type_flags, arg) == pObjIndex->item_type)
+			if (fAll || is_name(arg, pObjIndex->name) || flag_value(type_flags, arg) == write_persisted(pObjIndex->item_type))
 			{
 				found = true;
 
@@ -1048,8 +1054,7 @@ bool medit_prog(CHAR_DATA *ch, char *argument)
 		{
 			if (pMobIndex->mprogs == nullptr)
 			{
-				pMobIndex->mprogs = new MPROG_DATA;
-				CLEAR_MEM(pMobIndex->mprogs, sizeof(MPROG_DATA))
+				pMobIndex->mprogs = new MPROG_DATA();
 			}
 
 			mprog_set(pMobIndex, prog_type, prog);
@@ -1132,8 +1137,7 @@ bool oedit_prog(CHAR_DATA *ch, char *argument)
 
 		if (pObjIndex->iprogs == nullptr)
 		{
-			pObjIndex->iprogs = new IPROG_DATA;
-			CLEAR_MEM(pObjIndex->iprogs, sizeof(IPROG_DATA))
+			pObjIndex->iprogs = new IPROG_DATA();
 		}
 
 		for (count = 0; iprog_table[count].type != nullptr; count++)
@@ -1423,8 +1427,7 @@ bool redit_prog(CHAR_DATA *ch, char *argument)
 
 		if (pRoomIndex->rprogs == nullptr)
 		{
-			pRoomIndex->rprogs = new RPROG_DATA;
-			CLEAR_MEM(pRoomIndex->rprogs, sizeof(RPROG_DATA))
+			pRoomIndex->rprogs = new RPROG_DATA();
 		}
 
 		for (count = 0; rprog_table[count].type != nullptr; count++)
@@ -1667,8 +1670,7 @@ bool aedit_prog(CHAR_DATA *ch, char *argument)
 
 		if (pArea->aprogs == nullptr)
 		{
-			pArea->aprogs = new APROG_DATA;
-			CLEAR_MEM(pArea->aprogs, sizeof(APROG_DATA))
+			pArea->aprogs = new APROG_DATA();
 		}
 
 		for (count = 0; aprog_table[count].type != nullptr; count++)
@@ -2393,7 +2395,7 @@ bool redit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 	sprintf(buf, "Vnum:       [%5d]\n\rSector:     [%s]\n\r",
 		pRoom->vnum,
-		flag_string_old(sector_flags, pRoom->sector_type));
+		flag_string_old(sector_flags, write_persisted(pRoom->sector_type)));
 	strcat(buf1, buf);
 
 	sprintf(buf, "Cabal:      [%s]\n\r", cabal_table[pRoom->cabal].name);
@@ -3490,7 +3492,7 @@ bool redit_oreset(CHAR_DATA *ch, char *argument)
 		/*
 		 * Can't load into same position.
 		 */
-		if (get_eq_char(to_mob, wear_loc))
+		if (get_eq_char(to_mob, wear_slot(wear_loc)))
 		{
 			send_to_char("REdit:  Object already equipped.\n\r", ch);
 			return false;
@@ -3500,7 +3502,7 @@ bool redit_oreset(CHAR_DATA *ch, char *argument)
 		pReset->arg1 = pObjIndex->vnum;
 		pReset->arg2 = wear_loc;
 
-		if (pReset->arg2 == WEAR_NONE)
+		if (pReset->arg2 == wear_index(WEAR_NONE))
 			pReset->command = 'G';
 		else
 			pReset->command = 'E';
@@ -3548,7 +3550,7 @@ bool redit_oreset(CHAR_DATA *ch, char *argument)
 
 			newobj = create_object(pObjIndex, olevel);
 
-			if (pReset->arg2 == WEAR_NONE)
+			if (pReset->arg2 == wear_index(WEAR_NONE))
 				SET_BIT(newobj->extra_flags, ITEM_INVENTORY);
 		}
 		else
@@ -3559,7 +3561,7 @@ bool redit_oreset(CHAR_DATA *ch, char *argument)
 		obj_to_char(newobj, to_mob);
 
 		if (pReset->command == 'E')
-			equip_char(to_mob, newobj, pReset->arg3, false);
+			equip_char(to_mob, newobj, wear_slot(pReset->arg3), false);
 
 		sprintf(output,
 				"%s (%d) has been loaded "\
@@ -4109,7 +4111,7 @@ bool oedit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	send_to_char(buf, ch);
 
 	sprintf(buf, "Vnum:             [%5d]\n\r", pObj->vnum);
-	sprintf(buf, "Type:             [%s]\n\r", flag_string_old(type_flags, pObj->item_type));
+	sprintf(buf, "Type:             [%s]\n\r", flag_string_old(type_flags, write_persisted(pObj->item_type)));
 	send_to_char(buf, ch);
 
 	sprintf(buf, "Level:            [%5d]\n\r", pObj->level);
@@ -4378,7 +4380,7 @@ bool oedit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 			send_to_char("------ -------- -------\n\r", ch);
 		}
 
-		sprintf(buf, "[%4d] %-8d %s\n\r", cnt, paf.modifier, flag_string_old(apply_flags, paf.location));
+		sprintf(buf, "[%4d] %-8d %s\n\r", cnt, paf.modifier, flag_string_old(apply_flags, write_persisted(paf.location)));
 		send_to_char(buf, ch);
 		cnt++;
 	}
@@ -4421,7 +4423,7 @@ bool oedit_addapply(CHAR_DATA *ch, char *argument)
 	}
 
 	OBJ_APPLY_DATA pAf;
-	pAf.location = value;
+	pAf.location = read_persisted<ApplyLocation>(value, "apply location");
 	pAf.modifier = atoi(mod);
 	pObj->apply.push_front(pAf);
 
@@ -5346,7 +5348,7 @@ bool oedit_type(CHAR_DATA *ch, char *argument) /* Moved out of oedit() due to na
 		value = flag_value(type_flags, argument);
 		if ((value) != NO_FLAG)
 		{
-			pObj->item_type = value;
+			pObj->item_type = static_cast<ItemType>(value);
 
 			send_to_char("Type set.\n\r", ch);
 
@@ -5506,7 +5508,6 @@ bool medit_optional(CHAR_DATA *ch, char *argument)
 	char arg5[MSL], arg6[MSL], arg7[MSL];
 	int sn, bit, i;
 	bool added = false;
-	BARRED_DATA *bar = nullptr;
 
 	EDIT_MOB(ch, pMob);
 
@@ -5572,15 +5573,12 @@ bool medit_optional(CHAR_DATA *ch, char *argument)
 	}
 	else if (arg1[0] == 'B' || arg1[0] == 'b')
 	{
-		bar = new BARRED_DATA;
-		CLEAR_MEM(bar, sizeof(BARRED_DATA))
-
 		if (pMob->barred_entry)
 		{
 			if (!str_cmp(arg2, "delete"))
 			{
-				pMob->barred_entry = nullptr;
 				delete pMob->barred_entry;
+				pMob->barred_entry = nullptr;
 				send_to_char("Barred entry removed.\n\r", ch);
 				return false;
 			}
@@ -5591,36 +5589,36 @@ bool medit_optional(CHAR_DATA *ch, char *argument)
 			}
 		}
 
-		bar->type = flag_lookup(arg2, criterion_flags);
+		// Owned here until the mob takes it, so the seven ways out below stop
+		// leaking the entry they gave up on.
+		auto bar = std::make_unique<BARRED_DATA>();
 
-		if (bar->type == NO_FLAG)
+		int criterion = flag_lookup(arg2, criterion_flags);
+
+		if (criterion == NO_FLAG)
 		{
 			send_to_char("Invalid Bar Entry Type.\n\r", ch);
 			return false;
 		}
 
-		bar->comparison = -1;
+		bar->type = static_cast<BarCriterion>(criterion);
 
-		if (!str_cmp(arg3, "EQUALTO") || !str_cmp(arg3, "equalto"))
-		{
-			bar->comparison = BAR_EQUAL_TO;
-		}
-		else if (!str_cmp(arg3, "LESSTHAN") || !str_cmp(arg3, "lessthan"))
-		{
-			bar->comparison = BAR_LESS_THAN;
-		}
-		else if (!str_cmp(arg3, "GREATERTHAN") || !str_cmp(arg3, "greaterthan"))
-		{
-			bar->comparison = BAR_GREATER_THAN;
-		}
-		else
+		auto comparison = bar_comparison_lookup(arg3);
+
+		if (!comparison)
 		{
 			send_to_char("Not a valid operator.\n\r", ch);
 			return false;
 		}
 
-		if (bar->type == 1)
-			bar->value = CClass::Lookup(arg4);
+		bar->comparison = comparison.value();
+
+		// A barred entry holds either a class or a plain number, depending on
+		// what it bars on, and -1 is how it says the word was not understood.
+		// Everything else this bars on is already a number: a cabal, a size, a
+		// level, an object vnum.
+		if (bar->type == BAR_CLASS)
+			bar->value = write_persisted(CClass::Lookup(arg4).value_or(static_cast<CharClass>(-1)));
 		else
 			bar->value = atoi(arg4);
 
@@ -5638,35 +5636,34 @@ bool medit_optional(CHAR_DATA *ch, char *argument)
 			return false;
 		}
 
-		if (!str_cmp(arg6, "SAY") || !str_cmp(arg6, "say"))
-		{
-			bar->msg_type = BAR_SAY;
-		}
-		else if (!str_cmp(arg6, "EMOTE") || !str_cmp(arg6, "emote"))
-		{
-			bar->msg_type = BAR_EMOTE;
-		}
-		else if (!str_cmp(arg6, "ECHO") || !str_cmp(arg6, "echo"))
-		{
-			argument = one_argument(argument, arg7);
+		auto msg_type = bar_message_lookup(arg6);
 
-			bar->msg_type = BAR_ECHO;
-			bar->message = palloc_string(arg7);
-			bar->message_two = palloc_string(argument);
-
-			if (!str_cmp(bar->message_two, ""))
-				bar->message_two = nullptr;
-
-			pMob->barred_entry = bar;
-		}
-		else
+		if (!msg_type)
 		{
 			send_to_char("Not a valid message type.\n\r", ch);
 			return false;
 		}
 
-		bar->message = palloc_string(argument);
-		pMob->barred_entry = bar;
+		bar->msg_type = msg_type.value();
+
+		if (bar->msg_type == BAR_ECHO)
+		{
+			// An echo entry carries two messages: the first word group goes to
+			// the mover and the rest goes to the room.
+			argument = one_argument(argument, arg7);
+
+			bar->message = palloc_string(arg7);
+			bar->message_two = palloc_string(argument);
+
+			if (!str_cmp(bar->message_two, ""))
+				bar->message_two = nullptr;
+		}
+		else
+		{
+			bar->message = palloc_string(argument);
+		}
+
+		pMob->barred_entry = bar.release();
 		send_to_char("Barred exit added.\n\r", ch);
 		return true;
 	}
@@ -5755,20 +5752,20 @@ bool medit_notes(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	return true;
 }
 
-void clean_mob_class(MOB_INDEX_DATA *pMob, int class_index)
+void clean_mob_class(MOB_INDEX_DATA *pMob, CharClass cclass)
 {
-	if (class_index == CLASS_WARRIOR || class_index == CLASS_NONE)
+	if (cclass == CLASS_WARRIOR || cclass == CLASS_NONE)
 	{
 		pMob->ele_major = 0;
 		pMob->ele_para = 0;
 	}
 
-	if (class_index == CLASS_SORCERER || class_index == CLASS_NONE)
+	if (cclass == CLASS_SORCERER || cclass == CLASS_NONE)
 	{
 		zero_vector(pMob->styles);
 	}
 
-	pMob->SetClass(class_index);
+	pMob->SetClass(cclass);
 }
 
 bool medit_class(CHAR_DATA *ch, char *argument)
@@ -5867,7 +5864,7 @@ bool medit_class(CHAR_DATA *ch, char *argument)
 bool medit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 {
 	MOB_INDEX_DATA *pMob;
-	char buf[MAX_STRING_LENGTH], msg_type[MSL], comparison[MSL];
+	char buf[MAX_STRING_LENGTH];
 	int i;
 
 	EDIT_MOB(ch, pMob);
@@ -5891,7 +5888,7 @@ bool medit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		pMob->vnum,
 		pMob->sex == SEX_MALE ? "male" :
 			pMob->sex == SEX_FEMALE ? "female" :
-			pMob->sex == 3 ? "random" : "neutral"); /* ROM magic number */
+			pMob->sex == SEX_EITHER ? "random" : "neutral");
 	send_to_char(buf, ch);
 
 	sprintf(buf, "Race:        [%s]\n\r", race_table[pMob->race].name); /* ROM OLC */
@@ -5972,10 +5969,10 @@ bool medit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	sprintf(buf, "Off:         [%s]\n\r", flag_string(off_flags, pMob->off_flags));
 	send_to_char(buf, ch);
 
-	sprintf(buf, "Size:        [%s]\n\r", flag_string_old(size_flags, pMob->size));
+	sprintf(buf, "Size:        [%s]\n\r", flag_string_old(size_flags, write_persisted(pMob->size)));
 	send_to_char(buf, ch);
 
-	sprintf(buf, "Start pos.   [%s]\n\r", flag_string_old(position_flags, pMob->start_pos));
+	sprintf(buf, "Start pos.   [%s]\n\r", flag_string_old(position_flags, position_index(pMob->start_pos)));
 	send_to_char(buf, ch);
 
 	sprintf(buf, "Wealth:      [%s]\n\r", flag_name_lookup(pMob->wealth, wealth_table));
@@ -6047,36 +6044,10 @@ bool medit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		sprintf(buf, "Optional: Barred Exit:\n\r");
 		send_to_char(buf, ch);
 
-		switch (pMob->barred_entry->comparison)
-		{
-			case BAR_EQUAL_TO:
-				sprintf(comparison, "EQUALTO");
-				break;
-			case BAR_LESS_THAN:
-				sprintf(comparison, "LESSTHAN");
-				break;
-			case BAR_GREATER_THAN:
-				sprintf(comparison, "GREATERTHAN");
-				break;
-		}
-
-		switch (pMob->barred_entry->msg_type)
-		{
-			case BAR_SAY:
-				sprintf(msg_type, "SAY");
-				break;
-			case BAR_EMOTE:
-				sprintf(msg_type, "EMOTE");
-				break;
-			case BAR_ECHO:
-				sprintf(msg_type, "ECHO");
-				break;
-		}
-
-		sprintf(buf, " Check Type:   [%s]\n\r", flag_name_lookup(pMob->barred_entry->type, criterion_flags));
+		sprintf(buf, " Check Type:   [%s]\n\r", bar_criterion_name(pMob->barred_entry->type));
 		send_to_char(buf, ch);
 
-		auto buffer = fmt::format(" Comparison:   [{}]\n\r", comparison); //TODO: change the rest of the sprintf calls to format
+		auto buffer = fmt::format(" Comparison:   [{}]\n\r", bar_comparison_name(pMob->barred_entry->comparison)); //TODO: change the rest of the sprintf calls to format
 		send_to_char(buffer.c_str(), ch);
 
 		sprintf(buf, " Value:        [%d]\n\r", pMob->barred_entry->value);
@@ -6085,7 +6056,7 @@ bool medit_show(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		sprintf(buf, " Target Vnum:  [%d]\n\r", pMob->barred_entry->vnum);
 		send_to_char(buf, ch);
 
-		buffer = fmt::format(" Message Type: [{}]\n\r", msg_type);
+		buffer = fmt::format(" Message Type: [{}]\n\r", bar_message_name(pMob->barred_entry->msg_type));
 		send_to_char(buffer.c_str(), ch);
 
 		if (pMob->barred_entry->msg_type == BAR_ECHO)
@@ -6534,8 +6505,7 @@ bool medit_shop(CHAR_DATA *ch, char *argument)
 
 	if (!pMob->pShop)
 	{
-		pShop = new SHOP_DATA;
-		CLEAR_MEM(pShop, sizeof(SHOP_DATA))
+		pShop = new SHOP_DATA();
 		pMob->pShop = pShop;
 		pShop->pMobIndex = pMob;
 	}
@@ -6566,7 +6536,9 @@ bool medit_sex(CHAR_DATA *ch, char *argument) /* Moved out of medit() due to nam
 
 		if (value != NO_FLAG)
 		{
-			pMob->sex = value;
+			// The table this came from is built from the enumeration, so the
+			// value is one of its own.
+			pMob->sex = static_cast<Sex>(value);
 
 			send_to_char("Sex set.\n\r", ch);
 			return true;
@@ -6923,7 +6895,8 @@ bool medit_size(CHAR_DATA *ch, char *argument)
 
 		if (value != NO_FLAG)
 		{
-			pMob->size = value;
+			// The table this came from is built from the enumeration.
+			pMob->size = static_cast<Size>(value);
 			send_to_char("Size set.\n\r", ch);
 			return true;
 		}
@@ -7200,12 +7173,12 @@ bool medit_position(CHAR_DATA *ch, char *argument)
 {
 	MOB_INDEX_DATA *pMob;
 	char arg[MAX_INPUT_LENGTH];
-	int value;
 
 	argument = one_argument(argument, arg);
 
-	value = position_lookup(arg);
-	if (value == -1)
+	auto value = position_lookup(arg);
+
+	if (!value)
 		return false;
 
 	EDIT_MOB(ch, pMob);
@@ -7213,7 +7186,7 @@ bool medit_position(CHAR_DATA *ch, char *argument)
 	if (pMob == nullptr)
 		return false;
 
-	pMob->start_pos = value;
+	pMob->start_pos = value.value();
 	send_to_char("Start position set.\n\r", ch);
 	return true;
 }

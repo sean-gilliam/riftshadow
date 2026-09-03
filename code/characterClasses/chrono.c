@@ -269,10 +269,10 @@ void do_rune(CHAR_DATA *ch, char *argument)
 		return;
 	}
 
-	if (ch->level + 2 == skill_table[sn].skill_level[ch->Class()->GetIndex()])
+	if (ch->level + 2 == skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())])
 		mana = 50;
 	else
-		mana = std::max((int)skill_table[sn].min_mana, 100 / (2 + ch->level - skill_table[sn].skill_level[ch->Class()->GetIndex()]));
+		mana = std::max((int)skill_table[sn].min_mana, 100 / (2 + ch->level - skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())]));
 
 	obj = nullptr;
 	vo = SpellTarget();
@@ -384,7 +384,7 @@ void do_rune(CHAR_DATA *ch, char *argument)
 	check_improve(ch, sn, true, 1);
 }
 
-RUNE_DATA *find_rune(void *vo, int target_type, int trigger_type, RUNE_DATA *rune_prev)
+RUNE_DATA *find_rune(void *vo, RuneTarget target_type, RuneTrigger trigger_type, RUNE_DATA *rune_prev)
 {
 	RUNE_DATA *rune = nullptr, *rune_loop;
 

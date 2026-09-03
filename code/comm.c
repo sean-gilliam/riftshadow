@@ -60,6 +60,7 @@
 #include "entity/handles.h"
 #include "entity/list_cursor.h"
 #include "comm.h"
+#include "persisted_enum.h"
 #include "recycle.h"
 #include "tables.h"
 #include "olc.h"
@@ -1814,9 +1815,9 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			col = 0;
 			for (int classind = 1; classind < MAX_CLASS; classind++)
 			{
-				CClass *tClass = CClass::GetClass(classind);
+				CClass *tClass = CClass::GetClass(static_cast<CharClass>(classind));
 
-				if (CClass::GetClass(classind)->status == CLASS_CLOSED)
+				if (tClass->status == CLASS_CLOSED)
 					continue;
 
 				sprintf(buf, "%-15s ( no extra xp)", tClass->name.c_str());
@@ -1839,9 +1840,11 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 
 			for (iClass = 1; iClass < MAX_CLASS; iClass++)
 			{
-				if (pc_race_table[ch->race].classes[iClass] == 1 && CClass::GetClass(iClass)->status == CLASS_OPEN)
+				CClass *available = CClass::GetClass(static_cast<CharClass>(iClass));
+
+				if (pc_race_table[ch->race].classes[iClass] == 1 && available->status == CLASS_OPEN)
 				{
-					strcat(buf, CClass::GetClass(iClass)->name.c_str());
+					strcat(buf, available->name.c_str());
 					strcat(buf, " ");
 				}
 			}
@@ -1854,6 +1857,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			d->connected = CON_GET_NEW_CLASS;
 			break;
 		case CON_GET_NEW_CLASS:
+		{
 			one_argument(argument, arg);
 
 			if (!strcmp(arg, "help"))
@@ -1867,21 +1871,23 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				break;
 			}
 
-			iClass = CClass::Lookup(argument);
-			if (iClass == -1 || CClass::GetClass(iClass)->status == CLASS_CLOSED)
+			auto chosen = CClass::Lookup(argument);
+			if (!chosen || CClass::GetClass(*chosen)->status == CLASS_CLOSED)
 			{
 				write_to_buffer(d, "That's not a class.\n\rChoose your class (type 'help' for more information): ", 0);
 				return;
 			}
 
-			if (pc_race_table[ch->race].classes[iClass] != 1)
+			if (pc_race_table[ch->race].classes[class_index(*chosen)] != 1)
 			{
 				strcpy(buf, "Your race may only be one of these classes:\n\r");
 				for (iClass = 1; iClass < MAX_CLASS; iClass++)
 				{
-					if (pc_race_table[ch->race].classes[iClass] == 1 && CClass::GetClass(iClass)->status == CLASS_OPEN)
+					CClass *available = CClass::GetClass(static_cast<CharClass>(iClass));
+
+					if (pc_race_table[ch->race].classes[iClass] == 1 && available->status == CLASS_OPEN)
 					{
-						strcat(buf, CClass::GetClass(iClass)->name.c_str());
+						strcat(buf, available->name.c_str());
 						strcat(buf, " ");
 					}
 				}
@@ -1892,7 +1898,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				return;
 			}
 
-			ch->SetClass(iClass);
+			ch->SetClass(*chosen);
 			buffer = fmt::format("{}@{} new player.{}",
 				ch->name, d->host,
 				auto_check_multi(d, d->host) ? " (MULTI-CHAR?)" : "");
@@ -1943,6 +1949,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 			}
 
 			return;
+		}
 		case CON_GET_THERMAL:
 			one_argument(argument, arg);
 
@@ -2573,10 +2580,10 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				newPlayer.name = ch->true_name;
 				newPlayer.lastlogin = (int)ch->logon;
 				newPlayer.level = ch->level;
-				newPlayer.class_ = ch->Class()->GetIndex();
+				newPlayer.class_ = write_persisted(ch->Class()->GetIndex());
 				newPlayer.race = ch->race;
 				newPlayer.cabal = ch->cabal;
-				newPlayer.sex = ch->sex;
+				newPlayer.sex = write_persisted(ch->sex);
 				newPlayer.hours = (int)(ch->played + current_time - ch->logon) / 3600;
 				newPlayer.align = ch->alignment;
 				newPlayer.ethos = ch->pcdata->ethos;
@@ -2586,7 +2593,7 @@ void nanny(DESCRIPTOR_DATA *d, char *argument)
 				if (!added)
 					RS.Logger.Warn("Failed to add new player [{}]", newPlayer.name);
 
-				sprintf(buf, "the %s", title_table[ch->Class()->GetIndex()][ch->level][ch->sex == SEX_FEMALE ? 1 : 0]);
+				sprintf(buf, "the %s", title_table[class_index(ch->Class()->GetIndex())][ch->level][ch->sex == SEX_FEMALE ? 1 : 0]);
 				set_title(ch, buf);
 				save_char_obj(ch);
 
@@ -3028,20 +3035,20 @@ void show_string(struct descriptor_data *d, char *input)
 /* quick sex fixer */
 void fix_sex(CHAR_DATA *ch)
 {
-	if (ch->sex < 0 || ch->sex > 2)
-		ch->sex = is_npc(ch) ? 0 : ch->pcdata->true_sex;
+	if (!is_character_sex(ch->sex))
+		ch->sex = is_npc(ch) ? SEX_NEUTRAL : ch->pcdata->true_sex;
 }
 
 ///
 /// Exists for compatibility only with older code that may use it.
 /// @deprecated Please use act_new instead.
 ///
-void act(const char *format, CHAR_DATA *ch, ActArg arg1, ActArg arg2, int type)
+void act(const char *format, CHAR_DATA *ch, ActArg arg1, ActArg arg2, ActTarget type)
 {
 	act_new(format, ch, arg1, arg2, type, POS_RESTING);
 }
 
-void act_queue(std::string format, CHAR_DATA *ch, OBJ_DATA *arg1, CHAR_DATA *arg2, int type)
+void act_queue(std::string format, CHAR_DATA *ch, OBJ_DATA *arg1, CHAR_DATA *arg2, ActTarget type)
 {
 	act_new(format.c_str(), ch, arg1, arg2, type, POS_RESTING);
 }
@@ -3126,13 +3133,13 @@ void act_area(const char *format, CHAR_DATA *ch, CHAR_DATA *victim)
 							i = get_descr_form(victim, ch, false);
 							break;
 						case 'e':
-							i = he_she[URANGE(0, victim->sex, 2)];
+							i = he_she[URANGE(0, static_cast<int>(victim->sex), 2)];
 							break;
 						case 'm':
-							i = him_her[URANGE(0, victim->sex, 2)];
+							i = him_her[URANGE(0, static_cast<int>(victim->sex), 2)];
 							break;
 						case 's':
-							i = his_her[URANGE(0, victim->sex, 2)];
+							i = his_her[URANGE(0, static_cast<int>(victim->sex), 2)];
 							break;
 						default:
 							RS.Logger.Warn("Act: bad code {}.", *str);
@@ -3184,7 +3191,7 @@ void act_area(const char *format, CHAR_DATA *ch, CHAR_DATA *victim)
 /// @param arg2: (optional) The second subject mentioned
 /// @param type: The scope of the message, e.g. TO_ROOM, TO_GROUP, etc.
 /// @param min_pos: The minimum position for the act (lowest default is POS_RESTING)
-void act_new(const char *format, CHAR_DATA *ch, ActArg arg1, ActArg arg2, int type, int min_pos)
+void act_new(const char *format, CHAR_DATA *ch, ActArg arg1, ActArg arg2, ActTarget type, Position min_pos)
 {
 	static char *const he_she[] = {"it", "he", "she"};
 	static char *const him_her[] = {"it", "him", "her"};
@@ -3349,22 +3356,22 @@ void act_new(const char *format, CHAR_DATA *ch, ActArg arg1, ActArg arg2, int ty
 
 						break;
 					case 'e':
-						i = he_she[URANGE(0, ch->sex, 2)];
+						i = he_she[URANGE(0, static_cast<int>(ch->sex), 2)];
 						break;
 					case 'E':
-						i = vch != nullptr ? he_she[URANGE(0, vch->sex, 2)] : nullptr;
+						i = vch != nullptr ? he_she[URANGE(0, static_cast<int>(vch->sex), 2)] : nullptr;
 						break;
 					case 'm':
-						i = him_her[URANGE(0, ch->sex, 2)];
+						i = him_her[URANGE(0, static_cast<int>(ch->sex), 2)];
 						break;
 					case 'M':
-						i = vch != nullptr ? him_her[URANGE(0, vch->sex, 2)] : nullptr;
+						i = vch != nullptr ? him_her[URANGE(0, static_cast<int>(vch->sex), 2)] : nullptr;
 						break;
 					case 's':
-						i = his_her[URANGE(0, ch->sex, 2)];
+						i = his_her[URANGE(0, static_cast<int>(ch->sex), 2)];
 						break;
 					case 'S':
-						i = vch != nullptr ? his_her[URANGE(0, vch->sex, 2)] : nullptr;
+						i = vch != nullptr ? his_her[URANGE(0, static_cast<int>(vch->sex), 2)] : nullptr;
 						break;
 					case 'p':
 						if (obj1 == nullptr)

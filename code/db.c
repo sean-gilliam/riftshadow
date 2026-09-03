@@ -43,6 +43,7 @@
 #include <iterator>
 #include <algorithm>
 #include "merc.h"
+#include "persisted_enum.h"
 #include "db.h"
 #include "db2.h"
 #include "entity/handles.h"
@@ -1149,10 +1150,17 @@ void reset_room(ROOM_INDEX_DATA *pRoom)
 				{
 					pObj2_next = pObj2->next_content;
 
+					// The two corpse names below are item types, not extra
+					// flags, so what these actually test is extra flag bit 24,
+					// which is ITEM_BURN_PROOF, and bit 23, which has no name.
+					// Left as they are: as written they exempt burn-proof
+					// containers, and as intended they could not fire at all,
+					// because the container test on the next line already rules
+					// out anything whose type is a corpse.
 					if (pObj2->pIndexData->vnum == pObjIndex->vnum
 						&& !is_obj_stat(pObj2, ITEM_DONATION_PIT)
-						&& !is_obj_stat(pObj2, ITEM_CORPSE_PC)
-						&& !is_obj_stat(pObj2, ITEM_CORPSE_NPC)
+						&& !is_obj_stat(pObj2, write_persisted(ITEM_CORPSE_PC))
+						&& !is_obj_stat(pObj2, write_persisted(ITEM_CORPSE_NPC))
 						&& pObj2->item_type == ITEM_CONTAINER
 						&& !pObj2->contains)
 					{
@@ -1319,31 +1327,35 @@ void reset_room(ROOM_INDEX_DATA *pRoom)
 
 				if (pReset->command == 'E')
 				{
-					if (pReset->arg3 == 16)
+					// A reset's third argument means something different for
+					// each command letter, and for an equip it is a slot.
+					WearLocation slot = wear_slot(pReset->arg3);
+
+					if (slot == WEAR_WIELD)
 					{
 						secondary = get_eq_char(LastMob, WEAR_WIELD);
 
 						if (secondary != nullptr)
 						{
 							unequip_char(LastMob, secondary, true);
-							equip_char(LastMob, secondary, 18, true);
-							equip_char(LastMob, pObj, 16, true);
+							equip_char(LastMob, secondary, WEAR_DUAL_WIELD, true);
+							equip_char(LastMob, pObj, WEAR_WIELD, true);
 						}
 						else
 						{
-							equip_char(LastMob, pObj, pReset->arg3, true);
+							equip_char(LastMob, pObj, slot, true);
 						}
 					}
-					else if (pReset->arg3 == 18)
+					else if (slot == WEAR_DUAL_WIELD)
 					{
 						if (get_eq_char(LastMob, WEAR_WIELD) == nullptr)
-							equip_char(LastMob, pObj, 16, true);
+							equip_char(LastMob, pObj, WEAR_WIELD, true);
 						else
-							equip_char(LastMob, pObj, pReset->arg3, true);
+							equip_char(LastMob, pObj, slot, true);
 					}
 					else
 					{
-						equip_char(LastMob, pObj, pReset->arg3, true);
+						equip_char(LastMob, pObj, slot, true);
 					}
 				}
 				last = true;
@@ -1539,8 +1551,10 @@ CHAR_DATA *create_mobile(MOB_INDEX_DATA *pMobIndex)
 		mob->start_pos = pMobIndex->start_pos;
 		mob->sex = pMobIndex->sex;
 
-		if (mob->sex == 3) /* random sex */
-			mob->sex = number_range(1, 2);
+		// The prototype asks for one to be picked here rather than carrying
+		// one of its own.
+		if (mob->sex == SEX_EITHER)
+			mob->sex = number_range(1, 2) == 1 ? SEX_MALE : SEX_FEMALE;
 
 		mob->race = pMobIndex->race;
 
@@ -1608,8 +1622,8 @@ CHAR_DATA *create_mobile(MOB_INDEX_DATA *pMobIndex)
 		if (IS_SET(mob->off_flags, OFF_FAST))
 			mob->perm_stat[STAT_DEX] += 2;
 
-		mob->perm_stat[STAT_STR] += mob->size - SIZE_MEDIUM;
-		mob->perm_stat[STAT_CON] += (mob->size - SIZE_MEDIUM) / 2;
+		mob->perm_stat[STAT_STR] += size_difference(mob->size, SIZE_MEDIUM);
+		mob->perm_stat[STAT_CON] += size_difference(mob->size, SIZE_MEDIUM) / 2;
 
 		/* let's get some spell action */
 
@@ -1827,7 +1841,7 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 	else
 		obj->level = std::max(0, level);
 
-	obj->wear_loc = -1;
+	obj->wear_loc = WEAR_NONE;
 	obj->name = palloc_string(pObjIndex->name);				  /* OLC */
 	obj->short_descr = palloc_string(pObjIndex->short_descr); /* OLC */
 	obj->description = palloc_string(pObjIndex->description); /* OLC */
@@ -1969,11 +1983,17 @@ OBJ_DATA *create_object(OBJ_INDEX_DATA *pObjIndex, int level)
 			OBJ_AFFECT_DATA oaf;
 
 			init_affect_obj(&oaf);
-			oaf.where = paf.where;
+			// The prototype's affect carries a character affect's
+			// discriminator and this is an object affect's, so the value is
+			// copied across rather than translated. The two families agree on
+			// 0 and disagree on everything above it.
+			oaf.where = static_cast<ObjAffectWhere>(write_persisted(paf.where));
 			oaf.type = paf.type;
 			oaf.level = paf.level;
 			oaf.duration = paf.duration;
-			oaf.location = paf.location;
+			// The object affect's location field holds a character apply here,
+			// because the affect being copied carries one.
+			oaf.location = obj_location(paf.location);
 			oaf.modifier = paf.modifier;
 			copy_vector(oaf.bitvector, paf.bitvector);
 			affect_to_obj(obj, &oaf);
@@ -3582,6 +3602,9 @@ void load_rooms(FILE *fp)
 			chop(pRoomIndex->name);
 
 		pRoomIndex->description = fread_string(fp);
+		// sect_lookup answers with the row, and the row carries the terrain:
+		// the two are not the same number for every sector. The table's column
+		// is typed, so nothing else can come out of here.
 		pRoomIndex->sector_type = sect_table[sect_lookup(fread_word(fp))].value;
 
 		/* Morg - Valgrind fix. */

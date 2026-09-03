@@ -5,6 +5,7 @@
 #include "../code/handler.h"
 #include "../code/const.h"
 #include "../code/lookup.h"
+#include "../code/utility.h"
 #include "../code/tables.h"
 #include "../code/db.h"
 #include "../code/iprog.h"
@@ -40,7 +41,7 @@ void TestHelperSetPlayerStats(char_data *player, short value)
 
     player->race = 2; // 2 is human
     //player->SetClass(1);
-    player->pIndexData->SetClass(1);
+    player->pIndexData->SetClass(CLASS_WARRIOR);
     player->level = 1;
 }
 
@@ -65,7 +66,7 @@ void TestHelperLoadCClass()
 {
 	auto cclass = new CClass();
 	cclass->name = "ANTI_PALADIN";
-	cclass->index = 5;
+	cclass->index = CLASS_ANTI_PALADIN;
 	// CClass has a user-provided constructor that initializes nothing, so the
 	// terminator has to be written here. Without it GetClass walks off the end
 	// of this one-element list for any index but this one.
@@ -82,7 +83,7 @@ char_data* TestHelperCreatePlayer(char *name, obj_data *item = nullptr)
 	dnew->self = descriptorHandles.Add(dnew);	// as new_descriptor would
 	player->pcdata = std::make_unique<pc_data>();
 	TestHelperLoadCClass();
-	player->SetClass(5);
+	player->SetClass(CLASS_ANTI_PALADIN);
 	player->level = 51;
 	dnew->showstr_head = nullptr;
 	dnew->showstr_point = nullptr;
@@ -124,7 +125,7 @@ obj_data* TestHelperCreateItem(char *itemName = "broken_lamp", int cost = 0)
 	item->self = objectHandles.Add(item);	// as new_obj would
 	item->name = itemName;
 	item->cost = cost;
-	item->wear_loc = -1;
+	item->wear_loc = WEAR_NONE;
 	item->description = "A magically generated item for testing";
 
 	return item;
@@ -451,5 +452,144 @@ SCENARIO("giving an object that carries a give program", "[do_give]")
 
 		delete obj->pIndexData->iprogs;
 		obj->pIndexData->iprogs = nullptr;
+	}
+}
+
+
+//
+// Characterized, not endorsed.
+//
+// Envenoming a weapon builds an object affect and gives it TO_WEAPON as its
+// discriminator. TO_WEAPON belongs to the character affect family, not the
+// object one, so affect_modify_obj matches neither of its two cases and the
+// bitvector is never applied. Even if it were, it would be applied to
+// obj->affected_by, while is_weapon_stat, which is what the poison on hit
+// actually reads, looks at obj->value[4].
+//
+// So the skill reports success, spends the lag and trains, and the weapon is
+// not poisoned. This test says what happens today. When it is fixed, this is
+// the test that will fail.
+//
+SCENARIO("envenoming a weapon", "[do_envenom]")
+{
+	TestWorld::WireSkillNumbers();
+
+	GIVEN("an assassin carrying a weapon, with the skill learned")
+	{
+		TestWorld world;
+		auto room = world.CreateRoom();
+		// An assassin, because envenom is level 25 for them and 53 for a
+		// thief, and a fixture player is level 50.
+		auto ch = world.CreatePlayer("Poisoner", room, CLASS_ASSASSIN);
+		auto weapon = world.CreateItem("dagger", "a plain dagger");
+
+		weapon->item_type = ITEM_WEAPON;
+		obj_to_char(weapon, ch);
+		ch->pcdata->learned[gsn_envenom] = 100;
+
+		WHEN("the envenoming succeeds")
+		{
+			bool succeeded = false;
+
+			for (int attempt = 0; attempt < 50 && !succeeded; attempt++)
+			{
+				TestWorld::ClearOutput(ch);
+				do_envenom(ch, (char *)"dagger");
+				succeeded = TestWorld::Heard(ch, "You coat");
+			}
+
+			THEN("the character is told it worked")
+			{
+				REQUIRE(succeeded);
+			}
+
+			THEN("the weapon is not poisoned")
+			{
+				REQUIRE(succeeded);
+				REQUIRE_FALSE(is_weapon_stat(weapon, WEAPON_POISON));
+			}
+		}
+	}
+}
+
+//
+// is_carrying_type takes a type and used to ignore it.
+//
+// The body tested ITEM_BOAT no matter what it was asked about, and the one
+// caller asks about a boat, so it answered correctly by coincidence. The
+// parameter it was handed had been unused for long enough that the compiler
+// was warning about it.
+//
+
+SCENARIO("asking what type of thing a character is carrying", "[is_carrying_type]")
+{
+	TestWorld world;
+
+	auto room = world.CreateRoom();
+	auto walker = world.CreatePlayer("Walker", room);
+	auto raft = world.CreateItem("raft", "a small raft");
+
+	raft->item_type = ITEM_BOAT;
+	obj_to_char(raft, walker);
+
+	GIVEN("a character carrying a boat")
+	{
+		THEN("they are carrying a boat")
+		{
+			REQUIRE(is_carrying_type(walker, ITEM_BOAT));
+		}
+
+		THEN("they are not carrying any of the other types")
+		{
+			REQUIRE_FALSE(is_carrying_type(walker, ITEM_FOOD));
+			REQUIRE_FALSE(is_carrying_type(walker, ITEM_WEAPON));
+		}
+	}
+
+	GIVEN("a character carrying something else as well")
+	{
+		auto loaf = world.CreateItem("loaf", "a loaf of bread");
+
+		loaf->item_type = ITEM_FOOD;
+		obj_to_char(loaf, walker);
+
+		THEN("both types are found")
+		{
+			REQUIRE(is_carrying_type(walker, ITEM_BOAT));
+			REQUIRE(is_carrying_type(walker, ITEM_FOOD));
+		}
+	}
+}
+
+//
+// The item type table does not carry every item type.
+//
+// ITEM_CABAL_ITEM has no row, so there is no word an area file or the object
+// editor can spell it with, and an object that somehow had that type would be
+// written to an area file as "none" and read back as no type at all. Recorded
+// rather than fixed: giving it a name lets a builder set a type that nothing
+// in the game tests for.
+//
+
+SCENARIO("the word an area file spells an item type with", "[item_name_lookup]")
+{
+	GIVEN("the item types the table carries")
+	{
+		THEN("each writes the word its loader reads back")
+		{
+			REQUIRE(item_lookup(item_name_lookup(ITEM_WEAPON)) == ITEM_WEAPON);
+			REQUIRE(item_lookup(item_name_lookup(ITEM_FOOD)) == ITEM_FOOD);
+			REQUIRE(item_lookup(item_name_lookup(ITEM_CONTAINER)) == ITEM_CONTAINER);
+			REQUIRE(item_lookup(item_name_lookup(ITEM_CORPSE_PC)) == ITEM_CORPSE_PC);
+		}
+	}
+
+	GIVEN("the one item type the table does not carry")
+	{
+		THEN("it has no word, and the round trip loses it")
+		{
+			REQUIRE(!str_cmp(item_name_lookup(ITEM_CABAL_ITEM), "none"));
+			REQUIRE_FALSE(item_lookup(item_name_lookup(ITEM_CABAL_ITEM)).has_value());
+		}
 	}
 }

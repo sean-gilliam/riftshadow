@@ -652,9 +652,9 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 	{
 		sprintf(buf2, ", a%s %s %s %s%s,",
 				(victim->pcdata->beauty == 1 || victim->pcdata->beauty == 3 || victim->pcdata->beauty == 4) ? "n" : "",
-				(victim->sex == 2) ? beauty_table[victim->pcdata->beauty].female
+				(victim->sex == SEX_FEMALE) ? beauty_table[victim->pcdata->beauty].female
 								   : beauty_table[victim->pcdata->beauty].male,
-				sex_table[victim->sex].name, pc_race_table[victim->race].name,
+				sex_table[static_cast<int>(victim->sex)].name, pc_race_table[victim->race].name,
 				(!str_cmp(pc_race_table[victim->race].name, "celestial") ||
 				 !str_cmp(pc_race_table[victim->race].name, "planar") ||
 				 !str_cmp(pc_race_table[victim->race].name, "abyss"))
@@ -721,8 +721,10 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 		return;
 
 	auto found = false;
-	for (auto iWear = 0; iWear < MAX_WEAR; iWear++)
+	for (auto slot = 0; slot < MAX_WEAR; slot++)
 	{
+		WearLocation iWear = wear_slot(slot);
+
 		if (iWear == WEAR_WIELD) // cosmetics come right before "wield" on display
 		{
 			for (auto tObj = victim->carrying; tObj; tObj = tObj->next_content)
@@ -776,7 +778,7 @@ void show_char_to_char_1(CHAR_DATA *victim, CHAR_DATA *ch)
 				found = true;
 			}
 
-			send_to_char(where_name[iWear], ch);
+			send_to_char(where_name[slot], ch);
 			send_to_char(format_obj_to_char(obj, ch, true), ch);
 			send_to_char("\n\r", ch);
 		}
@@ -894,9 +896,9 @@ void show_char_to_char_2(CHAR_DATA *victim, CHAR_DATA *ch)
 		char buf2[MAX_STRING_LENGTH];
 		sprintf(buf2, ", a%s %s %s %s,",
 				(victim->pcdata->beauty == 1 || victim->pcdata->beauty == 3 || victim->pcdata->beauty == 4) ? "n" : "",
-				(victim->sex == 2) ? beauty_table[victim->pcdata->beauty].female
+				(victim->sex == SEX_FEMALE) ? beauty_table[victim->pcdata->beauty].female
 								   : beauty_table[victim->pcdata->beauty].male,
-				sex_table[victim->sex].name, pc_race_table[victim->race].name);
+				sex_table[static_cast<int>(victim->sex)].name, pc_race_table[victim->race].name);
 
 		strcat(buf, buf2);
 	}
@@ -907,8 +909,10 @@ void show_char_to_char_2(CHAR_DATA *victim, CHAR_DATA *ch)
 	send_to_char(buf, ch);
 
 	auto found = false;
-	for (auto iWear = 0; iWear < MAX_WEAR; iWear++)
+	for (auto slot = 0; slot < MAX_WEAR; slot++)
 	{
+		WearLocation iWear = wear_slot(slot);
+
 		auto obj = get_eq_char(victim, iWear);
 		if (obj != nullptr && can_see_obj(ch, obj))
 		{
@@ -919,7 +923,7 @@ void show_char_to_char_2(CHAR_DATA *victim, CHAR_DATA *ch)
 				found = true;
 			}
 
-			send_to_char(where_name[iWear], ch);
+			send_to_char(where_name[slot], ch);
 			send_to_char(format_obj_to_char(obj, ch, true), ch);
 			send_to_char("\n\r", ch);
 		}
@@ -968,9 +972,9 @@ void show_char_to_char_3(CHAR_DATA *victim, CHAR_DATA *ch)
 		char buf2[MAX_STRING_LENGTH];
 		sprintf(buf2, ", a%s %s %s %s,",
 				(victim->pcdata->beauty == 1 || victim->pcdata->beauty == 3 || victim->pcdata->beauty == 4) ? "n" : "",
-				(victim->sex == 2) ? beauty_table[victim->pcdata->beauty].female
+				(victim->sex == SEX_FEMALE) ? beauty_table[victim->pcdata->beauty].female
 								   : beauty_table[victim->pcdata->beauty].male,
-				sex_table[victim->sex].name, pc_race_table[victim->race].name);
+				sex_table[static_cast<int>(victim->sex)].name, pc_race_table[victim->race].name);
 
 		strcat(buf, buf2);
 	}
@@ -2465,7 +2469,7 @@ void do_score(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 
 	sprintf(buf, "Race: %s  Sex: %s  Class: %s\n\r",
 		race_table[ch->race].name,
-		sex_table[ch->sex].name,
+		sex_table[static_cast<int>(ch->sex)].name,
 		is_npc(ch) ? "mobile" : ch->Class()->name.c_str());
 	send_to_char(buf, ch);
 
@@ -3271,12 +3275,12 @@ void do_who(CHAR_DATA *ch, char *argument)
 			else
 			{
 				auto iClass = CClass::Lookup(arg);
-				if (iClass != -1)
+				if (iClass)
 				{
 					if (is_immortal(ch))
 					{
 						fClassRestrict = true;
-						rgfClass[iClass] = true;
+						rgfClass[class_index(*iClass)] = true;
 						continue;
 					}
 
@@ -3349,7 +3353,7 @@ void do_who(CHAR_DATA *ch, char *argument)
 			|| wch->level > iLevelUpper
 			|| (fImmortalOnly && (wch->level < LEVEL_IMMORTAL && !is_heroimm(wch)))
 			|| (fPkOnly && !can_pk(ch, wch))
-			|| (fClassRestrict && !rgfClass[wch->Class()->GetIndex()])
+			|| (fClassRestrict && !rgfClass[class_index(wch->Class()->GetIndex())])
 			|| (fRaceRestrict && !rgfRace[wch->race])
 			|| (fCriminal && !IS_SET(wch->act, PLR_CRIMINAL))
 			|| (fBuilder && !IS_SET(wch->comm, COMM_BUILDER))
@@ -3555,8 +3559,10 @@ void do_equipment(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 	send_to_char("You are using:\n\r", ch);
 
 	auto found = false;
-	for (auto iWear = 0; iWear < MAX_WEAR; iWear++)
+	for (auto slot = 0; slot < MAX_WEAR; slot++)
 	{
+		WearLocation iWear = wear_slot(slot);
+
 		if (iWear == WEAR_WIELD) // cosmetics come right before "wield" on display
 		{
 			for (auto tObj = ch->carrying; tObj; tObj = tObj->next_content)
@@ -3582,7 +3588,7 @@ void do_equipment(CHAR_DATA *ch, [[maybe_unused]] char *argument)
 		if (iWear == WEAR_COSMETIC || obj == nullptr)
 			continue;
 
-		send_to_char(where_name[iWear], ch);
+		send_to_char(where_name[slot], ch);
 
 		if (can_see_obj(ch, obj))
 			send_to_char(format_obj_to_char(obj, ch, true), ch);
@@ -3860,7 +3866,7 @@ void do_consider(CHAR_DATA *ch, char *argument)
 	else
 		act("You must have a fascination with death.", ch, nullptr, victim, TO_CHAR);
 
-	diff = victim->size - ch->size;
+	diff = size_difference(victim->size, ch->size);
 	if (diff > 1)
 		act("$N easily towers over you.", ch, nullptr, victim, TO_CHAR);
 	else if (diff == 1)
@@ -4312,10 +4318,10 @@ void do_practice(CHAR_DATA *ch, char *argument)
 				|| sn == gsn_tactician_skill)
 				hide_skill = true;
 
-			if (skill_table[sn].skill_level[ch->Class()->GetIndex()] > 52)
+			if (skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())] > 52)
 				continue;
 
-			if (ch->level < skill_table[sn].skill_level[ch->Class()->GetIndex()] || ch->pcdata->learned[sn] < 1)
+			if (ch->level < skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())] || ch->pcdata->learned[sn] < 1)
 				continue;
 
 			if (!hide_skill)
@@ -4371,7 +4377,7 @@ void do_practice(CHAR_DATA *ch, char *argument)
 	auto sn = find_spell(ch, argument); 
 	if (sn < 0
 		|| (!is_npc(ch) 
-			&& (ch->level < skill_table[sn].skill_level[ch->Class()->GetIndex()] 
+			&& (ch->level < skill_table[sn].skill_level[class_index(ch->Class()->GetIndex())] 
 			|| ch->pcdata->learned[sn] < 1))) /* skill is not known */
 	{
 		send_to_char("You can't practice that.\n\r", ch);
@@ -5277,12 +5283,14 @@ void do_xlook(CHAR_DATA *ch, char *argument)
 
 	send_to_char("\n\rEquipment:\n\r", ch);
 
-	for (auto iWear = 0; iWear < MAX_WEAR; iWear++)
+	for (auto slot = 0; slot < MAX_WEAR; slot++)
 	{
+		WearLocation iWear = wear_slot(slot);
+
 		auto obj = get_eq_char(victim, iWear);
 		if (obj != nullptr && can_see_obj(ch, obj))
 		{
-			send_to_char(where_name[iWear], ch);
+			send_to_char(where_name[slot], ch);
 			send_to_char(format_obj_to_char(obj, ch, true), ch);
 			send_to_char("\n\r", ch);
 		}
@@ -5293,9 +5301,15 @@ void do_xlook(CHAR_DATA *ch, char *argument)
 	show_list_to_char(victim->carrying, ch, true, false);
 }
 
-char *get_where_name(int iWear)
+char *get_where_name(WearLocation iWear)
 {
-	return where_name[iWear];
+	// where_name is laid out in slot order and WEAR_NONE is the -1 that means
+	// the object is carried rather than worn, so it has no row here. No caller
+	// asks for it today: every one of them is walking the slots in order.
+	if (iWear == WEAR_NONE)
+		return "<not worn>          ";
+
+	return where_name[wear_index(iWear)];
 }
 
 void do_trustgroup(CHAR_DATA *ch, [[maybe_unused]] char *argument)

@@ -6,6 +6,7 @@
 #include "../code/db.h"
 #include "../code/devextra.h"
 #include "../code/tables.h"
+#include "../code/lookup.h"
 
 // TEST_CASE("Test capitalization", "[string]" )
 // {
@@ -1326,6 +1327,137 @@ SCENARIO("building a printable string from a flag table", "[flags_to_string]")
 				REQUIRE(strstr(result, "beta") != nullptr);
 				REQUIRE(strstr(result, "gamma") != nullptr);
 				REQUIRE(strlen(result) < MAX_INPUT_LENGTH);
+			}
+		}
+	}
+}
+
+SCENARIO("clamping a value to a range", "[URANGE]")
+{
+	GIVEN("a value below, inside and above the range")
+	{
+		THEN("it comes back as the bound it crossed, or unchanged")
+		{
+			REQUIRE(URANGE(5, 1, 10) == 5);
+			REQUIRE(URANGE(5, 7, 10) == 7);
+			REQUIRE(URANGE(5, 40, 10) == 10);
+		}
+	}
+
+	GIVEN("a value that is expensive or unsafe to compute twice")
+	{
+		int evaluations = 0;
+		auto value = [&evaluations]() -> long { evaluations++; return 7; };
+
+		WHEN("it is clamped")
+		{
+			long clamped = URANGE(5, value(), 10);
+
+			THEN("the argument is evaluated exactly once")
+			{
+				REQUIRE(clamped == 7);
+				REQUIRE(evaluations == 1);
+			}
+		}
+	}
+}
+
+SCENARIO("converting the case of one character", "[LOWER][UPPER]")
+{
+	GIVEN("letters of each case and something that is not a letter")
+	{
+		THEN("only the letters convert")
+		{
+			REQUIRE(LOWER('A') == 'a');
+			REQUIRE(LOWER('a') == 'a');
+			REQUIRE(LOWER('7') == '7');
+			REQUIRE(UPPER('a') == 'A');
+			REQUIRE(UPPER('A') == 'A');
+			REQUIRE(UPPER('7') == '7');
+		}
+	}
+
+	GIVEN("a character above the ASCII range")
+	{
+		// A char is signed here, so this one is negative. std::tolower is
+		// undefined on a negative argument, which is what the cast inside these
+		// functions exists to prevent.
+		char high = static_cast<char>(0xE9);
+
+		THEN("it comes back unchanged rather than undefined")
+		{
+			REQUIRE(LOWER(high) == high);
+			REQUIRE(UPPER(high) == high);
+		}
+	}
+
+	GIVEN("an argument that must not be evaluated twice")
+	{
+		int evaluations = 0;
+		auto value = [&evaluations]() -> char { evaluations++; return 'q'; };
+
+		WHEN("its case is converted")
+		{
+			char converted = UPPER(value());
+
+			THEN("the argument is evaluated exactly once")
+			{
+				REQUIRE(converted == 'Q');
+				REQUIRE(evaluations == 1);
+			}
+		}
+	}
+}
+
+SCENARIO("finding the row that describes a sector", "[sector_row]")
+{
+	GIVEN("every row of the sector table")
+	{
+		THEN("each sector's value finds its own row, and its name comes back")
+		{
+			for (int row = 0; sect_table[row].name != nullptr; row++)
+			{
+				REQUIRE(sector_row(sect_table[row].value)->value == sect_table[row].value);
+				REQUIRE(strcmp(sector_row(sect_table[row].value)->name, sect_table[row].name) == 0);
+			}
+		}
+	}
+
+	GIVEN("the two sectors whose rows do not sit at their own value")
+	{
+		// burning is row 12 with value 13, and conflagration is row 13 with
+		// value 12, so subscripting the table with a sector type answers with
+		// the other one of the pair.
+		THEN("each still finds itself")
+		{
+			REQUIRE(strcmp(sector_row(SECT_BURNING)->name, "burning") == 0);
+			REQUIRE(strcmp(sector_row(SECT_CONFLAGRATION)->name, "conflagration") == 0);
+		}
+	}
+
+	GIVEN("a sector value the table does not carry")
+	{
+		THEN("the first row answers, rather than a read past the end")
+		{
+			REQUIRE(sector_row(static_cast<SectorType>(999)) == &sect_table[0]);
+			REQUIRE(sector_row(static_cast<SectorType>(-3)) == &sect_table[0]);
+		}
+	}
+}
+
+SCENARIO("a sector name survives being written and read back", "[sect_table]")
+{
+	GIVEN("every sector name an area file can hold")
+	{
+		THEN("loading it and saving it again produces the same name")
+		{
+			for (int row = 0; sect_table[row].name != nullptr; row++)
+			{
+				// What the loader does with the word in the file.
+				SectorType loaded = sect_table[sect_lookup(sect_table[row].name)].value;
+
+				// What the area writer puts back.
+				REQUIRE(strcmp(sector_row(loaded)->name, sect_table[row].name) == 0);
 			}
 		}
 	}
